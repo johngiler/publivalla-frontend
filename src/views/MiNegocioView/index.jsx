@@ -14,6 +14,7 @@ import { normalizeMediaUrlForUi } from "@/lib/mediaUrls";
 import {
   fetchMyWorkspace,
   patchMyWorkspace,
+  authFetch,
   testMyWorkspaceTransactionalSmtp,
 } from "@/services/authApi";
 
@@ -227,6 +228,7 @@ export default function MiNegocioView() {
   const [txUseSsl, setTxUseSsl] = useState(false);
   const [smtpTestStatus, setSmtpTestStatus] = useState(null);
   const [smtpTestLoading, setSmtpTestLoading] = useState(false);
+  const [txTestContext, setTxTestContext] = useState(null);
 
   const [txUser, setTxUser] = useState("");
   const [txPassword, setTxPassword] = useState("");
@@ -234,6 +236,13 @@ export default function MiNegocioView() {
   const [txFromName, setTxFromName] = useState("");
   const [txPwdSet, setTxPwdSet] = useState(false);
   const [txShowPassword, setTxShowPassword] = useState(false);
+  const [txMethod, setTxMethod] = useState("smtp");
+  const [txProvider, setTxProvider] = useState("mailgun");
+  const [txApiKey, setTxApiKey] = useState("");
+  const [txApiKeySet, setTxApiKeySet] = useState(false);
+  const [txShowApiKey, setTxShowApiKey] = useState(false);
+  const [txMailgunDomain, setTxMailgunDomain] = useState("");
+  const [txMailgunRegion, setTxMailgunRegion] = useState("us");
 
   const [logoUrl, setLogoUrl] = useState("");
   const [logoMarkUrl, setLogoMarkUrl] = useState("");
@@ -253,6 +262,11 @@ export default function MiNegocioView() {
   const [saveErr, setSaveErr] = useState("");
   const [saveOk, setSaveOk] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setSmtpTestStatus(null);
+    setTxTestContext(null);
+  }, [txMethod]);
 
   useEffect(() => {
     if (!logoFile) {
@@ -357,6 +371,28 @@ export default function MiNegocioView() {
             : "",
         );
         setTxPwdSet(Boolean(d.transactional_email_password_set));
+        setTxMethod(
+          typeof d.transactional_email_method === "string" && d.transactional_email_method.trim()
+            ? d.transactional_email_method.trim().toLowerCase()
+            : "smtp",
+        );
+        setTxProvider(
+          typeof d.transactional_email_provider === "string" && d.transactional_email_provider.trim()
+            ? d.transactional_email_provider.trim().toLowerCase()
+            : "mailgun",
+        );
+        setTxApiKey("");
+        setTxApiKeySet(Boolean(d.transactional_email_api_key_set));
+        setTxMailgunDomain(
+          typeof d.transactional_email_mailgun_domain === "string"
+            ? d.transactional_email_mailgun_domain
+            : "",
+        );
+        setTxMailgunRegion(
+          typeof d.transactional_email_mailgun_region === "string" && d.transactional_email_mailgun_region.trim()
+            ? d.transactional_email_mailgun_region.trim().toLowerCase()
+            : "us",
+        );
         setLogoUrl(typeof d.logo_url === "string" ? d.logo_url : "");
         setLogoMarkUrl(
           typeof d.logo_mark_url === "string" ? d.logo_mark_url : "",
@@ -382,6 +418,7 @@ export default function MiNegocioView() {
 
   async function onTestSmtp() {
     setSmtpTestStatus(null);
+    setTxTestContext("smtp");
     setSmtpTestLoading(true);
     try {
       const body = {
@@ -396,6 +433,51 @@ export default function MiNegocioView() {
       if (pwd) body.transactional_email_password = pwd;
       const r = await testMyWorkspaceTransactionalSmtp(body, {
         token: accessToken,
+      });
+      setSmtpTestStatus(r);
+    } catch (err) {
+      setSmtpTestStatus({
+        ok: false,
+        detail:
+          err instanceof Error
+            ? err.message
+            : "No se pudo contactar al servidor.",
+        technical: null,
+      });
+    } finally {
+      setSmtpTestLoading(false);
+    }
+  }
+
+  async function onTestRelay() {
+    setSmtpTestStatus(null);
+    setTxTestContext(txMethod === "api" ? "api" : "smtp");
+    setSmtpTestLoading(true);
+    try {
+      const body =
+        txMethod === "api"
+          ? {
+              transactional_email_method: "api",
+              transactional_email_provider: txProvider,
+              transactional_email_mailgun_domain: txMailgunDomain.trim(),
+              transactional_email_mailgun_region: txMailgunRegion,
+              ...(txApiKey.trim() ? { transactional_email_api_key: txApiKey.trim() } : {}),
+            }
+          : {
+              transactional_email_method: "smtp",
+              transactional_email_host: txHost.trim(),
+              transactional_email_port:
+                Number.parseInt(String(txPort).trim(), 10) || 587,
+              transactional_email_use_tls: txTls,
+              transactional_email_use_ssl: txUseSsl,
+              transactional_email_username: txUser.trim(),
+              ...(txPassword.trim()
+                ? { transactional_email_password: txPassword.trim() }
+                : {}),
+            };
+      const r = await authFetch("/api/me/workspace/test-transactional-relay/", {
+        method: "POST",
+        body,
       });
       setSmtpTestStatus(r);
     } catch (err) {
@@ -437,10 +519,22 @@ export default function MiNegocioView() {
       fd.append("transactional_email_use_tls", txTls ? "true" : "false");
       fd.append("transactional_email_use_ssl", txUseSsl ? "true" : "false");
       fd.append("transactional_email_username", txUser.trim());
-      if (txPassword.trim())
+      if (txMethod !== "api" && txPassword.trim())
         fd.append("transactional_email_password", txPassword.trim());
       fd.append("transactional_email_from_address", txFrom.trim());
       fd.append("transactional_email_from_name", txFromName.trim());
+      fd.append("transactional_email_method", txMethod === "api" ? "api" : "smtp");
+      fd.append("transactional_email_provider", txMethod === "api" ? txProvider : "");
+      fd.append(
+        "transactional_email_mailgun_domain",
+        txMethod === "api" ? txMailgunDomain.trim() : "",
+      );
+      fd.append(
+        "transactional_email_mailgun_region",
+        txMethod === "api" ? txMailgunRegion : "us",
+      );
+      if (txMethod === "api" && txApiKey.trim())
+        fd.append("transactional_email_api_key", txApiKey.trim());
       if (logoFile) fd.append("logo", logoFile);
       if (removeLogo) fd.append("remove_logo", "true");
       if (logoMarkFile) fd.append("logo_mark", logoMarkFile);
@@ -465,6 +559,8 @@ export default function MiNegocioView() {
       setRemoveFavicon(false);
       setTxPassword("");
       setTxPwdSet(Boolean(data.transactional_email_password_set));
+      setTxApiKey("");
+      setTxApiKeySet(Boolean(data.transactional_email_api_key_set));
       setSaveOk("Cambios guardados.");
       await reloadWorkspace();
     } catch (err) {
@@ -711,118 +807,240 @@ export default function MiNegocioView() {
             </p>
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <label
-                  htmlFor="tx-host"
-                  className="block text-sm font-medium text-zinc-800"
-                >
-                  Servidor SMTP
-                </label>
-                <input
-                  id="tx-host"
-                  value={txHost}
-                  onChange={(e) => setTxHost(e.target.value)}
-                  className={fieldClass}
-                  placeholder="smtp.ejemplo.com"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="tx-port"
-                  className="block text-sm font-medium text-zinc-800"
-                >
-                  Puerto
-                </label>
-                <input
-                  id="tx-port"
-                  inputMode="numeric"
-                  value={txPort}
-                  onChange={(e) => setTxPort(e.target.value)}
-                  className={fieldClass}
-                />
-              </div>
-              <div className="flex flex-wrap items-end gap-4 pb-1 sm:col-span-2">
-                <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-zinc-800">
-                  <input
-                    type="checkbox"
-                    checked={txTls}
-                    onChange={(e) => {
-                      const v = e.target.checked;
-                      setTxTls(v);
-                      if (v) setTxUseSsl(false);
-                    }}
-                    className="h-4 w-4 rounded border-zinc-300 accent-[color:var(--mp-primary)]"
-                  />
-                  Usar TLS (STARTTLS, típico en puerto 587)
-                </label>
-                <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-zinc-800">
-                  <input
-                    type="checkbox"
-                    checked={txUseSsl}
-                    onChange={(e) => {
-                      const v = e.target.checked;
-                      setTxUseSsl(v);
-                      if (v) setTxTls(false);
-                    }}
-                    className="h-4 w-4 rounded border-zinc-300 accent-[color:var(--mp-primary)]"
-                  />
-                  SSL implícito (típico en puerto 465)
-                </label>
-              </div>
-              <div>
-                <label
-                  htmlFor="tx-user"
-                  className="block text-sm font-medium text-zinc-800"
-                >
-                  Usuario SMTP
-                </label>
-                <input
-                  id="tx-user"
-                  value={txUser}
-                  onChange={(e) => setTxUser(e.target.value)}
-                  className={fieldClass}
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="tx-pass"
-                  className="block text-sm font-medium text-zinc-800"
-                >
-                  Contraseña SMTP
-                </label>
-                <div className="relative mt-1.5">
-                  <input
-                    id="tx-pass"
-                    type={txShowPassword ? "text" : "password"}
-                    value={txPassword}
-                    onChange={(e) => setTxPassword(e.target.value)}
-                    className={fieldClassNoTopMargin.replace(
-                      /\bpx-3\.5\b/,
-                      "pl-3.5 pr-11",
-                    )}
-                    autoComplete="new-password"
-                    placeholder={
-                      txPwdSet
-                        ? "Deja en blanco para no cambiar la guardada"
-                        : ""
-                    }
-                  />
-                  <button
-                    type="button"
-                    className="mp-ring-brand absolute inset-y-0 right-0 flex w-11 items-center justify-center text-zinc-500 transition-colors hover:bg-zinc-100/60 hover:text-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--mp-primary)_22%,transparent)] rounded-r-[15px]"
-                    aria-label={
-                      txShowPassword
-                        ? "Ocultar contraseña"
-                        : "Mostrar contraseña"
-                    }
-                    aria-pressed={txShowPassword}
-                    onClick={() => setTxShowPassword((v) => !v)}
-                  >
-                    {txShowPassword ? <IconEyeOff /> : <IconEye />}
-                  </button>
+                <span className="block text-sm font-medium text-zinc-800">
+                  Método de envío
+                </span>
+                <div className="mt-2 flex flex-wrap items-center gap-4">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-zinc-800">
+                    <input
+                      type="radio"
+                      name="tx-method"
+                      checked={txMethod === "smtp"}
+                      onChange={() => setTxMethod("smtp")}
+                      className="h-4 w-4 border-zinc-300 accent-[color:var(--mp-primary)]"
+                    />
+                    SMTP (usuario y contraseña)
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-zinc-800">
+                    <input
+                      type="radio"
+                      name="tx-method"
+                      checked={txMethod === "api"}
+                      onChange={() => setTxMethod("api")}
+                      className="h-4 w-4 border-zinc-300 accent-[color:var(--mp-primary)]"
+                    />
+                    API key (relay)
+                  </label>
                 </div>
               </div>
+
+              {txMethod === "api" ? (
+                <>
+                  <div>
+                    <label
+                      htmlFor="tx-provider"
+                      className="block text-sm font-medium text-zinc-800"
+                    >
+                      Proveedor
+                    </label>
+                    <select
+                      id="tx-provider"
+                      value={txProvider}
+                      onChange={(e) => setTxProvider(e.target.value)}
+                      className={fieldClass}
+                    >
+                      <option value="mailgun">Mailgun</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="tx-mg-region"
+                      className="block text-sm font-medium text-zinc-800"
+                    >
+                      Región
+                    </label>
+                    <select
+                      id="tx-mg-region"
+                      value={txMailgunRegion}
+                      onChange={(e) => setTxMailgunRegion(e.target.value)}
+                      className={fieldClass}
+                    >
+                      <option value="us">US</option>
+                      <option value="eu">EU</option>
+                    </select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label
+                      htmlFor="tx-mg-domain"
+                      className="block text-sm font-medium text-zinc-800"
+                    >
+                      Dominio (Mailgun)
+                    </label>
+                    <input
+                      id="tx-mg-domain"
+                      value={txMailgunDomain}
+                      onChange={(e) => setTxMailgunDomain(e.target.value)}
+                      className={fieldClass}
+                      placeholder="mg.tudominio.com"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label
+                      htmlFor="tx-api-key"
+                      className="block text-sm font-medium text-zinc-800"
+                    >
+                      API key
+                    </label>
+                    <div className="relative mt-1.5">
+                      <input
+                        id="tx-api-key"
+                        type={txShowApiKey ? "text" : "password"}
+                        value={txApiKey}
+                        onChange={(e) => setTxApiKey(e.target.value)}
+                        className={fieldClassNoTopMargin.replace(
+                          /\\bpx-3\\.5\\b/,
+                          "pl-3.5 pr-11",
+                        )}
+                        autoComplete="off"
+                        placeholder={
+                          txApiKeySet
+                            ? "Deja en blanco para no cambiar la guardada"
+                            : ""
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="mp-ring-brand absolute inset-y-0 right-0 flex w-11 items-center justify-center text-zinc-500 transition-colors hover:bg-zinc-100/60 hover:text-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--mp-primary)_22%,transparent)] rounded-r-[15px]"
+                        aria-label={
+                          txShowApiKey ? "Ocultar API key" : "Mostrar API key"
+                        }
+                        aria-pressed={txShowApiKey}
+                        onClick={() => setTxShowApiKey((v) => !v)}
+                      >
+                        {txShowApiKey ? <IconEyeOff /> : <IconEye />}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="sm:col-span-2">
+                    <label
+                      htmlFor="tx-host"
+                      className="block text-sm font-medium text-zinc-800"
+                    >
+                      Servidor SMTP
+                    </label>
+                    <input
+                      id="tx-host"
+                      value={txHost}
+                      onChange={(e) => setTxHost(e.target.value)}
+                      className={fieldClass}
+                      placeholder="smtp.ejemplo.com"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="tx-port"
+                      className="block text-sm font-medium text-zinc-800"
+                    >
+                      Puerto
+                    </label>
+                    <input
+                      id="tx-port"
+                      inputMode="numeric"
+                      value={txPort}
+                      onChange={(e) => setTxPort(e.target.value)}
+                      className={fieldClass}
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-end gap-4 pb-1 sm:col-span-2">
+                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-zinc-800">
+                      <input
+                        type="checkbox"
+                        checked={txTls}
+                        onChange={(e) => {
+                          const v = e.target.checked;
+                          setTxTls(v);
+                          if (v) setTxUseSsl(false);
+                        }}
+                        className="h-4 w-4 rounded border-zinc-300 accent-[color:var(--mp-primary)]"
+                      />
+                      Usar TLS (STARTTLS, típico en puerto 587)
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-zinc-800">
+                      <input
+                        type="checkbox"
+                        checked={txUseSsl}
+                        onChange={(e) => {
+                          const v = e.target.checked;
+                          setTxUseSsl(v);
+                          if (v) setTxTls(false);
+                        }}
+                        className="h-4 w-4 rounded border-zinc-300 accent-[color:var(--mp-primary)]"
+                      />
+                      SSL implícito (típico en puerto 465)
+                    </label>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="tx-user"
+                      className="block text-sm font-medium text-zinc-800"
+                    >
+                      Usuario SMTP
+                    </label>
+                    <input
+                      id="tx-user"
+                      value={txUser}
+                      onChange={(e) => setTxUser(e.target.value)}
+                      className={fieldClass}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="tx-pass"
+                      className="block text-sm font-medium text-zinc-800"
+                    >
+                      Contraseña SMTP
+                    </label>
+                    <div className="relative mt-1.5">
+                      <input
+                        id="tx-pass"
+                        type={txShowPassword ? "text" : "password"}
+                        value={txPassword}
+                        onChange={(e) => setTxPassword(e.target.value)}
+                        className={fieldClassNoTopMargin.replace(
+                          /\\bpx-3\\.5\\b/,
+                          "pl-3.5 pr-11",
+                        )}
+                        autoComplete="new-password"
+                        placeholder={
+                          txPwdSet
+                            ? "Deja en blanco para no cambiar la guardada"
+                            : ""
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="mp-ring-brand absolute inset-y-0 right-0 flex w-11 items-center justify-center text-zinc-500 transition-colors hover:bg-zinc-100/60 hover:text-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--mp-primary)_22%,transparent)] rounded-r-[15px]"
+                        aria-label={
+                          txShowPassword
+                            ? "Ocultar contraseña"
+                            : "Mostrar contraseña"
+                        }
+                        aria-pressed={txShowPassword}
+                        onClick={() => setTxShowPassword((v) => !v)}
+                      >
+                        {txShowPassword ? <IconEyeOff /> : <IconEye />}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+
               <div>
                 <label
                   htmlFor="tx-from"
@@ -862,19 +1080,23 @@ export default function MiNegocioView() {
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  onClick={onTestSmtp}
+                  onClick={txMethod === "api" ? onTestRelay : onTestSmtp}
                   disabled={
                     smtpTestLoading ||
-                    !txHost.trim() ||
-                    !txUser.trim() ||
-                    (!txPassword.trim() && !txPwdSet)
+                    (txMethod === "api"
+                      ? !txMailgunDomain.trim() || (!txApiKey.trim() && !txApiKeySet)
+                      : !txHost.trim() || !txUser.trim() || (!txPassword.trim() && !txPwdSet))
                   }
                   className="mp-ring-brand inline-flex shrink-0 items-center justify-center rounded-[15px] border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--mp-primary)_22%,transparent)] disabled:pointer-events-none disabled:opacity-50"
                 >
-                  {smtpTestLoading ? "Comprobando…" : "Probar conexión SMTP"}
+                  {smtpTestLoading
+                    ? "Comprobando…"
+                    : txMethod === "api"
+                      ? "Probar conexión (API)"
+                      : "Probar conexión SMTP"}
                 </button>
               </div>
-              {smtpTestStatus ? (
+              {smtpTestStatus && txTestContext === txMethod ? (
                 <div
                   className={`mt-3 rounded-xl border px-3 py-2.5 text-sm ${
                     smtpTestStatus.ok
