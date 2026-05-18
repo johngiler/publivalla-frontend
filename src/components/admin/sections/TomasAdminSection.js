@@ -97,7 +97,7 @@ function TomaCentroComercialValue({ s }) {
 /** Código de toma: prefijo-T{número}[sufijo]; el prefijo no depende del centro. */
 function validateTomaCodeFormat(code) {
   const c = String(code || "").trim().toUpperCase();
-  if (!c) return "Indica el código de la toma.";
+  if (!c) return "Indica el código del espacio publicitario.";
   if (c.length > 32) return "El código no puede superar 32 caracteres.";
   if (!/^[A-Z0-9][A-Z0-9_-]*-T[0-9]+[A-Z]*$/.test(c)) {
     return "Usa un prefijo (letras, números, guiones o guiones bajos), luego «-T», un número y, si aplica, letras (ej. DEMO-T1, CC-T2A).";
@@ -366,7 +366,7 @@ export function TomasAdminSection() {
       }
       if (data?.marketplace_catalog_enabled === false) {
         setModalErr(
-          "Este centro tiene el catálogo del marketplace desactivado. La toma se creará, pero no aparecerá en el catálogo público hasta que habilites el centro.",
+          "Este centro tiene el catálogo del marketplace desactivado. El espacio publicitario se creará, pero no aparecerá en el catálogo público hasta que habilites el centro.",
         );
       }
     } catch (e) {
@@ -415,7 +415,7 @@ export function TomasAdminSection() {
         c?.marketplace_catalog_enabled === true || c?.marketplace_enabled === true;
       if (!enabled) {
         setModalErr(
-          "Este centro tiene el catálogo del marketplace desactivado. Habilítalo en «Centros comerciales» para que la toma aparezca en el catálogo público.",
+          "Este centro tiene el catálogo del marketplace desactivado. Habilítalo en «Centros comerciales» para que el espacio publicitario aparezca en el catálogo público.",
         );
         setFieldErrors({ shopping_center: "Habilita el catálogo del centro" });
         return;
@@ -448,14 +448,14 @@ export function TomasAdminSection() {
         fd.append("gallery_plan", JSON.stringify(payload.plan));
         payload.newFiles.forEach((f) => fd.append("gallery_add", f));
         await authFetchForm("/api/admin/spaces/", { method: "POST", formData: fd });
-        setMsg("Toma creada.");
+        setMsg("Espacio publicitario creado.");
       } else if (modal === "edit" && selected) {
         const fd = new FormData();
         buildSpacePayload(fd, v);
         fd.append("gallery_plan", JSON.stringify(payload.plan));
         payload.newFiles.forEach((f) => fd.append("gallery_add", f));
         await authFetchForm(`/api/admin/spaces/${selected.id}/`, { method: "PATCH", formData: fd });
-        setMsg("Toma actualizada.");
+        setMsg("Espacio publicitario actualizado.");
       }
       closeModal();
       await reloadSpaces();
@@ -476,7 +476,7 @@ export function TomasAdminSection() {
     setPageErr("");
     try {
       await authFetch(`/api/admin/spaces/${id}/`, { method: "DELETE" });
-      setMsg("Toma eliminada.");
+      setMsg("Espacio publicitario eliminado.");
       await reloadSpaces();
     } catch (e) {
       setPageErr(e instanceof Error ? e.message : "Error");
@@ -805,7 +805,11 @@ export function TomasAdminSection() {
         open={modal != null}
         onClose={closeModal}
         title={
-          modal === "create" ? "Nueva toma" : modal === "edit" ? "Editar toma" : "Detalle de la toma"
+          modal === "create"
+            ? "Nuevo espacio publicitario"
+            : modal === "edit"
+              ? "Editar espacio publicitario"
+              : "Detalle del espacio publicitario"
         }
         subtitle={modal === "view" ? `${selected?.code} · ${selected?.title}` : undefined}
         wide
@@ -929,7 +933,7 @@ export function TomasAdminSection() {
             <div>
               <div className="flex items-center justify-between gap-2">
                 <label className={adminLabel} htmlFor="s-code">
-                  Código toma
+                  Código del espacio
                 </label>
                 {modal === "create" ? (
                   <button
@@ -962,8 +966,8 @@ export function TomasAdminSection() {
                     {"{prefijo}-T{número}[sufijo]"}
                   </span>
                   . Ejemplos: <span className="font-mono">DEMO-T1</span>,{" "}
-                  <span className="font-mono">CC-T2A</span>. El prefijo es el código único de la toma (no tiene
-                  que coincidir con el slug del centro).
+                  <span className="font-mono">CC-T2A</span>. El prefijo es el código único del espacio publicitario (no
+                  tiene que coincidir con el slug del centro).
                 </p>
               ) : null}
             </div>
@@ -977,7 +981,7 @@ export function TomasAdminSection() {
                 value={type}
                 onChange={(v) => setType(v || "billboard")}
                 inModal
-                aria-label="Tipo de toma"
+                aria-label="Tipo de espacio publicitario"
               />
               {fieldErrors?.type ? (
                 <p className="mt-1 text-xs text-rose-700">{fieldErrors.type}</p>
@@ -1035,7 +1039,7 @@ export function TomasAdminSection() {
                 value={status}
                 onChange={(v) => setStatus(v || "available")}
                 inModal
-                aria-label="Estado de la toma"
+                aria-label="Estado del espacio publicitario"
               />
             </div>
             <div className="flex items-center gap-2 sm:col-span-2">
@@ -1047,7 +1051,7 @@ export function TomasAdminSection() {
                 onChange={(e) => setIsActive(e.target.checked)}
               />
               <label htmlFor="s-active" className="text-sm font-medium text-zinc-800">
-                Toma activa (visible en catálogo si el centro también lo permite)
+                Espacio publicitario activo (visible en catálogo si el centro también lo permite)
               </label>
             </div>
             <div>
@@ -1165,20 +1169,20 @@ export function TomasAdminSection() {
         initialIndex={galleryLightbox.initialIndex}
         showDownload={false}
         showThumbnails={galleryLightbox.items.length > 1}
-        ariaLabel="Galería de la toma"
+        ariaLabel="Galería del espacio publicitario"
       />
 
       <AdminConfirmDialog
         open={deleteTargetId != null}
         onClose={() => setDeleteTargetId(null)}
-        title="Eliminar toma"
+        title="Eliminar espacio publicitario"
         confirmLabel="Eliminar"
         onConfirm={async () => {
           if (deleteTargetId == null) return;
           await executeDeleteSpace(deleteTargetId);
         }}
       >
-        <p>¿Eliminar esta toma?</p>
+        <p>¿Eliminar este espacio publicitario?</p>
       </AdminConfirmDialog>
     </div>
   );

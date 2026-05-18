@@ -27,7 +27,7 @@ export const HOME_CATALOG_TYPE_FACETS_SWR_TAG = "home-catalog-type-facets";
  */
 export const homeCatalogSwrOptions = {
   keepPreviousData: true,
-  dedupingInterval: 60_000,
+  dedupingInterval: 5_000,
   revalidateOnFocus: true,
   revalidateOnReconnect: true,
 };

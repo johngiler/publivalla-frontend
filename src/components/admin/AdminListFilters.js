@@ -149,6 +149,15 @@ export function AdminFilterClearButton({ onClick, show = true }) {
   );
 }
 
+/**
+ * Listados admin: mostrar filtros solo si hay registros o hay filtros activos (para poder limpiar).
+ * @param {number} totalCount
+ * @param {boolean} [filtersActive]
+ */
+export function shouldShowAdminListFilters(totalCount, filtersActive = false) {
+  return totalCount > 0 || Boolean(filtersActive);
+}
+
 /** Contenedor de filtros encima de la tabla. */
 export function AdminFiltersRow({ children, className = "" }) {
   return (

@@ -25,20 +25,20 @@ const linkClass =
 const exploreIconClass = "shrink-0 text-zinc-500 transition-colors group-hover:text-white";
 
 const exploreLinkRowClass =
-  "group mp-ring-brand-dark inline-flex max-w-max items-center gap-2.5 whitespace-nowrap rounded-sm text-sm text-zinc-400 transition-colors duration-200 ease-out hover:text-white focus-visible:outline-none";
+  "group mp-ring-brand-dark inline-flex w-full max-w-full items-start gap-2.5 rounded-sm text-sm leading-snug text-zinc-400 transition-colors duration-200 ease-out hover:text-white focus-visible:outline-none";
 
 const sectionTitle =
   "text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-500";
 
-/**
- * Móvil: una columna (primera lista arriba, segunda abajo).
- * ≥420px: dos columnas lado a lado, ancho según texto (max-content), gap pequeño entre ellas.
- * No usar grid-cols-none: en Tailwind anula las columnas y todo queda en una sola columna.
- */
+/** Marketplace / cliente: dos columnas cuando hay espacio; el texto puede partir en dos líneas. */
 const exploreTwoColGrid =
-  "mt-4 grid grid-cols-1 gap-y-8 min-[420px]:grid-cols-[max-content_max-content] min-[420px]:gap-x-4 min-[420px]:gap-y-3 lg:gap-x-5";
+  "mt-4 grid grid-cols-1 gap-y-8 min-[480px]:grid-cols-2 min-[480px]:gap-x-8 min-[480px]:gap-y-3 lg:gap-x-10";
 
-const exploreListClass = "flex flex-col gap-3";
+const exploreListClass = "flex min-w-0 flex-col gap-3";
+
+/** Panel admin: como máximo dos columnas; el texto puede partir en dos líneas. */
+const exploreAdminGrid =
+  "mt-4 grid grid-cols-1 gap-3 min-[520px]:grid-cols-2 min-[520px]:gap-x-8 min-[520px]:gap-y-3 lg:gap-x-10";
 
 const contactValueIconClass = "shrink-0 text-zinc-500";
 
@@ -49,7 +49,7 @@ function FooterExploreLink({ href, icon: Icon, children }) {
     <li>
       <Link href={href} className={exploreLinkRowClass}>
         {Icon ? <Icon className={exploreIconClass} /> : null}
-        <span className="leading-none">{children}</span>
+        <span className="min-w-0 flex-1">{children}</span>
       </Link>
     </li>
   );
@@ -91,36 +91,19 @@ function FooterExploreList({ me, authReady, isClient, isAdmin }) {
     return <GuestMarketplaceExploreLinks />;
   }
   if (isAdmin) {
-    const dash = ADMIN_NAV;
-    const leftNav = dash.slice(0, 5);
-    const rightNav = dash.slice(5);
+    const adminLinks = [
+      ...ADMIN_NAV,
+      { segment: "cuenta-negocio", href: "/cuenta/negocio", label: "Mi negocio", Icon: IconBuilding },
+      { segment: "cuenta-perfil", href: "/cuenta/perfil", label: "Mi perfil", Icon: IconUser },
+    ];
     return (
-      <ExploreTwoColumns
-        left={
-          <>
-            {leftNav.map((item) => (
-              <FooterExploreLink key={item.segment} href={item.href} icon={item.Icon}>
-                {item.label}
-              </FooterExploreLink>
-            ))}
-          </>
-        }
-        right={
-          <>
-            {rightNav.map((item) => (
-              <FooterExploreLink key={item.segment} href={item.href} icon={item.Icon}>
-                {item.label}
-              </FooterExploreLink>
-            ))}
-            <FooterExploreLink href="/cuenta/negocio" icon={IconBuilding}>
-              Mi negocio
-            </FooterExploreLink>
-            <FooterExploreLink href="/cuenta/perfil" icon={IconUser}>
-              Mi perfil
-            </FooterExploreLink>
-          </>
-        }
-      />
+      <ul className={exploreAdminGrid}>
+        {adminLinks.map((item) => (
+          <FooterExploreLink key={item.segment} href={item.href} icon={item.Icon}>
+            {item.label}
+          </FooterExploreLink>
+        ))}
+      </ul>
     );
   }
   if (isClient) {
@@ -191,9 +174,7 @@ export function Footer() {
   const navGridClass =
     navColCount <= 1
       ? "grid min-w-0 flex-1 grid-cols-1 gap-12"
-      : navColCount === 2
-        ? "grid min-w-0 flex-1 grid-cols-1 gap-12 min-[480px]:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] min-[480px]:gap-x-10 min-[480px]:gap-y-12 lg:gap-x-14 xl:gap-x-16"
-        : "grid min-w-0 flex-1 grid-cols-1 gap-12 min-[480px]:grid-cols-2 lg:grid-cols-3 lg:gap-16";
+      : "grid min-w-0 flex-1 grid-cols-1 gap-12 min-[640px]:grid-cols-[minmax(0,1fr)_auto] min-[640px]:items-start min-[640px]:gap-x-10 min-[640px]:gap-y-12 lg:gap-x-14 xl:gap-x-16";
 
   return (
     <footer className="relative mt-auto bg-zinc-950 text-zinc-400">
@@ -231,13 +212,13 @@ export function Footer() {
 
           <div className={`${navGridClass} min-w-0 flex-1 lg:pl-8 xl:pl-10`}>
             <div
-              className={`min-w-0 max-w-full overflow-x-auto [-webkit-overflow-scrolling:touch] ${
+              className={`min-w-0 ${
                 showLegalColumn
-                  ? "min-[480px]:border-r min-[480px]:border-white/[0.12] max-[479px]:border-b max-[479px]:border-white/[0.12] max-[479px]:pb-10"
+                  ? "min-[640px]:border-r min-[640px]:border-white/[0.12] min-[640px]:pr-8 max-[639px]:border-b max-[639px]:border-white/[0.12] max-[639px]:pb-10 lg:pr-10"
                   : ""
               }`}
             >
-              <h3 className={`${sectionTitle} max-w-full`}>Explorar</h3>
+              <h3 className={sectionTitle}>Explorar</h3>
               <FooterExploreList
                 me={me}
                 authReady={authReady}
@@ -246,8 +227,8 @@ export function Footer() {
               />
             </div>
             {showLegalColumn ? (
-              <div className="min-w-0">
-                <h3 className={sectionTitle}>Datos de contacto</h3>
+              <div className="min-w-0 shrink-0 min-[640px]:min-w-[11rem] lg:min-w-[12rem]">
+                <h3 className={`${sectionTitle} whitespace-nowrap`}>Datos de contacto</h3>
                 <ul className="mt-4 list-none space-y-4 p-0 text-sm">
                   {supportEmail ? (
                     <li>

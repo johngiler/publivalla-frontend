@@ -1,7 +1,21 @@
+import {
+  anySelectableMonthInCalendar,
+  catalogAvailabilityYears,
+  resolveMonthsOccupiedByYear,
+} from "@/lib/spaceCalendar";
+
 /**
- * El marketplace solo permite nuevas reservas cuando el estado comercial de la toma es «disponible».
- * Debe coincidir con `ad_space_allows_marketplace_reservation` en el backend.
+ * ¿Admite nuevas reservas en marketplace?
+ * Alineado con `ad_space_allows_marketplace_reservation` en el backend.
+ * @param {Record<string, unknown> | null | undefined} space
  */
-export function spaceAllowsMarketplaceReservation(status) {
-  return String(status ?? "") === "available";
+export function spaceAllowsMarketplaceReservation(space) {
+  if (space == null) return false;
+  if (String(space.status ?? "") === "blocked") return false;
+  if (space.marketplace_reservable === true) return true;
+  if (space.marketplace_reservable === false) return false;
+  const ref = new Date();
+  const years = catalogAvailabilityYears(ref, space);
+  const byYear = resolveMonthsOccupiedByYear(space, ref);
+  return anySelectableMonthInCalendar(years, byYear, ref);
 }

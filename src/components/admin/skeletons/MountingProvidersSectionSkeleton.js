@@ -7,7 +7,14 @@ import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 export function MountingProvidersSectionSkeleton() {
   return (
     <div aria-busy="true" aria-label="Cargando proveedores de montaje">
-      <div className={`overflow-x-auto ${ROUNDED_CONTROL} border border-zinc-200`}>
+      <div className="mt-5 overflow-hidden rounded-2xl border border-zinc-200/90 bg-white p-4 sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <Skeleton className="h-10 min-h-[40px] flex-1 rounded-xl" />
+          <Skeleton className="h-10 min-h-[40px] w-full rounded-xl sm:w-52" />
+          <Skeleton className="h-10 min-h-[40px] w-full rounded-xl sm:w-48" />
+        </div>
+      </div>
+      <div className={`mt-6 overflow-x-auto ${ROUNDED_CONTROL} border border-zinc-200`}>
         <table className="min-w-full text-left text-sm">
           <thead className="bg-zinc-50 text-xs uppercase text-zinc-500">
             <tr>

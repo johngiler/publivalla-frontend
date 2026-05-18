@@ -14,6 +14,10 @@ import {
 } from "@/lib/rentalBilling";
 import { highSeasonFromSpace } from "@/lib/highSeasonPricing";
 import { normalizeRentalSegments } from "@/lib/rentalDates";
+import {
+  isoRangeTouchesBlockedRanges,
+  normalizeBlockedRanges,
+} from "@/lib/spaceCalendar";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 
 /**
@@ -28,9 +32,11 @@ export function SpaceDayRangePicker({
 }) {
   const minStart = useMemo(() => firstAllowedDailyStartIso(), []);
   const highSeason = useMemo(() => highSeasonFromSpace(space), [space]);
+  const blockedRanges = useMemo(() => normalizeBlockedRanges(space), [space]);
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [blockedHint, setBlockedHint] = useState("");
 
   useEffect(() => {
     const segs = normalizeRentalSegments(pickSync);
@@ -46,9 +52,16 @@ export function SpaceDayRangePicker({
   const emitRange = useCallback(
     (start, end) => {
       if (!start || !end || end < start) {
+        setBlockedHint("");
         onRangeChange?.(null);
         return;
       }
+      if (isoRangeTouchesBlockedRanges(start, end, blockedRanges)) {
+        setBlockedHint("Parte de ese rango está bloqueada. Elige otras fechas.");
+        onRangeChange?.(null);
+        return;
+      }
+      setBlockedHint("");
       onRangeChange?.({
         rental_segments: [{ start_date: start, end_date: end }],
         start_date: start,
@@ -56,7 +69,7 @@ export function SpaceDayRangePicker({
         selected_day_count: contractDaysInclusive(start, end),
       });
     },
-    [onRangeChange],
+    [blockedRanges, onRangeChange],
   );
 
   const onStartChange = useCallback(
@@ -102,7 +115,7 @@ export function SpaceDayRangePicker({
       <p className="text-sm text-zinc-600">
         Este centro cotiza <strong className="font-medium text-zinc-800">por día</strong> (canon diario ≈ mensual ÷
         30{dayRate != null ? `: ${new Intl.NumberFormat("es-VE", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(dayRate)}/día` : ""}
-        ). Elige inicio y fin; la disponibilidad exacta se confirma al agregar al carrito.
+        ). Elige inicio y fin; los días bloqueados por el operador no se pueden reservar.
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -174,6 +187,11 @@ export function SpaceDayRangePicker({
       {startDate && endDate && !rangeValid ? (
         <p className="text-sm text-amber-800">
           Mínimo <strong>{minDays}</strong> {minDays === 1 ? "día" : "días"} y fechas desde mañana en adelante.
+        </p>
+      ) : null}
+      {blockedHint ? (
+        <p className="text-sm text-red-800" role="alert">
+          {blockedHint}
         </p>
       ) : null}
     </div>

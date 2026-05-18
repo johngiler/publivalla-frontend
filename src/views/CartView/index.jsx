@@ -20,7 +20,7 @@ import {
   totalWithIva,
 } from "@/lib/marketplacePricing";
 import { formatDailyRangeLabel, isDailyBilling } from "@/lib/rentalBilling";
-import { cartLineMonthShortLabels } from "@/lib/rentalMonthPills";
+import { cartLineMonthsByYear } from "@/lib/rentalMonthPills";
 import {
   marketplacePrimaryBtn,
   marketplaceSecondaryBtn,
@@ -130,7 +130,7 @@ export default function CartView() {
         <ul className="mt-6 space-y-4">
           {items.map((item) => {
             const line = cartLineSubtotalOrNull(item);
-            const monthPills = isDailyBilling(item) ? [] : cartLineMonthShortLabels(item);
+            const monthGroups = isDailyBilling(item) ? [] : cartLineMonthsByYear(item);
             const dayRangeLabel =
               isDailyBilling(item) &&
               typeof item.start_date === "string" &&
@@ -204,15 +204,24 @@ export default function CartView() {
                     {dayRangeLabel ? (
                       <p className="mt-3 text-sm font-medium text-zinc-700">{dayRangeLabel}</p>
                     ) : null}
-                    {monthPills.length > 0 ? (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {monthPills.map((label) => (
-                          <span
-                            key={`${item.id}-${label}`}
-                            className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-600"
-                          >
-                            {label}
-                          </span>
+                    {monthGroups.length > 0 ? (
+                      <div className="mt-3 space-y-2">
+                        {monthGroups.map(({ year, months }) => (
+                          <div key={`${item.id}-${year}`}>
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                              {year}
+                            </p>
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                              {months.map((label) => (
+                                <span
+                                  key={`${item.id}-${year}-${label}`}
+                                  className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-600"
+                                >
+                                  {label}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
                         ))}
                       </div>
                     ) : null}

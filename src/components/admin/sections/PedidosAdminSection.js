@@ -703,7 +703,7 @@ export function PedidosAdminSection() {
                             <td className="max-sm:whitespace-nowrap px-3 py-2 text-xs text-zinc-600">
                               {formatPedidoAlta(o.created_at)}
                             </td>
-                            <td className="max-w-[12rem] px-3 py-2 align-top sm:max-w-[14rem]">
+                            <td className="max-w-[12rem] px-3 py-2 align-middle sm:max-w-[14rem]">
                               {clientQ ? (
                                 <AdminDashboardFilterLink
                                   href={dashboardClientesSearchHref(clientQ)}

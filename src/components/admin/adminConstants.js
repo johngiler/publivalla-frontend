@@ -14,15 +14,14 @@ export const SPACE_TYPES = [
   { v: "pendon_columna", l: "Pendón de columna" },
 ];
 
-/** Tipos de bloqueo de disponibilidad (API `type` en availability-blocks). */
+/** Estados de bloqueo de disponibilidad (solo fechas ocupadas en calendario). */
 export const AVAILABILITY_BLOCK_TYPES = [
-  { v: "blocked", l: "Bloqueado" },
   { v: "occupied", l: "Ocupado" },
-  { v: "reserved", l: "Reservado" },
+  { v: "expired", l: "Caducado" },
 ];
 
 export const AVAILABILITY_BLOCK_TYPE_FILTER_OPTIONS = [
-  { v: "all", l: "Todos los tipos" },
+  { v: "all", l: "Todos los estados" },
   ...AVAILABILITY_BLOCK_TYPES,
 ];
 
@@ -30,21 +29,21 @@ export function availabilityBlockTypeLabel(type, typeLabelFromApi) {
   if (typeof typeLabelFromApi === "string" && typeLabelFromApi.trim() !== "") {
     return typeLabelFromApi.trim();
   }
-  const o = AVAILABILITY_BLOCK_TYPES.find((x) => String(x.v) === String(type ?? ""));
+  const s = String(type ?? "");
+  if (s === "blocked" || s === "reserved") return "Ocupado";
+  const o = AVAILABILITY_BLOCK_TYPES.find((x) => String(x.v) === s);
   return o ? o.l : type ? String(type) : "—";
 }
 
 export function availabilityBlockTypePillClassName(type) {
   const s = String(type ?? "");
-  if (s === "blocked") return "bg-zinc-100 text-zinc-800 ring-1 ring-zinc-200/80";
   if (s === "occupied") return "bg-violet-50 text-violet-900 ring-1 ring-violet-200/80";
-  if (s === "reserved") return "bg-sky-50 text-sky-900 ring-1 ring-sky-200/80";
+  if (s === "expired") return "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80";
   return "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80";
 }
 
 export const SPACE_STATUS = [
   { v: "available", l: "Disponible" },
-  { v: "reserved", l: "Reservado" },
   { v: "occupied", l: "Ocupado" },
   { v: "blocked", l: "Bloqueado" },
 ];
@@ -73,18 +72,20 @@ export function clientStatusPillClassName(status) {
 
 /** Texto en español; el API puede enviar `status_label` (get_status_display). */
 export function spaceStatusLabel(status, statusLabelFromApi) {
+  const s = String(status ?? "");
+  if (s === "reserved") return "Ocupado";
   if (typeof statusLabelFromApi === "string" && statusLabelFromApi.trim() !== "") {
     return statusLabelFromApi.trim();
   }
-  const o = SPACE_STATUS.find((x) => String(x.v) === String(status ?? ""));
+  const o = SPACE_STATUS.find((x) => String(x.v) === s);
   return o ? o.l : status ? String(status) : "—";
 }
 
 export function spaceStatusPillClassName(status) {
   const s = String(status ?? "");
   if (s === "available") return "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/80";
-  if (s === "reserved") return "bg-sky-50 text-sky-900 ring-1 ring-sky-200/80";
   if (s === "occupied") return "bg-violet-50 text-violet-900 ring-1 ring-violet-200/80";
+  if (s === "reserved") return "bg-violet-50 text-violet-900 ring-1 ring-violet-200/80";
   if (s === "blocked") return "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200/80";
   return "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80";
 }

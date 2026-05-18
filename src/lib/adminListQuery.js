@@ -65,7 +65,7 @@ export function spacesAdminListPath(page, search, status) {
  * @param {string} [search]
  * @param {string} [shoppingCenterId]
  * @param {string} [adSpaceId]
- * @param {string} [type] — `blocked` | `occupied` | `reserved` | `all`
+ * @param {string} [type] — `occupied` | `expired` | `all`
  * @param {string} [active] — `1` | `0` | `all`
  */
 export function availabilityBlocksListPath(
@@ -89,12 +89,14 @@ export function availabilityBlocksListPath(
   return `/api/admin/availability-blocks/?${p.toString()}`;
 }
 
-export function mountingProvidersListPath(page, shoppingCenterId) {
+export function mountingProvidersListPath(page, search, shoppingCenterId, active) {
   const p = new URLSearchParams();
   p.set("page", String(page));
   p.set("page_size", "50");
+  if (search?.trim()) p.set("search", search.trim());
   const cid = shoppingCenterId != null ? String(shoppingCenterId).trim() : "";
-  if (cid) p.set("shopping_center", cid);
+  if (cid && cid !== "all") p.set("shopping_center", cid);
+  if (active === "1" || active === "0") p.set("active", active);
   return `/api/admin/mounting-providers/?${p.toString()}`;
 }
 

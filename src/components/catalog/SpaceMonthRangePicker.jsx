@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { FilterClearAction } from "@/components/admin/AdminListFilters";
+import { CatalogMonthLegend } from "@/components/catalog/CatalogMonthLegend";
 import {
   MONTH_SHORT_ES,
   mergeOccupiedWithPastMonths,
@@ -196,39 +197,10 @@ export function SpaceMonthRangePicker({
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-semibold text-zinc-900">Calendario de meses</p>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-zinc-500">
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className={`h-2.5 w-3 rounded-md ${CATALOG_MONTH_AVAILABLE_BG} ${CATALOG_MONTH_AVAILABLE_RING}`}
-              aria-hidden
-            />
-            Libre
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className={`h-2.5 w-3 rounded-md ${CATALOG_MONTH_UNAVAILABLE_BG} ${CATALOG_MONTH_UNAVAILABLE_RING}`}
-              aria-hidden
-            />
-            No disponible
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className={`h-2.5 w-3 rounded-md ${CATALOG_MONTH_SELECTED_BG} ${CATALOG_MONTH_SELECTED_RING}`}
-              aria-hidden
-            />
-            Tu selección
-          </span>
-          {hasCartBaseline ? (
-            <span className="inline-flex items-center gap-1.5">
-              <span
-                className={`h-2.5 w-3 rounded-md ${CATALOG_MONTH_CART_BASELINE_BG} ${CATALOG_MONTH_CART_BASELINE_RING}`}
-                aria-hidden
-              />
-              En carrito
-            </span>
-          ) : null}
-        </div>
+        <p className="text-sm font-semibold text-zinc-900">
+          Calendario de meses <span className="text-zinc-500">({availabilityYear})</span>
+        </p>
+        <CatalogMonthLegend />
       </div>
 
       {!anySelectable ? (
@@ -264,7 +236,7 @@ export function SpaceMonthRangePicker({
               aria-pressed={inRange}
               title={
                 baselineOnly
-                  ? "Mes en el carrito (referencia)"
+                  ? "Periodo en tu pedido (referencia)"
                   : blocked && !occ[i]
                     ? "Mes no disponible para nuevas reservas"
                     : undefined

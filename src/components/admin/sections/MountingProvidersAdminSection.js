@@ -39,7 +39,23 @@ import { revalidateHomeCatalog } from "@/lib/swr/homeCatalogSwr";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 import { parsePaginatedResponse } from "@/services/api";
 import { authFetch } from "@/services/authApi";
+import {
+  AdminFilterClearButton,
+  AdminFilterResultHint,
+  AdminFilterSearchInput,
+  AdminFilterSelect,
+  AdminFiltersRow,
+  FilterClearAction,
+  shouldShowAdminListFilters,
+} from "@/components/admin/AdminListFilters";
 import { AdminListPagination } from "@/components/admin/AdminListPagination";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
+
+const ACTIVE_FILTER_OPTIONS = [
+  { v: "all", l: "Activos e inactivos" },
+  { v: "1", l: "Solo activos" },
+  { v: "0", l: "Solo inactivos" },
+];
 
 function activePillClass(active) {
   return active
@@ -50,6 +66,12 @@ function activePillClass(active) {
 export function MountingProvidersAdminSection() {
   const { authReady, accessToken } = useAuth();
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 350);
+  const [filterCenter, setFilterCenter] = useState("all");
+  const [filterActive, setFilterActive] = useState("all");
+  const filtersActive =
+    debouncedSearch.trim() !== "" || filterCenter !== "all" || filterActive !== "all";
   const [expandedId, setExpandedId] = useState(null);
   /** Centro elegido en el modal (edición o alta con un solo centro). */
   const [modalShoppingCenterId, setModalShoppingCenterId] = useState("");
@@ -82,6 +104,17 @@ export function MountingProvidersAdminSection() {
   const centers = useMemo(
     () => (Array.isArray(centersData) ? centersData : []),
     [centersData],
+  );
+
+  const centerFilterOptions = useMemo(
+    () => [
+      { v: "all", l: "Todos los centros" },
+      ...centers.map((c) => ({
+        v: String(c.id),
+        l: [c.name, c.city].filter(Boolean).join(" · ") || `Centro #${c.id}`,
+      })),
+    ],
+    [centers],
   );
 
   const centerOptionsForCreate = useMemo(
@@ -139,7 +172,15 @@ export function MountingProvidersAdminSection() {
     [centerLabelById],
   );
 
-  const listKey = authReady && accessToken ? mountingProvidersListPath(page) : null;
+  const listKey =
+    authReady && accessToken
+      ? mountingProvidersListPath(
+          page,
+          debouncedSearch,
+          filterCenter !== "all" ? filterCenter : "",
+          filterActive,
+        )
+      : null;
   const {
     data: listData,
     error: listSwrError,
@@ -178,7 +219,14 @@ export function MountingProvidersAdminSection() {
 
   useEffect(() => {
     setExpandedId(null);
-  }, [page]);
+  }, [page, debouncedSearch, filterCenter, filterActive]);
+
+  const clearFilters = useCallback(() => {
+    setSearch("");
+    setFilterCenter("all");
+    setFilterActive("all");
+    setPage(1);
+  }, []);
 
   function fieldClass(name) {
     return `${adminField} ${fieldErrors?.[name] ? "mp-admin-field-error" : ""}`;
@@ -362,7 +410,9 @@ export function MountingProvidersAdminSection() {
             <div>
               <h2 className="text-xl font-bold text-slate-900">Proveedores de montaje</h2>
               <p className="mt-0.5 text-sm text-zinc-500">
-                Empresas autorizadas por centro; se muestran en el detalle de cada toma del catálogo.
+                {centers.length === 0
+                  ? "Empresas autorizadas por centro; se muestran en el detalle de cada toma del catálogo."
+                  : `${totalCount} proveedor${totalCount === 1 ? "" : "es"}`}
               </p>
             </div>
           </div>
@@ -389,14 +439,74 @@ export function MountingProvidersAdminSection() {
             title="No hay centros comerciales"
             description="Crea un centro en la sección Centros comerciales antes de registrar proveedores de montaje."
           />
-        ) : showListSkeleton ? (
-          <MountingProvidersSectionSkeleton />
-        ) : rows.length === 0 ? (
-          <p className={`${ROUNDED_CONTROL} border border-zinc-200 bg-zinc-50/80 px-4 py-8 text-center text-sm text-zinc-600`}>
-            No hay proveedores registrados. Usa «Añadir proveedor» y elige el centro comercial en el formulario.
-          </p>
+        ) : !shouldShowAdminListFilters(totalCount, filtersActive) ? (
+          showListSkeleton ? (
+            <div className={`mt-6 overflow-hidden rounded-2xl border border-zinc-200/90 bg-white p-4`} aria-busy="true">
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map((k) => (
+                  <div key={k} className="h-12 animate-pulse rounded-lg bg-zinc-100" />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-6">
+              <EmptyState
+                icon={<EmptyStateIconBuilding />}
+                title="Sin proveedores"
+                description="Usa «Añadir proveedor» y elige el centro comercial en el formulario."
+              />
+            </div>
+          )
         ) : (
-          <div className={`overflow-x-auto ${ROUNDED_CONTROL} border border-zinc-200`}>
+          <>
+            <AdminFiltersRow>
+              <AdminFilterSearchInput
+                id="mounting-providers-filter-search"
+                value={search}
+                onChange={(v) => {
+                  setSearch(v);
+                  setPage(1);
+                }}
+                placeholder="Empresa, contacto, RIF, correo o teléfono…"
+              />
+              <AdminFilterSelect
+                id="mounting-providers-filter-center"
+                label="Centro"
+                value={filterCenter}
+                onChange={(v) => {
+                  setFilterCenter(v);
+                  setPage(1);
+                }}
+                options={centerFilterOptions}
+              />
+              <AdminFilterSelect
+                id="mounting-providers-filter-active"
+                label="Estado registro"
+                value={filterActive}
+                onChange={(v) => {
+                  setFilterActive(v);
+                  setPage(1);
+                }}
+                options={ACTIVE_FILTER_OPTIONS}
+              />
+              <AdminFilterClearButton show={filtersActive} onClick={clearFilters} />
+            </AdminFiltersRow>
+
+            <AdminFilterResultHint shown={rows.length} total={totalCount} noun="proveedores" />
+
+            {rows.length === 0 && filtersActive && !showListSkeleton ? (
+              <div className="mt-6 rounded-[15px] border border-zinc-200 bg-zinc-50/80 px-4 py-8 text-center text-sm text-zinc-600">
+                <p>Ningún proveedor coincide con los filtros.</p>
+                <div className="mt-5 flex justify-center">
+                  <FilterClearAction onClick={clearFilters} />
+                </div>
+              </div>
+            ) : null}
+
+            {showListSkeleton ? (
+              <MountingProvidersSectionSkeleton />
+            ) : rows.length > 0 ? (
+          <div className={`mt-6 overflow-x-auto ${ROUNDED_CONTROL} border border-zinc-200`}>
             <table className="min-w-full text-left text-sm">
               <thead className="bg-zinc-50 text-xs uppercase text-zinc-500">
                 <tr>
@@ -514,11 +624,11 @@ export function MountingProvidersAdminSection() {
               </tbody>
             </table>
           </div>
-        )}
+            ) : null}
 
-        {centers.length > 0 && totalCount > 0 ? (
-          <AdminListPagination page={page} totalCount={totalCount} onPageChange={setPage} />
-        ) : null}
+            <AdminListPagination page={page} totalCount={totalCount} onPageChange={setPage} pageSize={50} />
+          </>
+        )}
       </div>
 
       <AdminModal

@@ -10,6 +10,7 @@ import {
   AdminFilterSearchInput,
   AdminFilterSelect,
   AdminFiltersRow,
+  shouldShowAdminListFilters,
 } from "@/components/admin/AdminListFilters";
 import { orderStatusPillClassName } from "@/components/admin/adminConstants";
 import { CatalogSpaceLink } from "@/components/catalog/CatalogSpaceLink";
@@ -237,22 +238,24 @@ export default function MisContratosView() {
             </div>
           </div>
 
-          <AdminFiltersRow className="!mb-0 mt-8">
-            <AdminFilterSearchInput
-              id="mis-contratos-search"
-              value={filterSearch}
-              onChange={setFilterSearch}
-              placeholder="Nombre de la toma o código (ej. DEMO-T9A)…"
-            />
-            <AdminFilterSelect
-              id="mis-contratos-phase"
-              label="Mostrar"
-              value={phase}
-              onChange={setPhase}
-              options={PHASE_OPTIONS}
-            />
-            <AdminFilterClearButton onClick={clearFilters} show={filtersActive} />
-          </AdminFiltersRow>
+          {shouldShowAdminListFilters(items.length, filtersActive) ? (
+            <AdminFiltersRow className="!mb-0 mt-8">
+              <AdminFilterSearchInput
+                id="mis-contratos-search"
+                value={filterSearch}
+                onChange={setFilterSearch}
+                placeholder="Nombre de la toma o código (ej. DEMO-T9A)…"
+              />
+              <AdminFilterSelect
+                id="mis-contratos-phase"
+                label="Mostrar"
+                value={phase}
+                onChange={setPhase}
+                options={PHASE_OPTIONS}
+              />
+              <AdminFilterClearButton onClick={clearFilters} show={filtersActive} />
+            </AdminFiltersRow>
+          ) : null}
 
           {items.length === 0 ? (
             <p className="mt-8 rounded-xl border border-dashed border-zinc-200 bg-zinc-50/50 px-4 py-8 text-center text-sm text-zinc-600">

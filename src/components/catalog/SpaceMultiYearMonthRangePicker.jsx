@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { FilterClearAction } from "@/components/admin/AdminListFilters";
 import {
@@ -31,6 +31,7 @@ import {
   CATALOG_MONTH_UNAVAILABLE_BG,
   CATALOG_MONTH_UNAVAILABLE_RING,
 } from "@/lib/catalogMonthColors";
+import { CatalogMonthLegend } from "@/components/catalog/CatalogMonthLegend";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 
 const DISABLED = `cursor-not-allowed ${CATALOG_MONTH_UNAVAILABLE_BG} ${CATALOG_MONTH_UNAVAILABLE_RING} text-zinc-400`;
@@ -67,23 +68,33 @@ export function SpaceMultiYearMonthRangePicker({
   const highSeason = useMemo(() => highSeasonFromSpace(space), [space]);
 
   const [selected, setSelected] = useState(() => new Set());
+  const onRangeChangeRef = useRef(onRangeChange);
+  onRangeChangeRef.current = onRangeChange;
+
+  const pickSyncKey = useMemo(() => {
+    const idxs = linearIndicesFromPick(pickSync);
+    return idxs.join(",");
+  }, [pickSync]);
 
   useEffect(() => {
     const idxs = linearIndicesFromPick(pickSync);
-    setSelected(new Set(idxs));
-  }, [pickSync]);
-
-  const emitSelection = useCallback(
-    (nextSet) => {
-      const indices = [...nextSet].sort((a, b) => a - b);
-      if (!indices.length) {
-        onRangeChange?.(null);
-        return;
+    setSelected((prev) => {
+      const prevArr = [...prev].sort((a, b) => a - b);
+      if (prevArr.length === idxs.length && prevArr.every((v, i) => v === idxs[i])) {
+        return prev;
       }
-      onRangeChange?.(selectionFromLinearIndices(indices));
-    },
-    [onRangeChange],
-  );
+      return new Set(idxs);
+    });
+  }, [pickSyncKey]);
+
+  const emitSelection = useCallback((nextSet) => {
+    const indices = [...nextSet].sort((a, b) => a - b);
+    if (!indices.length) {
+      onRangeChangeRef.current?.(null);
+      return;
+    }
+    onRangeChangeRef.current?.(selectionFromLinearIndices(indices));
+  }, []);
 
   const onMonthClick = useCallback(
     (year, m) => {
@@ -93,7 +104,7 @@ export function SpaceMultiYearMonthRangePicker({
         const next = new Set(prev);
         if (next.has(idx)) next.delete(idx);
         else next.add(idx);
-        emitSelection(next);
+        queueMicrotask(() => emitSelection(next));
         return next;
       });
     },
@@ -102,8 +113,8 @@ export function SpaceMultiYearMonthRangePicker({
 
   const reset = useCallback(() => {
     setSelected(new Set());
-    onRangeChange?.(null);
-  }, [onRangeChange]);
+    queueMicrotask(() => onRangeChangeRef.current?.(null));
+  }, []);
 
   const indices = useMemo(() => [...selected].sort((a, b) => a - b), [selected]);
   const selectionValid = indices.length >= minMonths;
@@ -154,10 +165,7 @@ export function SpaceMultiYearMonthRangePicker({
         <p className="text-sm font-semibold text-zinc-900">
           Calendario {yearLabel ? `(${yearLabel})` : ""}
         </p>
-        <Legend
-          hasCartBaseline={Boolean(baselineSegments?.length)}
-          hasHighSeason={highSeason.months.length > 0}
-        />
+        <CatalogMonthLegend showHighSeason={highSeason.months.length > 0} />
       </div>
 
       {!anySelectable ? (
@@ -201,36 +209,6 @@ export function SpaceMultiYearMonthRangePicker({
   );
 }
 
-function Legend({ hasCartBaseline, hasHighSeason }) {
-  return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-zinc-500">
-      <span className="inline-flex items-center gap-1.5">
-        <span className={`h-2.5 w-3 rounded-md ${CATALOG_MONTH_AVAILABLE_BG} ${CATALOG_MONTH_AVAILABLE_RING}`} aria-hidden />
-        Libre
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <span className={`h-2.5 w-3 rounded-md ${CATALOG_MONTH_UNAVAILABLE_BG} ${CATALOG_MONTH_UNAVAILABLE_RING}`} aria-hidden />
-        No disponible
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <span className={`h-2.5 w-3 rounded-md ${CATALOG_MONTH_SELECTED_BG} ${CATALOG_MONTH_SELECTED_RING}`} aria-hidden />
-        Tu selección
-      </span>
-      {hasCartBaseline ? (
-        <span className="inline-flex items-center gap-1.5">
-          <span className={`h-2.5 w-3 rounded-md ${CATALOG_MONTH_CART_BASELINE_BG} ${CATALOG_MONTH_CART_BASELINE_RING}`} aria-hidden />
-          En carrito
-        </span>
-      ) : null}
-      {hasHighSeason ? (
-        <span className="inline-flex items-center gap-1.5">
-          <span className={`h-2.5 w-3 rounded-md ${CATALOG_MONTH_HIGH_SEASON_BG} ${CATALOG_MONTH_HIGH_SEASON_RING}`} aria-hidden />
-          Temporada alta
-        </span>
-      ) : null}
-    </div>
-  );
-}
 
 function YearGrid({
   year,

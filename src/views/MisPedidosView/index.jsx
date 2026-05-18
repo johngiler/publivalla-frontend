@@ -11,6 +11,7 @@ import {
   AdminFilterSearchInput,
   AdminFilterSelect,
   AdminFiltersRow,
+  shouldShowAdminListFilters,
 } from "@/components/admin/AdminListFilters";
 import { AdminListPagination } from "@/components/admin/AdminListPagination";
 import { ORDER_STATUS } from "@/components/admin/adminConstants";
@@ -19,6 +20,8 @@ import {
   orderDisplayStatusPillClassName,
 } from "@/lib/orderHoldDisplay";
 import { CatalogSpaceLink } from "@/components/catalog/CatalogSpaceLink";
+import { RentalMonthsByYearPills } from "@/components/catalog/RentalMonthsByYearPills";
+import { cartLineMonthsByYear } from "@/lib/rentalMonthPills";
 import { MisPedidosSkeleton } from "@/components/orders/MisPedidosSkeleton";
 import { OrderClientWorkflowPanel } from "@/components/orders/OrderClientWorkflowPanel";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
@@ -515,22 +518,24 @@ export default function MisPedidosView() {
         </div>
       ) : null}
 
-      <AdminFiltersRow className="!mb-2 mt-8">
-        <AdminFilterSearchInput
-          id="mis-pedidos-search"
-          value={filterSearch}
-          onChange={setFilterSearch}
-          placeholder="Referencia, # o ID del pedido…"
-        />
-        <AdminFilterSelect
-          id="mis-pedidos-status"
-          label="Estado"
-          value={filterStatus}
-          onChange={setFilterStatus}
-          options={misPedidosStatusOptions}
-        />
-        <AdminFilterClearButton onClick={clearFilters} show={filtersActive} />
-      </AdminFiltersRow>
+      {shouldShowAdminListFilters(totalCount, filtersActive) ? (
+        <AdminFiltersRow className="!mb-2 mt-8">
+          <AdminFilterSearchInput
+            id="mis-pedidos-search"
+            value={filterSearch}
+            onChange={setFilterSearch}
+            placeholder="Referencia, # o ID del pedido…"
+          />
+          <AdminFilterSelect
+            id="mis-pedidos-status"
+            label="Estado"
+            value={filterStatus}
+            onChange={setFilterStatus}
+            options={misPedidosStatusOptions}
+          />
+          <AdminFilterClearButton onClick={clearFilters} show={filtersActive} />
+        </AdminFiltersRow>
+      ) : null}
 
       {err ? (
         <p className={`mt-4 ${ROUNDED_CONTROL} bg-red-50 px-3 py-2 text-sm text-red-800`}>{err}</p>
@@ -648,6 +653,11 @@ export default function MisPedidosView() {
                                   {singleCode}
                                 </span>
                               )}
+                              <RentalMonthsByYearPills
+                                groups={cartLineMonthsByYear(first)}
+                                keyPrefix={`order-${o.id}-line-${first.id}`}
+                                className="mt-2"
+                              />
                             </div>
                           </div>
                         ) : null}
@@ -674,7 +684,7 @@ export default function MisPedidosView() {
                                 return (
                                   <li
                                     key={it.id}
-                                    className="flex items-center gap-2.5 border-b border-zinc-100 pb-2.5 last:border-0 last:pb-0"
+                                    className="flex items-start gap-2.5 border-b border-zinc-100 pb-2.5 last:border-0 last:pb-0"
                                   >
                                     <div
                                       className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md border border-zinc-200/90 bg-zinc-100"
@@ -710,9 +720,14 @@ export default function MisPedidosView() {
                                           {code}
                                         </span>
                                       )}
+                                      <RentalMonthsByYearPills
+                                        groups={cartLineMonthsByYear(it)}
+                                        keyPrefix={`order-${o.id}-line-${it.id}`}
+                                        className="mt-1.5"
+                                      />
                                     </div>
                                     <span
-                                      className="shrink-0 text-sm font-bold tabular-nums text-[#d98e32]"
+                                      className="shrink-0 pt-0.5 text-sm font-bold tabular-nums text-[#d98e32]"
                                       aria-label={`Importe sin IVA para ${codeLabel}`}
                                     >
                                       {Number.isFinite(sub) ? formatUsdInteger(sub) : "—"}

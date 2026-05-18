@@ -23,7 +23,7 @@ function formatUsdMonthly(n) {
 
 /**
  * Tarjeta de toma en catálogo (título a ancho completo; fila estado / precio; badge centro + ciudad).
- * @param {{ space: Record<string, unknown>, showFooterLink?: boolean, inCart?: boolean, cartStartIso?: string | null, cartEndIso?: string | null, priority?: boolean, cardFooter?: import("react").ReactNode, showFavoriteButton?: boolean }} props
+ * @param {{ space: Record<string, unknown>, showFooterLink?: boolean, inCart?: boolean, cartStartIso?: string | null, cartEndIso?: string | null, cartRentalSegments?: Array<{ start_date?: string, end_date?: string }> | null, priority?: boolean, cardFooter?: import("react").ReactNode, showFavoriteButton?: boolean }} props
  */
 export function SpaceCard({
   space,
@@ -31,6 +31,7 @@ export function SpaceCard({
   inCart = false,
   cartStartIso = null,
   cartEndIso = null,
+  cartRentalSegments = null,
   priority = false,
   cardFooter = null,
   showFavoriteButton = false,
@@ -158,6 +159,7 @@ export function SpaceCard({
               space={space}
               cartStartIso={inCart ? cartStartIso : null}
               cartEndIso={inCart ? cartEndIso : null}
+              cartRentalSegments={inCart ? cartRentalSegments : null}
               compact
               variant="summary"
             />

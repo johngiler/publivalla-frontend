@@ -17,6 +17,42 @@ export function availableMonthsCount(occupied) {
 }
 
 /**
+ * Rangos ISO de bloqueos activos desde el API de catálogo.
+ * @param {Record<string, unknown> | null | undefined} space
+ * @returns {Array<{ start_date: string, end_date: string }>}
+ */
+export function normalizeBlockedRanges(space) {
+  const raw = space?.availability_blocked_ranges;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((row) => {
+      const start_date =
+        typeof row?.start_date === "string" ? row.start_date.slice(0, 10) : "";
+      const end_date = typeof row?.end_date === "string" ? row.end_date.slice(0, 10) : "";
+      if (!start_date || !end_date || end_date < start_date) return null;
+      return { start_date, end_date };
+    })
+    .filter(Boolean);
+}
+
+/** @param {string} a0 @param {string} a1 @param {string} b0 @param {string} b1 */
+export function isoDateRangesOverlap(a0, a1, b0, b1) {
+  return a0 <= b1 && b0 <= a1;
+}
+
+/**
+ * @param {string} startIso
+ * @param {string} endIso
+ * @param {Array<{ start_date: string, end_date: string }>} ranges
+ */
+export function isoRangeTouchesBlockedRanges(startIso, endIso, ranges) {
+  if (!startIso || !endIso || endIso < startIso || !ranges?.length) return false;
+  return ranges.some((r) =>
+    isoDateRangesOverlap(startIso, endIso, r.start_date, r.end_date),
+  );
+}
+
+/**
  * Meses aún elegibles en el año (excluye pasados y el mes en curso).
  * @param {number} availabilityYear
  * @param {Date} [ref]
@@ -35,8 +71,16 @@ export function futureMonthsInYear(availabilityYear, ref = new Date()) {
  * @param {unknown} monthsOccupied
  * @param {Date} [ref]
  */
-export function futureAvailableMonthsCount(availabilityYear, monthsOccupied, ref = new Date()) {
-  const merged = mergeOccupiedWithPastMonths(availabilityYear, monthsOccupied, ref);
+export function futureAvailableMonthsCount(
+  availabilityYear,
+  monthsOccupied,
+  ref = new Date(),
+) {
+  const merged = mergeOccupiedWithPastMonths(
+    availabilityYear,
+    monthsOccupied,
+    ref,
+  );
   return merged.filter((busy) => !busy).length;
 }
 
@@ -46,7 +90,12 @@ export function futureAvailableMonthsCount(availabilityYear, monthsOccupied, ref
  * @param {number} endMonth 1–12
  * @param {boolean[]} occupied
  */
-export function rangeTouchesOccupiedMonth(_year, startMonth, endMonth, occupied) {
+export function rangeTouchesOccupiedMonth(
+  _year,
+  startMonth,
+  endMonth,
+  occupied,
+) {
   for (let m = startMonth; m <= endMonth; m += 1) {
     if (occupied[m - 1]) return true;
   }
@@ -59,7 +108,11 @@ export function rangeTouchesOccupiedMonth(_year, startMonth, endMonth, occupied)
  * @param {number} month1to12
  * @param {Date} [ref]
  */
-export function isMonthPastOrCurrentInYear(availabilityYear, month1to12, ref = new Date()) {
+export function isMonthPastOrCurrentInYear(
+  availabilityYear,
+  month1to12,
+  ref = new Date(),
+) {
   const cy = ref.getFullYear();
   const cm = ref.getMonth() + 1;
   if (availabilityYear < cy) return true;
@@ -74,9 +127,15 @@ export function isMonthPastOrCurrentInYear(availabilityYear, month1to12, ref = n
  * @param {Date} [ref]
  * @returns {boolean[]}
  */
-export function mergeOccupiedWithPastMonths(availabilityYear, monthsOccupied, ref = new Date()) {
+export function mergeOccupiedWithPastMonths(
+  availabilityYear,
+  monthsOccupied,
+  ref = new Date(),
+) {
   const occ = normalizeMonthsOccupied(monthsOccupied);
-  return occ.map((o, i) => o || isMonthPastOrCurrentInYear(availabilityYear, i + 1, ref));
+  return occ.map(
+    (o, i) => o || isMonthPastOrCurrentInYear(availabilityYear, i + 1, ref),
+  );
 }
 
 /**
@@ -84,8 +143,16 @@ export function mergeOccupiedWithPastMonths(availabilityYear, monthsOccupied, re
  * @param {unknown} monthsOccupied
  * @param {Date} [ref]
  */
-export function selectableMonthsExistInYear(availabilityYear, monthsOccupied, ref = new Date()) {
-  const flags = mergeOccupiedWithPastMonths(availabilityYear, monthsOccupied, ref);
+export function selectableMonthsExistInYear(
+  availabilityYear,
+  monthsOccupied,
+  ref = new Date(),
+) {
+  const flags = mergeOccupiedWithPastMonths(
+    availabilityYear,
+    monthsOccupied,
+    ref,
+  );
   return flags.some((x) => !x);
 }
 
@@ -128,12 +195,24 @@ export const MONTH_SHORT_ES = [
  * @returns {{ lo: number, hi: number } | null}
  */
 export function monthBoundsFromIsoInYear(isoStart, isoEnd, year) {
-  if (typeof isoStart !== "string" || typeof isoEnd !== "string" || !isoStart || !isoEnd) return null;
+  if (
+    typeof isoStart !== "string" ||
+    typeof isoEnd !== "string" ||
+    !isoStart ||
+    !isoEnd
+  )
+    return null;
   const ys = Number(isoStart.slice(0, 4));
   const ye = Number(isoEnd.slice(0, 4));
   const sm = Number(isoStart.slice(5, 7));
   const em = Number(isoEnd.slice(5, 7));
-  if (!Number.isFinite(ys) || !Number.isFinite(ye) || !Number.isFinite(sm) || !Number.isFinite(em)) return null;
+  if (
+    !Number.isFinite(ys) ||
+    !Number.isFinite(ye) ||
+    !Number.isFinite(sm) ||
+    !Number.isFinite(em)
+  )
+    return null;
   if (ys !== year || ye !== year) return null;
   const lo = Math.min(sm, em);
   const hi = Math.max(sm, em);
@@ -151,7 +230,10 @@ export function catalogAvailabilityYears(ref = new Date(), space = null) {
     return fromApi.map((y) => Number(y)).filter((y) => Number.isFinite(y));
   }
   const y0 = ref.getFullYear();
-  return Array.from({ length: CATALOG_AVAILABILITY_YEAR_COUNT }, (_, i) => y0 + i);
+  return Array.from(
+    { length: CATALOG_AVAILABILITY_YEAR_COUNT },
+    (_, i) => y0 + i,
+  );
 }
 
 /**
@@ -161,17 +243,20 @@ export function catalogAvailabilityYears(ref = new Date(), space = null) {
  */
 export function catalogSummaryAvailabilityYear(ref = new Date(), space = null) {
   const fromApi = Number(space?.availability_year);
-  const cy = ref.getFullYear();
-  if (Number.isFinite(fromApi) && fromApi === cy) return fromApi;
-  return cy;
+  if (Number.isFinite(fromApi)) return fromApi;
+  return ref.getFullYear();
 }
 
 /**
- * Una sola franja anual en listados (catálogo / resumen de detalle).
+ * Una sola franja anual en listados (catálogo / resumen de ficha).
+ * Los meses vienen de `months_occupied_by_year` del API para ese año.
  * @param {Date} [ref]
  * @param {Record<string, unknown> | null} [space]
  */
-export function catalogSummaryAvailabilityYears(ref = new Date(), space = null) {
+export function catalogSummaryAvailabilityYears(
+  ref = new Date(),
+  space = null,
+) {
   return [catalogSummaryAvailabilityYear(ref, space)];
 }
 
@@ -180,7 +265,11 @@ export function catalogSummaryAvailabilityYears(ref = new Date(), space = null) 
  * @param {Date} [ref]
  * @returns {Record<number, boolean[]>}
  */
-export function resolveMonthsOccupiedByYear(space, ref = new Date(), yearsOverride = null) {
+export function resolveMonthsOccupiedByYear(
+  space,
+  ref = new Date(),
+  yearsOverride = null,
+) {
   const years =
     yearsOverride && yearsOverride.length > 0
       ? yearsOverride
@@ -188,9 +277,17 @@ export function resolveMonthsOccupiedByYear(space, ref = new Date(), yearsOverri
   const byRaw = space?.months_occupied_by_year;
   /** @type {Record<number, boolean[]>} */
   const out = {};
+  const summaryYear = Number(space?.availability_year);
   for (const y of years) {
     if (byRaw && typeof byRaw === "object" && !Array.isArray(byRaw)) {
-      out[y] = normalizeMonthsOccupied(byRaw[String(y)] ?? byRaw[y]);
+      const flags = byRaw[String(y)] ?? byRaw[y];
+      if (flags != null) {
+        out[y] = normalizeMonthsOccupied(flags);
+      } else if (Number.isFinite(summaryYear) && y === summaryYear) {
+        out[y] = normalizeMonthsOccupied(space?.months_occupied);
+      } else {
+        out[y] = Array(12).fill(false);
+      }
     } else if (y === years[0]) {
       out[y] = normalizeMonthsOccupied(space?.months_occupied);
     } else {
@@ -218,7 +315,13 @@ export function monthFromLinearIndex(idx) {
  * @returns {{ startYear: number, startMonth: number, endYear: number, endMonth: number } | null}
  */
 export function isoMonthBounds(isoStart, isoEnd) {
-  if (typeof isoStart !== "string" || typeof isoEnd !== "string" || !isoStart || !isoEnd) return null;
+  if (
+    typeof isoStart !== "string" ||
+    typeof isoEnd !== "string" ||
+    !isoStart ||
+    !isoEnd
+  )
+    return null;
   const startYear = Number(isoStart.slice(0, 4));
   const startMonth = Number(isoStart.slice(5, 7));
   const endYear = Number(isoEnd.slice(0, 4));
@@ -240,7 +343,12 @@ export function isoMonthBounds(isoStart, isoEnd) {
  * @param {number} endYear
  * @param {number} endMonth
  */
-export function monthRangeToIsoDatesCrossYear(startYear, startMonth, endYear, endMonth) {
+export function monthRangeToIsoDatesCrossYear(
+  startYear,
+  startMonth,
+  endYear,
+  endMonth,
+) {
   const loY = startYear;
   const loM = startMonth;
   const hiY = endYear;
@@ -286,7 +394,12 @@ export function rangeTouchesOccupiedAcrossYears(
   endYear,
   endMonth,
 ) {
-  for (const { year, month } of iterMonthsInRange(startYear, startMonth, endYear, endMonth)) {
+  for (const { year, month } of iterMonthsInRange(
+    startYear,
+    startMonth,
+    endYear,
+    endMonth,
+  )) {
     const flags = disabledByYear[year];
     if (!flags || flags[month - 1]) return true;
   }
@@ -322,11 +435,35 @@ export function anySelectableMonthInCalendar(years, byYear, ref = new Date()) {
  * @param {number} endYear
  * @param {number} endMonth
  */
-export function formatMonthRangeLabel(startYear, startMonth, endYear, endMonth) {
+export function formatMonthRangeLabel(
+  startYear,
+  startMonth,
+  endYear,
+  endMonth,
+) {
   const s = MONTH_SHORT_ES[startMonth - 1];
   const e = MONTH_SHORT_ES[endMonth - 1];
   if (startYear === endYear) return `${s} – ${e} ${startYear}`;
   return `${s} ${startYear} – ${e} ${endYear}`;
+}
+
+/**
+ * Etiqueta de periodo para bloqueos (meses completos a partir de ISO guardados).
+ * @param {string | null | undefined} isoStart
+ * @param {string | null | undefined} isoEnd
+ */
+export function formatAvailabilityBlockPeriod(isoStart, isoEnd) {
+  const b = isoMonthBounds(isoStart, isoEnd);
+  if (!b) {
+    if (!isoStart && !isoEnd) return "—";
+    return [isoStart, isoEnd].filter(Boolean).join(" – ");
+  }
+  return formatMonthRangeLabel(
+    b.startYear,
+    b.startMonth,
+    b.endYear,
+    b.endMonth,
+  );
 }
 
 /**
@@ -335,9 +472,18 @@ export function formatMonthRangeLabel(startYear, startMonth, endYear, endMonth) 
  * @param {number} year
  * @param {number} month1to12
  */
-export function isMonthInCartIsoRange(cartStartIso, cartEndIso, year, month1to12) {
+export function isMonthInCartIsoRange(
+  cartStartIso,
+  cartEndIso,
+  year,
+  month1to12,
+) {
   if (!cartStartIso || !cartEndIso) return false;
-  const { start_date, end_date } = monthRangeToIsoDates(year, month1to12, month1to12);
+  const { start_date, end_date } = monthRangeToIsoDates(
+    year,
+    month1to12,
+    month1to12,
+  );
   return cartStartIso <= end_date && cartEndIso >= start_date;
 }
 
@@ -365,7 +511,9 @@ export function isMonthInRentalSegments(rentalSegments, year, month1to12) {
  */
 export function linearIndicesToContiguousSegments(indices) {
   if (!Array.isArray(indices) || !indices.length) return [];
-  const sorted = [...new Set(indices)].filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
+  const sorted = [...new Set(indices)]
+    .filter((n) => Number.isFinite(n))
+    .sort((a, b) => a - b);
   /** @type {Array<{ startYear: number, startMonth: number, endYear: number, endMonth: number }>} */
   const out = [];
   let segStart = sorted[0];
@@ -376,14 +524,24 @@ export function linearIndicesToContiguousSegments(indices) {
     } else {
       const s = monthFromLinearIndex(segStart);
       const e = monthFromLinearIndex(segEnd);
-      out.push({ startYear: s.year, startMonth: s.month, endYear: e.year, endMonth: e.month });
+      out.push({
+        startYear: s.year,
+        startMonth: s.month,
+        endYear: e.year,
+        endMonth: e.month,
+      });
       segStart = sorted[i];
       segEnd = sorted[i];
     }
   }
   const s = monthFromLinearIndex(segStart);
   const e = monthFromLinearIndex(segEnd);
-  out.push({ startYear: s.year, startMonth: s.month, endYear: e.year, endMonth: e.month });
+  out.push({
+    startYear: s.year,
+    startMonth: s.month,
+    endYear: e.year,
+    endMonth: e.month,
+  });
   return out;
 }
 
@@ -394,7 +552,12 @@ export function linearIndicesToContiguousSegments(indices) {
 export function contiguousSegmentsToRentalSegments(segments) {
   if (!Array.isArray(segments)) return [];
   return segments.map((seg) =>
-    monthRangeToIsoDatesCrossYear(seg.startYear, seg.startMonth, seg.endYear, seg.endMonth),
+    monthRangeToIsoDatesCrossYear(
+      seg.startYear,
+      seg.startMonth,
+      seg.endYear,
+      seg.endMonth,
+    ),
   );
 }
 
@@ -424,7 +587,14 @@ export function formatSelectedMonthsLabel(indices) {
   const segments = linearIndicesToContiguousSegments(indices);
   if (!segments.length) return null;
   return segments
-    .map((seg) => formatMonthRangeLabel(seg.startYear, seg.startMonth, seg.endYear, seg.endMonth))
+    .map((seg) =>
+      formatMonthRangeLabel(
+        seg.startYear,
+        seg.startMonth,
+        seg.endYear,
+        seg.endMonth,
+      ),
+    )
     .join(" · ");
 }
 

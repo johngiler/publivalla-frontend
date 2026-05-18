@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { useCart } from "@/context/CartProvider";
+import { normalizeRentalSegments } from "@/lib/rentalDates";
 
 import { SpaceCard } from "./SpaceCard";
 
@@ -23,6 +24,10 @@ export function SpaceCardWithCart(props) {
   const cartStartIso =
     cartLine && typeof cartLine.start_date === "string" ? cartLine.start_date : null;
   const cartEndIso = cartLine && typeof cartLine.end_date === "string" ? cartLine.end_date : null;
+  const cartRentalSegments = useMemo(
+    () => (cartLine ? normalizeRentalSegments(cartLine) : null),
+    [cartLine],
+  );
 
   return (
     <SpaceCard
@@ -30,6 +35,7 @@ export function SpaceCardWithCart(props) {
       inCart={inCart}
       cartStartIso={cartStartIso}
       cartEndIso={cartEndIso}
+      cartRentalSegments={cartRentalSegments}
     />
   );
 }

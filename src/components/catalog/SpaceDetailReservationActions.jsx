@@ -83,17 +83,18 @@ export function SpaceDetailReservationActions({ space }) {
       if (!dailyBilling) {
         const indices = rentalSegmentsToLinearIndices(cartBaselineSegments);
         if (selectedMonthsTouchOccupied(disabledByYear, indices)) {
-          setPick(null);
+          setPick((prev) => (prev == null ? prev : null));
           return;
         }
       }
-      setPick({
+      const nextPick = {
         rental_segments: cartBaselineSegments,
         start_date: cartBaselineIso?.start_date,
         end_date: cartBaselineIso?.end_date,
-      });
+      };
+      setPick((prev) => (rentalSelectionEquals(prev, nextPick) ? prev : nextPick));
     } else if (!spaceInCart) {
-      setPick(null);
+      setPick((prev) => (prev == null ? prev : null));
     }
   }, [
     space.id,
@@ -190,7 +191,7 @@ export function SpaceDetailReservationActions({ space }) {
     return null;
   }
 
-  const canReserveCommercially = spaceAllowsMarketplaceReservation(space.status);
+  const canReserveCommercially = spaceAllowsMarketplaceReservation(space);
   if (!canReserveCommercially) {
     const stLabel = spaceStatusLabel(space.status, space.status_label);
     return (

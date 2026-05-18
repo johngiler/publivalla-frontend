@@ -24,18 +24,36 @@ export function contractMonthShortLabels(startStr, endStr) {
 }
 
 /**
- * Etiquetas de meses para una línea de carrito (varios tramos o rango legacy).
+ * Meses de una línea de carrito agrupados por año (título = año, pastillas = mes).
  * @param {Record<string, unknown>} item
- * @returns {string[]}
+ * @returns {Array<{ year: number, months: string[] }>}
  */
-export function cartLineMonthShortLabels(item) {
+export function cartLineMonthsByYear(item) {
   const segs = normalizeRentalSegments(item);
   if (!segs.length) return [];
-  const out = [];
+  /** @type {Map<number, string[]>} */
+  const byYear = new Map();
   for (const seg of segs) {
-    for (const label of contractMonthShortLabels(seg.start_date, seg.end_date)) {
-      if (!out.includes(label)) out.push(label);
+    if (!seg.start_date || !seg.end_date) continue;
+    const s = parseISODateOnly(seg.start_date);
+    const e = parseISODateOnly(seg.end_date);
+    if (e < s) continue;
+    const cur = new Date(s.getFullYear(), s.getMonth(), 1);
+    const endM = new Date(e.getFullYear(), e.getMonth(), 1);
+    while (cur <= endM) {
+      const y = cur.getFullYear();
+      const label = MONTH_SHORT_ES[cur.getMonth()];
+      let list = byYear.get(y);
+      if (!list) {
+        list = [];
+        byYear.set(y, list);
+      }
+      if (!list.includes(label)) list.push(label);
+      cur.setMonth(cur.getMonth() + 1);
     }
   }
-  return out;
+  return Array.from(byYear.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([year, months]) => ({ year, months }));
 }
+

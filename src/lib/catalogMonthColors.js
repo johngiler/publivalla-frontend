@@ -7,6 +7,9 @@ export const CATALOG_MONTH_AVAILABLE_RING =
 export const CATALOG_MONTH_UNAVAILABLE_BG = "bg-zinc-200";
 export const CATALOG_MONTH_UNAVAILABLE_RING = "border border-zinc-300/60";
 
+/** Etiqueta de leyenda y tooltip para meses naranjas (calendario y franja de resumen). */
+export const CATALOG_MONTH_SELECTION_LABEL = "Tu selección";
+
 /** Mes incluido en la selección / línea del carrito (calendario en detalle). */
 export const CATALOG_MONTH_SELECTED_BG = "bg-orange-50/90";
 export const CATALOG_MONTH_SELECTED_RING =

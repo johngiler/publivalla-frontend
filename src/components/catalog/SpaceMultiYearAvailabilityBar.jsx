@@ -13,17 +13,19 @@ import {
 
 /**
  * Franjas de disponibilidad mensual.
- * - `summary`: solo año actual + etiquetas Ene…Dic (catálogo y resumen de ficha).
+ * - `summary`: solo año en curso (API), título del año + etiquetas Ene…Dic (catálogo y ficha).
  * - `full`: ventana multi-año (reserva usa SpaceMultiYearMonthRangePicker aparte).
  * @param {{
  *   space?: Record<string, unknown> | null,
  *   monthsOccupiedByYear?: Record<number, boolean[]>,
  *   cartStartIso?: string | null,
  *   cartEndIso?: string | null,
+ *   cartRentalSegments?: Array<{ start_date?: string, end_date?: string }> | null,
  *   className?: string,
  *   showLegend?: boolean,
  *   compact?: boolean,
  *   variant?: 'summary' | 'full',
+ *   showYearTitle?: boolean,
  * }} props
  */
 export function SpaceMultiYearAvailabilityBar({
@@ -31,10 +33,12 @@ export function SpaceMultiYearAvailabilityBar({
   monthsOccupiedByYear: byYearProp = null,
   cartStartIso = null,
   cartEndIso = null,
+  cartRentalSegments = null,
   className = "",
   showLegend = true,
   compact = false,
   variant = "summary",
+  showYearTitle = true,
 }) {
   const refDate = useMemo(() => new Date(), []);
   const isSummary = variant === "summary";
@@ -69,11 +73,12 @@ export function SpaceMultiYearAvailabilityBar({
 
         return (
           <div key={year}>
-            <p className={yearTitleClass}>{year}</p>
+            {showYearTitle ? <p className={yearTitleClass}>{year}</p> : null}
             <SpaceMonthAvailabilityBar
               monthsOccupied={byYear[year]}
               availabilityYear={year}
               cartMonthsInYear={hasCartInYear ? cartMonthsInYear : null}
+              cartRentalSegments={cartRentalSegments}
               showLegend={showLegend && i === years.length - 1}
               showMonthLabels={isSummary}
               legendPosition={isSummary ? "above" : "below"}
