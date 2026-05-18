@@ -6,7 +6,6 @@ import { SpaceMarketplaceCompliance } from "@/components/catalog/SpaceMarketplac
 import { SpaceDetailReservationActions } from "@/components/catalog/SpaceDetailReservationActions";
 import { SPACE_TYPES, spaceStatusLabel, spaceStatusPillClassName } from "@/components/admin/adminConstants";
 import { formatCatalogTitle } from "@/lib/catalogDisplay";
-import { catalogSummaryAvailabilityYear } from "@/lib/spaceCalendar";
 import { subtitleCityAfterCenterName } from "@/lib/shoppingCenterDisplay";
 import { mediaUrlForUiWithWebp, spaceCoverUrlForUi } from "@/lib/mediaUrls";
 
@@ -55,8 +54,6 @@ export default function SpaceDetailView({ space }) {
   const backHref = "/";
   const typeLabel = labelFromChoices(SPACE_TYPES, space.type);
   const statusLabel = spaceStatusLabel(space.status, space.status_label);
-  const summaryYear = catalogSummaryAvailabilityYear(new Date(), space);
-  const yearLabel = String(summaryYear);
   const centerName =
     typeof space.shopping_center_name === "string" && space.shopping_center_name.trim() !== ""
       ? space.shopping_center_name.trim()
@@ -160,7 +157,7 @@ export default function SpaceDetailView({ space }) {
             </p>
             <div className="mt-3 border-t border-zinc-100 pt-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Disponibilidad {yearLabel}
+                Disponibilidad
               </p>
               <div className="mt-2 min-w-0">
                 <SpaceDetailAvailabilityBar space={space} spaceId={space.id} />

@@ -63,19 +63,13 @@ export function SpaceMultiYearAvailabilityBar({
           Array.from({ length: 12 }, (_, m) => m + 1).some((month) =>
             isMonthInCartIsoRange(cartStartIso, cartEndIso, year, month),
           );
+        const yearTitleClass = compact
+          ? "mb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500"
+          : "mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500";
+
         return (
           <div key={year}>
-            {!isSummary ? (
-              <p
-                className={
-                  compact
-                    ? "mb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500"
-                    : "mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500"
-                }
-              >
-                {year}
-              </p>
-            ) : null}
+            <p className={yearTitleClass}>{year}</p>
             <SpaceMonthAvailabilityBar
               monthsOccupied={byYear[year]}
               availabilityYear={year}
