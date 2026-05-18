@@ -6,6 +6,7 @@ import { SpaceMarketplaceCompliance } from "@/components/catalog/SpaceMarketplac
 import { SpaceDetailReservationActions } from "@/components/catalog/SpaceDetailReservationActions";
 import { SPACE_TYPES, spaceStatusLabel, spaceStatusPillClassName } from "@/components/admin/adminConstants";
 import { formatCatalogTitle } from "@/lib/catalogDisplay";
+import { catalogSummaryAvailabilityYear } from "@/lib/spaceCalendar";
 import { subtitleCityAfterCenterName } from "@/lib/shoppingCenterDisplay";
 import { mediaUrlForUiWithWebp, spaceCoverUrlForUi } from "@/lib/mediaUrls";
 
@@ -54,13 +55,8 @@ export default function SpaceDetailView({ space }) {
   const backHref = "/";
   const typeLabel = labelFromChoices(SPACE_TYPES, space.type);
   const statusLabel = spaceStatusLabel(space.status, space.status_label);
-  const calendarYears = Array.isArray(space.availability_calendar_years)
-    ? space.availability_calendar_years
-    : null;
-  const yearLabel =
-    calendarYears && calendarYears.length > 1
-      ? `${calendarYears[0]}–${calendarYears[calendarYears.length - 1]}`
-      : String(Number(space.availability_year) || new Date().getFullYear());
+  const summaryYear = catalogSummaryAvailabilityYear(new Date(), space);
+  const yearLabel = String(summaryYear);
   const centerName =
     typeof space.shopping_center_name === "string" && space.shopping_center_name.trim() !== ""
       ? space.shopping_center_name.trim()

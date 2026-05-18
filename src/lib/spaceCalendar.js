@@ -155,12 +155,36 @@ export function catalogAvailabilityYears(ref = new Date(), space = null) {
 }
 
 /**
+ * Año mostrado en tarjetas de catálogo y resumen de ficha (solo el actual).
+ * @param {Date} [ref]
+ * @param {Record<string, unknown> | null} [space]
+ */
+export function catalogSummaryAvailabilityYear(ref = new Date(), space = null) {
+  const fromApi = Number(space?.availability_year);
+  const cy = ref.getFullYear();
+  if (Number.isFinite(fromApi) && fromApi === cy) return fromApi;
+  return cy;
+}
+
+/**
+ * Una sola franja anual en listados (catálogo / resumen de detalle).
+ * @param {Date} [ref]
+ * @param {Record<string, unknown> | null} [space]
+ */
+export function catalogSummaryAvailabilityYears(ref = new Date(), space = null) {
+  return [catalogSummaryAvailabilityYear(ref, space)];
+}
+
+/**
  * @param {Record<string, unknown> | null | undefined} space
  * @param {Date} [ref]
  * @returns {Record<number, boolean[]>}
  */
-export function resolveMonthsOccupiedByYear(space, ref = new Date()) {
-  const years = catalogAvailabilityYears(ref, space);
+export function resolveMonthsOccupiedByYear(space, ref = new Date(), yearsOverride = null) {
+  const years =
+    yearsOverride && yearsOverride.length > 0
+      ? yearsOverride
+      : catalogAvailabilityYears(ref, space);
   const byRaw = space?.months_occupied_by_year;
   /** @type {Record<number, boolean[]>} */
   const out = {};

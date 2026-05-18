@@ -24,7 +24,12 @@ export function SpaceDetailAvailabilityBar({ space, spaceId }) {
 
   return (
     <div className="relative z-30 min-w-0">
-      <SpaceMultiYearAvailabilityBar space={space} cartStartIso={cartStartIso} cartEndIso={cartEndIso} />
+      <SpaceMultiYearAvailabilityBar
+        space={space}
+        cartStartIso={cartStartIso}
+        cartEndIso={cartEndIso}
+        variant="summary"
+      />
     </div>
   );
 }

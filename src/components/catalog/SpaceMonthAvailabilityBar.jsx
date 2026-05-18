@@ -15,6 +15,7 @@ import {
   futureMonthsInYear,
   isMonthPastOrCurrentInYear,
   mergeOccupiedWithPastMonths,
+  MONTH_SHORT_ES,
   normalizeMonthsOccupied,
 } from "@/lib/spaceCalendar";
 
@@ -86,6 +87,7 @@ function isMonthInCartRange(cartMonths, month1to12) {
  *   cartMonthsInYear?: { lo: number, hi: number } | null,
  *   className?: string,
  *   showLegend?: boolean,
+ *   showMonthLabels?: boolean,
  *   legendPosition?: "above" | "below",
  * }} props
  */
@@ -95,6 +97,7 @@ export function SpaceMonthAvailabilityBar({
   cartMonthsInYear = null,
   className = "",
   showLegend = true,
+  showMonthLabels = false,
   legendPosition = "below",
 }) {
   const refDate = useMemo(() => new Date(), []);
@@ -112,7 +115,7 @@ export function SpaceMonthAvailabilityBar({
 
   return (
     <div
-      className={`group relative outline-none ${className}`}
+      className={`group/avail relative outline-none ${className}`}
       tabIndex={0}
       role="group"
       aria-label={ariaLabel}
@@ -127,17 +130,24 @@ export function SpaceMonthAvailabilityBar({
               ? `${CATALOG_MONTH_SELECTED_BG} ${CATALOG_MONTH_SELECTED_RING}`
               : `${CATALOG_MONTH_AVAILABLE_BG} ${CATALOG_MONTH_AVAILABLE_RING}`;
           return (
-            <span
+            <div
               key={i}
-              className={`box-border h-2.5 min-w-0 flex-1 rounded-md ${segmentClass}`}
+              className="flex min-w-0 flex-1 flex-col items-stretch gap-0.5"
               title={monthSegmentTitle(year, month, occRaw[i], inCart, refDate)}
-            />
+            >
+              <span className={`box-border h-2.5 w-full rounded-md ${segmentClass}`} />
+              {showMonthLabels ? (
+                <span className="truncate text-center text-[9px] font-medium leading-none text-zinc-500">
+                  {MONTH_SHORT_ES[i]}
+                </span>
+              ) : null}
+            </div>
           );
         })}
       </div>
       {showLegend ? (
         <div
-          className={`pointer-events-none absolute left-0 z-[100] w-max max-w-[min(100vw-2rem,22rem)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none ${
+          className={`pointer-events-none absolute left-0 z-[100] w-max max-w-[min(100vw-2rem,22rem)] opacity-0 transition-opacity duration-150 group-hover/avail:opacity-100 group-focus-within/avail:opacity-100 motion-reduce:transition-none ${
             legendAbove ? "bottom-full pb-1.5" : "top-full pt-1.5"
           }`}
         >

@@ -159,6 +159,7 @@ export function SpaceCard({
               cartStartIso={inCart ? cartStartIso : null}
               cartEndIso={inCart ? cartEndIso : null}
               compact
+              variant="summary"
             />
           </div>
           {showFooterLink ? (

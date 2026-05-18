@@ -5,13 +5,16 @@ import { useMemo } from "react";
 import { SpaceMonthAvailabilityBar } from "@/components/catalog/SpaceMonthAvailabilityBar";
 import {
   catalogAvailabilityYears,
+  catalogSummaryAvailabilityYears,
   isMonthInCartIsoRange,
   monthBoundsFromIsoInYear,
   resolveMonthsOccupiedByYear,
 } from "@/lib/spaceCalendar";
 
 /**
- * Varias franjas anuales (catálogo / detalle).
+ * Franjas de disponibilidad mensual.
+ * - `summary`: solo año actual + etiquetas Ene…Dic (catálogo y resumen de ficha).
+ * - `full`: ventana multi-año (reserva usa SpaceMultiYearMonthRangePicker aparte).
  * @param {{
  *   space?: Record<string, unknown> | null,
  *   monthsOccupiedByYear?: Record<number, boolean[]>,
@@ -20,6 +23,7 @@ import {
  *   className?: string,
  *   showLegend?: boolean,
  *   compact?: boolean,
+ *   variant?: 'summary' | 'full',
  * }} props
  */
 export function SpaceMultiYearAvailabilityBar({
@@ -30,13 +34,21 @@ export function SpaceMultiYearAvailabilityBar({
   className = "",
   showLegend = true,
   compact = false,
+  variant = "summary",
 }) {
   const refDate = useMemo(() => new Date(), []);
-  const years = useMemo(() => catalogAvailabilityYears(refDate, space), [refDate, space]);
-  const byYear = useMemo(
-    () => byYearProp ?? resolveMonthsOccupiedByYear(space, refDate),
-    [byYearProp, space, refDate],
+  const isSummary = variant === "summary";
+  const years = useMemo(
+    () =>
+      isSummary
+        ? catalogSummaryAvailabilityYears(refDate, space)
+        : catalogAvailabilityYears(refDate, space),
+    [isSummary, refDate, space],
   );
+  const byYear = useMemo(() => {
+    if (byYearProp) return byYearProp;
+    return resolveMonthsOccupiedByYear(space, refDate, years);
+  }, [byYearProp, space, refDate, years]);
 
   return (
     <div className={`${compact ? "space-y-2" : "space-y-3"} ${className}`}>
@@ -53,21 +65,24 @@ export function SpaceMultiYearAvailabilityBar({
           );
         return (
           <div key={year}>
-            <p
-              className={
-                compact
-                  ? "mb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500"
-                  : "mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500"
-              }
-            >
-              {year}
-            </p>
+            {!isSummary ? (
+              <p
+                className={
+                  compact
+                    ? "mb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500"
+                    : "mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500"
+                }
+              >
+                {year}
+              </p>
+            ) : null}
             <SpaceMonthAvailabilityBar
               monthsOccupied={byYear[year]}
               availabilityYear={year}
               cartMonthsInYear={hasCartInYear ? cartMonthsInYear : null}
               showLegend={showLegend && i === years.length - 1}
-              legendPosition="below"
+              showMonthLabels={isSummary}
+              legendPosition={isSummary ? "above" : "below"}
             />
           </div>
         );
