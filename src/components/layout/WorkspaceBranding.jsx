@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { normalizeMediaUrlForUi } from "@/lib/mediaUrls";
 
 const DEFAULT_PRIMARY = "#0c9dcf";
 const DEFAULT_SECONDARY = "#ea580c";
+
+/** Favicon por defecto del SPA (Next `app/icon.svg`); neutro, sin isotipo de marca. */
+const NEUTRAL_FAVICON_HREF = "/icon.svg";
 
 function sanitizeHex(input, fallback) {
   if (input == null || typeof input !== "string") return fallback;
@@ -17,13 +20,24 @@ function sanitizeHex(input, fallback) {
   return s;
 }
 
+function applyFaviconHref(href) {
+  let iconLink = document.querySelector('link[rel="icon"]');
+  if (!iconLink) {
+    iconLink = document.createElement("link");
+    iconLink.rel = "icon";
+    document.head.appendChild(iconLink);
+  }
+  if (iconLink.getAttribute("href") !== href) {
+    iconLink.setAttribute("href", href);
+  }
+}
+
 /**
  * Aplica favicon, theme-color y variables CSS `--mp-primary` / `--mp-secondary`
  * según el workspace cargado desde `/api/workspace/current/`.
  */
 export function WorkspaceBranding() {
   const { workspace, loading } = useWorkspace();
-  const defaultIconHrefRef = useRef(null);
 
   useEffect(() => {
     if (loading) return;
@@ -42,27 +56,12 @@ export function WorkspaceBranding() {
     }
     meta.setAttribute("content", primary);
 
-    const iconLink = document.querySelector('link[rel="icon"]');
-    if (defaultIconHrefRef.current == null && iconLink?.href) {
-      defaultIconHrefRef.current = iconLink.href;
-    }
-    const fallbackIcon = defaultIconHrefRef.current || "/icon.svg";
+    const tenantFavicon =
+      typeof workspace?.favicon_url === "string" && workspace.favicon_url.trim() !== ""
+        ? normalizeMediaUrlForUi(workspace.favicon_url.trim())
+        : null;
 
-    if (workspace?.favicon_url) {
-      const href = normalizeMediaUrlForUi(workspace.favicon_url);
-      if (href) {
-        if (iconLink) {
-          iconLink.setAttribute("href", href);
-        } else {
-          const link = document.createElement("link");
-          link.rel = "icon";
-          link.href = href;
-          document.head.appendChild(link);
-        }
-      }
-    } else if (iconLink) {
-      iconLink.setAttribute("href", fallbackIcon);
-    }
+    applyFaviconHref(tenantFavicon || NEUTRAL_FAVICON_HREF);
   }, [workspace, loading]);
 
   return null;
