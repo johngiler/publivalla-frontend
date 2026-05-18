@@ -57,6 +57,14 @@ export async function adminCentersAllPagesFetcher() {
   return authFetchAllPages("/api/admin/centers/?page_size=100");
 }
 
+/** Tomas admin: todas las páginas (selectores en bloqueos). */
+export const ADMIN_SPACES_ALL_SWR_KEY = ["GET", "admin", "spaces", "all-pages"];
+
+export async function adminSpacesAllPagesFetcher() {
+  const { authFetchAllPages } = await import("@/services/authApi");
+  return authFetchAllPages("/api/admin/spaces/?page_size=100");
+}
+
 /** Clientes (API autenticado): todas las páginas (selectores en usuarios). */
 export const ADMIN_CLIENTS_ALL_SWR_KEY = ["GET", "clients", "all-pages"];
 

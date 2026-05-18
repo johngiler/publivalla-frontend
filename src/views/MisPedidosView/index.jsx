@@ -13,7 +13,11 @@ import {
   AdminFiltersRow,
 } from "@/components/admin/AdminListFilters";
 import { AdminListPagination } from "@/components/admin/AdminListPagination";
-import { ORDER_STATUS, orderStatusPillClassName } from "@/components/admin/adminConstants";
+import { ORDER_STATUS } from "@/components/admin/adminConstants";
+import {
+  orderDisplayStatusLabel,
+  orderDisplayStatusPillClassName,
+} from "@/lib/orderHoldDisplay";
 import { CatalogSpaceLink } from "@/components/catalog/CatalogSpaceLink";
 import { MisPedidosSkeleton } from "@/components/orders/MisPedidosSkeleton";
 import { OrderClientWorkflowPanel } from "@/components/orders/OrderClientWorkflowPanel";
@@ -143,8 +147,9 @@ function timelineTone(toStatus) {
   };
 }
 
-function OrderStatusBadge({ label, status }) {
-  const pill = orderStatusPillClassName(status);
+function OrderStatusBadge({ order }) {
+  const label = orderDisplayStatusLabel(order);
+  const pill = orderDisplayStatusPillClassName(order);
   return (
     <span
       className={`inline-flex max-w-full items-center rounded-full border border-transparent px-2.5 py-0.5 text-xs font-semibold shadow-sm ${pill}`}
@@ -603,7 +608,7 @@ export default function MisPedidosView() {
                       <span className="font-mono text-sm font-bold tracking-tight text-zinc-900">
                         {orderRef}
                       </span>
-                      <OrderStatusBadge status={o.status} label={o.status_label || o.status} />
+                      <OrderStatusBadge order={o} />
                     </div>
                     <div className="flex flex-wrap items-start justify-between gap-3 border-t border-zinc-100 pt-3">
                       <div className="min-w-0 flex-1">

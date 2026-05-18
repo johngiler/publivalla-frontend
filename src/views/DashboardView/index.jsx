@@ -7,6 +7,7 @@ import useSWR from "swr";
 import { CentrosAdminSection } from "@/components/admin/sections/CentrosAdminSection";
 import { ClientesAdminSection } from "@/components/admin/sections/ClientesAdminSection";
 import { ContratosAdminSection } from "@/components/admin/sections/ContratosAdminSection";
+import { BloqueosDisponibilidadAdminSection } from "@/components/admin/sections/BloqueosDisponibilidadAdminSection";
 import { MountingProvidersAdminSection } from "@/components/admin/sections/MountingProvidersAdminSection";
 import { PedidosAdminSection } from "@/components/admin/sections/PedidosAdminSection";
 import { TomasAdminSection } from "@/components/admin/sections/TomasAdminSection";
@@ -167,6 +168,7 @@ export default function DashboardView({ section = "resumen" }) {
         {section === "centros" ? <CentrosAdminSection /> : null}
         {section === "proveedores-montaje" ? <MountingProvidersAdminSection /> : null}
         {section === "tomas" ? <TomasAdminSection /> : null}
+        {section === "bloqueos" ? <BloqueosDisponibilidadAdminSection /> : null}
         {section === "usuarios" ? <UsuariosAdminSection /> : null}
         {section === "clientes" ? <ClientesAdminSection /> : null}
         {section === "contratos" ? <ContratosAdminSection /> : null}

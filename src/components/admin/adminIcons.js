@@ -155,6 +155,21 @@ export function IconAdminArrowsPointingOut({ className = "" }) {
   );
 }
 
+/** Bloqueos de disponibilidad (calendario / fechas no reservables). */
+export function IconAdminCalendarBlock({ className = "" }) {
+  return (
+    <svg className={`${c} ${className}`} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M7.5 3.75v1.5M16.5 3.75v1.5M4.5 8.25h15M6 5.25h12a1.5 1.5 0 011.5 1.5v12.75a1.5 1.5 0 01-1.5 1.5H6A1.5 1.5 0 014.5 19.5V6.75A1.5 1.5 0 016 5.25zM9 12.75h6"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Montaje / obra (proveedores autorizados en centro). */
 export function IconAdminHardHat({ className = "" }) {
   return (

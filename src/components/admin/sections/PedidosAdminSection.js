@@ -44,8 +44,11 @@ import {
   clientStatusPillClassName,
   ORDER_STATUS_FILTER_OPTIONS,
   orderStatusLabel,
-  orderStatusPillClassName,
 } from "@/components/admin/adminConstants";
+import {
+  orderDisplayStatusLabel,
+  orderDisplayStatusPillClassName,
+} from "@/lib/orderHoldDisplay";
 import {
   IconAdminAlertSoft,
   IconAdminArrowDownTray,
@@ -132,10 +135,10 @@ function orderIsDeletable(o) {
 }
 
 function PedidoEstadoActualCell({ order }) {
-  const statusLabel = orderStatusLabel(order.status, order.status_label);
+  const statusLabel = orderDisplayStatusLabel(order);
   return (
     <span
-      className={`inline-flex max-w-[11rem] items-center rounded-full px-2.5 py-1 text-xs font-semibold leading-tight ${orderStatusPillClassName(order.status)}`}
+      className={`inline-flex max-w-[11rem] items-center rounded-full px-2.5 py-1 text-xs font-semibold leading-tight ${orderDisplayStatusPillClassName(order)}`}
       title={statusLabel}
     >
       <span className="truncate">{statusLabel}</span>

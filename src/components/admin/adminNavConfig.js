@@ -1,6 +1,7 @@
 import {
   IconAdminBriefcase,
   IconAdminBuilding,
+  IconAdminCalendarBlock,
   IconAdminChart,
   IconAdminClipboard,
   IconAdminContract,
@@ -16,6 +17,7 @@ const ICON_BY_SEGMENT = {
   centros: IconAdminBuilding,
   "proveedores-montaje": IconAdminHardHat,
   tomas: IconAdminGrid,
+  bloqueos: IconAdminCalendarBlock,
   usuarios: IconAdminUserPlus,
   clientes: IconAdminBriefcase,
   contratos: IconAdminContract,

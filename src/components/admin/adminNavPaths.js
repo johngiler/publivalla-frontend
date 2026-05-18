@@ -8,6 +8,11 @@ export const ADMIN_NAV_PATHS = [
     label: "Proveedores de montaje",
   },
   { segment: "tomas", href: "/dashboard/tomas", label: "Tomas" },
+  {
+    segment: "bloqueos",
+    href: "/dashboard/bloqueos",
+    label: "Bloqueos de disponibilidad",
+  },
   { segment: "usuarios", href: "/dashboard/usuarios", label: "Usuarios" },
   { segment: "clientes", href: "/dashboard/clientes", label: "Clientes" },
   { segment: "contratos", href: "/dashboard/contratos", label: "Contratos" },

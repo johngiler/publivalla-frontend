@@ -364,7 +364,7 @@ export default function CheckoutView() {
         <h1 className="text-balance text-2xl font-bold text-zinc-900 sm:text-3xl">Solicitud enviada</h1>
         <p className="mt-4 break-words text-zinc-600">
           Pedido <span className="font-mono font-medium text-zinc-900">#{result.id}</span> — estado:{" "}
-          <span className="capitalize">{result.status}</span>
+          <span>{result.status_label || "Reservado"}</span>
         </p>
         <p className="mt-4 text-sm text-zinc-600">
           El comprobante de pago lo subirás más adelante, cuando el pedido esté facturado, desde{" "}

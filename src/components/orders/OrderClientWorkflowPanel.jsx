@@ -30,6 +30,7 @@ import {
 import { apiBlobPathFromMediaField, mediaUrlForUiWithWebp, normalizeMediaUrlForUi } from "@/lib/mediaUrls";
 import { squareListImagePreviewButtonRingClass } from "@/lib/squareImagePreview";
 import { ROUNDED_CONTROL, ROUNDED_PDF_GRID_CARD } from "@/lib/uiRounding";
+import { orderHoldIsActive } from "@/lib/orderHoldDisplay";
 import { CustomAlert } from "@/components/ui/CustomAlert";
 import { FileDropZoneField } from "@/components/ui/FileDropZoneField";
 import {
@@ -176,6 +177,8 @@ function orderAttachmentKindFromUrls(raw, abs) {
  *   hasReceiptSaved: boolean;
  *   hasArtAttachments: boolean;
  *   hasPermitRecorded: boolean;
+ *   holdActive?: boolean;
+ *   holdExpiresAt?: string | null;
  * }} ctx
  * @returns {{ kind: "waiting" | "action" | "outcome" | "done"; nextStep: string; detail: string } | null}
  */
@@ -190,11 +193,19 @@ function getClientOrderGuidanceNotice(ctx) {
     };
   }
   if (s === "submitted") {
+    const holdLine =
+      ctx.holdActive && ctx.holdExpiresAt
+        ? ` Las tomas quedan reservadas a tu nombre hasta el ${new Date(ctx.holdExpiresAt).toLocaleString("es-VE", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })} (72 horas).`
+        : ctx.holdActive
+          ? " Las tomas quedan reservadas a tu nombre durante 72 horas mientras revisamos."
+          : "";
     return {
       kind: "waiting",
-      nextStep: "Revisión de tu solicitud",
-      detail:
-        "En este momento estamos esperando la aprobación del equipo comercial sobre tu pedido. No necesitas hacer nada más por ahora; te avisaremos cuando haya una resolución.",
+      nextStep: ctx.holdActive ? "Reserva en revisión" : "Revisión de tu solicitud",
+      detail: `Estamos revisando tu solicitud. No necesitas hacer nada más por ahora; te avisaremos cuando haya una resolución.${holdLine}`,
     };
   }
   if (s === "client_approved" && !ctx.hasSignedNegotiation) {
@@ -582,17 +593,31 @@ export function OrderClientWorkflowPanel({
     });
   }, [accessToken, id]);
 
+  const holdActive = orderHoldIsActive(order);
+  const holdExpiresAt = order?.hold_expires_at ?? null;
+
   const clientGuidanceNotice = useMemo(
     () =>
       getClientOrderGuidanceNotice({
         status,
+        holdActive,
+        holdExpiresAt,
         hasSignedNegotiation: Boolean(signedUrl),
         hasInvoicePdf,
         hasReceiptSaved,
         hasArtAttachments,
         hasPermitRecorded: Boolean(permit),
       }),
-    [status, signedUrl, hasInvoicePdf, hasReceiptSaved, hasArtAttachments, permit],
+    [
+      status,
+      holdActive,
+      holdExpiresAt,
+      signedUrl,
+      hasInvoicePdf,
+      hasReceiptSaved,
+      hasArtAttachments,
+      permit,
+    ],
   );
 
   /**

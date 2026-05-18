@@ -59,6 +59,36 @@ export function spacesAdminListPath(page, search, status) {
  * @param {number|string} page
  * @param {number|string} [shoppingCenterId] — si se indica, filtra por centro.
  */
+/**
+ * Bloqueos de disponibilidad (tomas / fechas).
+ * @param {number|string} page
+ * @param {string} [search]
+ * @param {string} [shoppingCenterId]
+ * @param {string} [adSpaceId]
+ * @param {string} [type] — `blocked` | `occupied` | `reserved` | `all`
+ * @param {string} [active] — `1` | `0` | `all`
+ */
+export function availabilityBlocksListPath(
+  page,
+  search,
+  shoppingCenterId,
+  adSpaceId,
+  type,
+  active,
+) {
+  const p = new URLSearchParams();
+  p.set("page", String(page));
+  p.set("page_size", "50");
+  if (search?.trim()) p.set("search", search.trim());
+  const cid = shoppingCenterId != null ? String(shoppingCenterId).trim() : "";
+  if (cid) p.set("shopping_center", cid);
+  const aid = adSpaceId != null ? String(adSpaceId).trim() : "";
+  if (aid) p.set("ad_space", aid);
+  if (type && type !== "all") p.set("type", type);
+  if (active === "1" || active === "0") p.set("active", active);
+  return `/api/admin/availability-blocks/?${p.toString()}`;
+}
+
 export function mountingProvidersListPath(page, shoppingCenterId) {
   const p = new URLSearchParams();
   p.set("page", String(page));

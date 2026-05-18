@@ -14,6 +14,34 @@ export const SPACE_TYPES = [
   { v: "pendon_columna", l: "Pendón de columna" },
 ];
 
+/** Tipos de bloqueo de disponibilidad (API `type` en availability-blocks). */
+export const AVAILABILITY_BLOCK_TYPES = [
+  { v: "blocked", l: "Bloqueado" },
+  { v: "occupied", l: "Ocupado" },
+  { v: "reserved", l: "Reservado" },
+];
+
+export const AVAILABILITY_BLOCK_TYPE_FILTER_OPTIONS = [
+  { v: "all", l: "Todos los tipos" },
+  ...AVAILABILITY_BLOCK_TYPES,
+];
+
+export function availabilityBlockTypeLabel(type, typeLabelFromApi) {
+  if (typeof typeLabelFromApi === "string" && typeLabelFromApi.trim() !== "") {
+    return typeLabelFromApi.trim();
+  }
+  const o = AVAILABILITY_BLOCK_TYPES.find((x) => String(x.v) === String(type ?? ""));
+  return o ? o.l : type ? String(type) : "—";
+}
+
+export function availabilityBlockTypePillClassName(type) {
+  const s = String(type ?? "");
+  if (s === "blocked") return "bg-zinc-100 text-zinc-800 ring-1 ring-zinc-200/80";
+  if (s === "occupied") return "bg-violet-50 text-violet-900 ring-1 ring-violet-200/80";
+  if (s === "reserved") return "bg-sky-50 text-sky-900 ring-1 ring-sky-200/80";
+  return "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80";
+}
+
 export const SPACE_STATUS = [
   { v: "available", l: "Disponible" },
   { v: "reserved", l: "Reservado" },
