@@ -91,6 +91,12 @@ export function BloqueosDisponibilidadAdminSection() {
   const [filterSpace, setFilterSpace] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const [filterActive, setFilterActive] = useState("1");
+  const filtersActive =
+    debouncedSearch.trim() !== "" ||
+    filterCenter !== "all" ||
+    filterSpace !== "all" ||
+    filterType !== "all" ||
+    filterActive !== "1";
   const [expandedId, setExpandedId] = useState(null);
   const [msg, setMsg] = useState("");
   const [pageErr, setPageErr] = useState("");
@@ -396,6 +402,7 @@ export function BloqueosDisponibilidadAdminSection() {
             options={ACTIVE_FILTER_OPTIONS}
           />
           <AdminFilterClearButton
+            show={filtersActive}
             onClick={() => {
               setSearch("");
               setFilterCenter("all");

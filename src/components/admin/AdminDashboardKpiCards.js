@@ -42,7 +42,7 @@ export function AdminDashboardKpiCards({ nCenters, nSpaces, nClients, nContracts
     {
       key: "spaces",
       href: "/dashboard/tomas",
-      label: "Tomas (espacios)",
+      label: "Espacios publicitarios",
       value: nSpaces,
       Icon: IconAdminGrid,
       card: `bg-gradient-to-br from-cyan-100/90 via-teal-50/80 to-white ring-1 ring-cyan-200/55`,

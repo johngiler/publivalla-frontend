@@ -11,7 +11,7 @@ import {
   IconAdminUserPlus,
 } from "@/components/admin/adminIcons";
 
-import { ADMIN_NAV_PATHS } from "@/components/admin/adminNavPaths";
+import { ADMIN_NAV_GROUPS, ADMIN_NAV_PATHS } from "@/components/admin/adminNavPaths";
 
 const ICON_BY_SEGMENT = {
   resumen: IconAdminChart,
@@ -26,10 +26,25 @@ const ICON_BY_SEGMENT = {
   pedidos: IconAdminClipboard,
 };
 
-/** segment coincide con la URL bajo /dashboard/… */
-export const ADMIN_NAV = ADMIN_NAV_PATHS.map((n) => ({
-  ...n,
-  Icon: ICON_BY_SEGMENT[n.segment],
+function withIcons(items) {
+  return items.map((n) => ({
+    ...n,
+    Icon: ICON_BY_SEGMENT[n.segment],
+  }));
+}
+
+/** Grupos con iconos para el sidebar. */
+export const ADMIN_NAV_GROUPED = ADMIN_NAV_GROUPS.map((group) => ({
+  ...group,
+  items: withIcons(group.items),
 }));
 
-export { ADMIN_NAV_PATHS, ADMIN_SECTIONS } from "@/components/admin/adminNavPaths";
+/** Lista plana (footer, atajos). */
+export const ADMIN_NAV = withIcons(ADMIN_NAV_PATHS);
+
+export {
+  ADMIN_NAV_GROUPS,
+  ADMIN_NAV_PATHS,
+  ADMIN_SECTIONS,
+  ADMIN_SPACES_LABEL,
+} from "@/components/admin/adminNavPaths";

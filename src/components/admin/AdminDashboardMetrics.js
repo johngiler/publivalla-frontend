@@ -263,7 +263,7 @@ export function AdminDashboardMetrics({ metrics }) {
                 href={`/dashboard/tomas?q=${encodeURIComponent(top.code || "")}`}
                 className="mt-3 inline-block text-sm font-semibold text-[color:var(--mp-primary)] underline-offset-4 hover:underline"
               >
-                Ver en Tomas
+                Ver espacios
               </Link>
             </div>
           ) : (

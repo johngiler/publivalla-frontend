@@ -68,7 +68,7 @@ export function AdminDashboardSpaceMonthlyPriceCard({ economics, gradId }) {
             href="/dashboard/tomas"
             className="inline-flex shrink-0 items-center justify-center rounded-xl border border-emerald-200/80 bg-white/90 px-4 py-2.5 text-sm font-semibold text-emerald-900 shadow-sm transition hover:bg-emerald-50/90"
           >
-            Ir a tomas
+            Ir a espacios
           </Link>
         </div>
       </div>
@@ -103,7 +103,7 @@ export function AdminDashboardSpaceMonthlyPriceCard({ economics, gradId }) {
             href="/dashboard/tomas"
             className="mt-4 inline-flex text-sm font-semibold text-emerald-800 underline-offset-4 transition hover:text-emerald-950 hover:underline"
           >
-            Ver y editar tomas
+            Ver y editar espacios
           </Link>
         </div>
         <div className="min-h-[168px] w-full min-w-0">

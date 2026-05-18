@@ -611,7 +611,7 @@ export function CentrosAdminSection() {
                           Ciudad
                         </th>
                         <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                          Tomas
+                          Espacios
                         </th>
                         <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                           Estado

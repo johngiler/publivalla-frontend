@@ -509,16 +509,16 @@ export function TomasAdminSection() {
             <IconAdminGrid className="!h-8 !w-8" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Tomas</h2>
+            <h2 className="text-xl font-bold text-slate-900">Espacios publicitarios</h2>
             <p className="mt-0.5 text-sm text-zinc-500">
-              {totalCount} toma{totalCount === 1 ? "" : "s"}
+              {totalCount} espacio{totalCount === 1 ? "" : "s"}
             </p>
           </div>
         </div>
         {canCreateSpaces ? (
           <button type="button" className={adminPrimaryBtn} onClick={openCreate}>
             <AdminCreatePlusIcon />
-            <span className={adminCreateBtnLabel}>Nueva toma</span>
+            <span className={adminCreateBtnLabel}>Nuevo espacio</span>
           </button>
         ) : null}
       </div>

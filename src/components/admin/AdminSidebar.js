@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { ADMIN_NAV } from "@/components/admin/adminNavConfig";
+import { ADMIN_NAV_GROUPED } from "@/components/admin/adminNavConfig";
 import {
   IconChevronLeft,
   IconChevronRight,
@@ -34,8 +34,6 @@ export function AdminSidebar({ mobileOpen, setMobileOpen }) {
   const router = useRouter();
   const { displayName } = useWorkspace();
   const [collapsed, setCollapsed] = useState(false);
-
-  const navItems = ADMIN_NAV;
 
   useEffect(() => {
     try {
@@ -93,33 +91,49 @@ export function AdminSidebar({ mobileOpen, setMobileOpen }) {
         : "text-zinc-700 hover:bg-zinc-200/80 hover:text-zinc-900"
     }`;
 
+  const navLink = ({ href, label, Icon, segment }) => {
+    const active = navActive(pathname, href);
+    return (
+      <Link
+        key={segment}
+        href={href}
+        className={linkClass(active)}
+        title={label}
+        onClick={(e) => {
+          if (isMobileAdminNav()) {
+            e.preventDefault();
+            setMobileOpen(false);
+            router.push(href);
+            return;
+          }
+          setMobileOpen(false);
+        }}
+      >
+        <Icon className={`shrink-0 ${active ? "text-white" : "text-zinc-500"}`} />
+        <span className={collapsed ? "lg:sr-only" : ""}>{label}</span>
+      </Link>
+    );
+  };
+
   const nav = (
-    <nav className="space-y-1 p-3 lg:pt-5" aria-label="Panel administración">
-      {navItems.map(({ href, label, Icon, segment }) => {
-        const active = navActive(pathname, href);
-        return (
-          <Link
-            key={segment}
-            href={href}
-            className={linkClass(active)}
-            title={label}
-            onClick={(e) => {
-              if (isMobileAdminNav()) {
-                e.preventDefault();
-                setMobileOpen(false);
-                router.push(href);
-                return;
-              }
-              setMobileOpen(false);
-            }}
-          >
-            <Icon
-              className={`shrink-0 ${active ? "text-white" : "text-zinc-500"}`}
-            />
-            <span className={collapsed ? "lg:sr-only" : ""}>{label}</span>
-          </Link>
-        );
-      })}
+    <nav className="p-3 lg:pt-5" aria-label="Panel administración">
+      {ADMIN_NAV_GROUPED.map((group, groupIndex) => (
+        <div
+          key={group.id}
+          className={
+            groupIndex > 0
+              ? `space-y-1 ${collapsed ? "mt-3 border-t border-zinc-200/80 pt-3" : "mt-5 border-t border-zinc-200/80 pt-5"}`
+              : "space-y-1"
+          }
+        >
+          {group.label && !collapsed ? (
+            <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">
+              {group.label}
+            </p>
+          ) : null}
+          {group.items.map(navLink)}
+        </div>
+      ))}
     </nav>
   );
 

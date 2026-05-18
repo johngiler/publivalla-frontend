@@ -92,8 +92,8 @@ function FooterExploreList({ me, authReady, isClient, isAdmin }) {
   }
   if (isAdmin) {
     const dash = ADMIN_NAV;
-    const leftNav = dash.slice(0, 4);
-    const rightNav = dash.slice(4);
+    const leftNav = dash.slice(0, 5);
+    const rightNav = dash.slice(5);
     return (
       <ExploreTwoColumns
         left={
