@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { sanitizeCartItems } from "@/lib/demoCatalog";
+import { normalizeRentalBillingUnit } from "@/lib/rentalBilling";
 import { defaultRentalPeriod, normalizeRentalSegments } from "@/lib/rentalDates";
 import {
   adSpaceGalleryUrlsForUi,
@@ -224,6 +225,7 @@ export function CartProvider({ children }) {
             ...(space.high_season_multiplier != null
               ? { high_season_multiplier: space.high_season_multiplier }
               : {}),
+            rental_billing_unit: normalizeRentalBillingUnit(space.rental_billing_unit),
             start_date,
             end_date,
             rental_segments: segs,

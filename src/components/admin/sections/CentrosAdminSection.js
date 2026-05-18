@@ -14,12 +14,17 @@ import { AdminAccordionToggle } from "@/components/admin/AdminAccordionToggle";
 import { AdminCreatePlusIcon } from "@/components/admin/AdminCreatePlusIcon";
 import { AdminConfirmDialog } from "@/components/admin/AdminConfirmDialog";
 import { AdminModal } from "@/components/admin/AdminModal";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 import { HighSeasonMonthsField } from "@/components/admin/HighSeasonMonthsField";
 import {
   MONTH_LABELS_ES,
   normalizeHighSeasonMonths,
   parseHighSeasonMultiplier,
 } from "@/lib/highSeasonPricing";
+import {
+  RENTAL_BILLING_OPTIONS,
+  normalizeRentalBillingUnit,
+} from "@/lib/rentalBilling";
 import { AdminRowActions } from "@/components/admin/AdminRowActions";
 import { AdminInlineAlert } from "@/components/admin/AdminInlineAlert";
 import {
@@ -134,6 +139,7 @@ export function CentrosAdminSection() {
   const [marketplaceCatalogEnabled, setMarketplaceCatalogEnabled] =
     useState(false);
   const [listingOrder, setListingOrder] = useState("0");
+  const [rentalBillingUnit, setRentalBillingUnit] = useState("calendar_month");
   const [highSeasonMonths, setHighSeasonMonths] = useState([]);
   const [highSeasonMultiplier, setHighSeasonMultiplier] = useState("1");
   const [coverFile, setCoverFile] = useState(null);
@@ -215,6 +221,7 @@ export function CentrosAdminSection() {
     setIsActive(true);
     setMarketplaceCatalogEnabled(false);
     setListingOrder("0");
+    setRentalBillingUnit("calendar_month");
     setHighSeasonMonths([]);
     setHighSeasonMultiplier("1");
     setCoverFile(null);
@@ -248,6 +255,7 @@ export function CentrosAdminSection() {
     setIsActive(c.is_active !== false);
     setMarketplaceCatalogEnabled(centerCatalogEnabled(c));
     setListingOrder(String(c.listing_order ?? 0));
+    setRentalBillingUnit(normalizeRentalBillingUnit(c.rental_billing_unit));
     setHighSeasonMonths(normalizeHighSeasonMonths(c.high_season_months));
     setHighSeasonMultiplier(String(parseHighSeasonMultiplier(c.high_season_multiplier)));
     setCoverFile(null);
@@ -345,6 +353,7 @@ export function CentrosAdminSection() {
       listing_order: lo,
       high_season_months: hsMonths,
       high_season_multiplier: mult,
+      rental_billing_unit: normalizeRentalBillingUnit(rentalBillingUnit),
     };
     try {
       if (modal === "create") {
@@ -369,6 +378,7 @@ export function CentrosAdminSection() {
           fd.append("listing_order", String(lo));
           fd.append("high_season_months", JSON.stringify(hsMonths));
           fd.append("high_season_multiplier", String(mult));
+          fd.append("rental_billing_unit", normalizeRentalBillingUnit(rentalBillingUnit));
           fd.append("cover_image", coverFile);
           await authFetchForm("/api/admin/centers/", {
             method: "POST",
@@ -414,6 +424,7 @@ export function CentrosAdminSection() {
           fd.append("listing_order", String(lo));
           fd.append("high_season_months", JSON.stringify(hsMonths));
           fd.append("high_season_multiplier", String(mult));
+          fd.append("rental_billing_unit", normalizeRentalBillingUnit(rentalBillingUnit));
           fd.append("cover_image", coverFile);
           await authFetchForm(`/api/admin/centers/${selected.id}/`, {
             method: "PATCH",
@@ -806,10 +817,15 @@ export function CentrosAdminSection() {
                                   <AdminDetailSection
                                     panelId={panelId}
                                     sectionId="pricing"
-                                    title="Temporada alta"
+                                    title="Precios y reserva"
                                   >
                                     <AdminDetailInset>
-                                      <AdminDetailField label="Meses">
+                                      <AdminDetailField label="Facturación">
+                                        {RENTAL_BILLING_OPTIONS.find(
+                                          (o) => o.value === normalizeRentalBillingUnit(c.rental_billing_unit),
+                                        )?.label ?? adminDetailEmpty("")}
+                                      </AdminDetailField>
+                                      <AdminDetailField label="Meses temporada alta">
                                         {normalizeHighSeasonMonths(c.high_season_months).length
                                           ? normalizeHighSeasonMonths(c.high_season_months)
                                               .map((m) => MONTH_LABELS_ES[m - 1])
@@ -967,6 +983,13 @@ export function CentrosAdminSection() {
                 <p className={adminLabel}>Catálogo de reservas (marketplace)</p>
                 <p className="mt-1 text-zinc-800">
                   {centerCatalogEnabled(selected) ? "Sí" : "No"}
+                </p>
+              </div>
+              <div>
+                <p className={adminLabel}>Facturación en marketplace</p>
+                <p className="mt-1 text-zinc-800">
+                  {RENTAL_BILLING_OPTIONS.find((o) => o.value === normalizeRentalBillingUnit(selected.rental_billing_unit))
+                    ?.label ?? "Por mes de calendario"}
                 </p>
               </div>
               <div>
@@ -1158,6 +1181,21 @@ export function CentrosAdminSection() {
                   Catálogo de reservas en marketplace (tomas públicas y ruta
                   /m/…)
                 </label>
+              </div>
+              <div>
+                <label className={adminLabel} htmlFor="c-billing-unit">
+                  Facturación en marketplace
+                </label>
+                <AdminSelect
+                  inputId="c-billing-unit"
+                  value={RENTAL_BILLING_OPTIONS.find((o) => o.value === rentalBillingUnit) ?? RENTAL_BILLING_OPTIONS[0]}
+                  onChange={(opt) => setRentalBillingUnit(opt?.value ?? "calendar_month")}
+                  options={RENTAL_BILLING_OPTIONS}
+                />
+                <p className="mt-1 text-xs text-zinc-500">
+                  Por día: el cliente elige fechas concretas; el total usa canon mensual ÷ 30 por día (temporada alta
+                  por mes del día).
+                </p>
               </div>
               <HighSeasonMonthsField
                 value={highSeasonMonths}

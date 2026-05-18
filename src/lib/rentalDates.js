@@ -1,6 +1,13 @@
 /** Fechas de alquiler (mínimo 1 mes de calendario, alineado con backend). */
 
 import { highSeasonFromSpace, lineSubtotalWithHighSeason } from "@/lib/highSeasonPricing";
+import {
+  contractDaysInclusive,
+  isDailyBilling,
+  lineSubtotalDaily,
+  MIN_RESERVATION_CALENDAR_DAYS,
+  normalizeRentalBillingUnit,
+} from "@/lib/rentalBilling";
 
 export const MIN_RESERVATION_CALENDAR_MONTHS = 1;
 
@@ -62,10 +69,18 @@ export function normalizeRentalSegments(item) {
   return [];
 }
 
-/** Meses facturables (suma de tramos, sin contar huecos entre tramos). */
-export function selectedMonthCountFromItem(item) {
+/** Unidades facturables (meses o días según centro). */
+export function selectedUnitsCountFromItem(item) {
   const segs = normalizeRentalSegments(item);
+  if (isDailyBilling(item)) {
+    return segs.reduce((n, seg) => n + contractDaysInclusive(seg.start_date, seg.end_date), 0);
+  }
   return segs.reduce((n, seg) => n + contractMonthsInclusive(seg.start_date, seg.end_date), 0);
+}
+
+/** @deprecated Usar selectedUnitsCountFromItem */
+export function selectedMonthCountFromItem(item) {
+  return selectedUnitsCountFromItem(item);
 }
 
 export function lineSubtotal(monthlyUsd, startStr, endStr, highSeasonOpts = null) {
@@ -84,13 +99,16 @@ export function lineSubtotal(monthlyUsd, startStr, endStr, highSeasonOpts = null
   return Math.round(n * months * 100) / 100;
 }
 
-/** Subtotal de una línea con uno o varios tramos (meses no consecutivos). */
-export function lineSubtotalFromSegments(monthlyUsd, segments, highSeasonOpts = null) {
+/** Subtotal de una línea con uno o varios tramos. */
+export function lineSubtotalFromSegments(monthlyUsd, segments, highSeasonOpts = null, billingUnit = null) {
   if (!Array.isArray(segments) || !segments.length) return 0;
-  return segments.reduce(
-    (sum, seg) => sum + lineSubtotal(monthlyUsd, seg.start_date, seg.end_date, highSeasonOpts),
-    0,
-  );
+  const daily = normalizeRentalBillingUnit(billingUnit) === "calendar_day";
+  return segments.reduce((sum, seg) => {
+    if (daily) {
+      return sum + lineSubtotalDaily(monthlyUsd, seg.start_date, seg.end_date, highSeasonOpts);
+    }
+    return sum + lineSubtotal(monthlyUsd, seg.start_date, seg.end_date, highSeasonOpts);
+  }, 0);
 }
 
 /** Suma subtotales del carrito (respeta rental_segments por línea). */
@@ -100,14 +118,16 @@ export function cartTotalUsd(items) {
     const segs = normalizeRentalSegments(row);
     if (!segs.length) return sum;
     const hs = highSeasonFromSpace(row);
-    return sum + lineSubtotalFromSegments(row.monthly_price_usd, segs, hs);
+    return sum + lineSubtotalFromSegments(row.monthly_price_usd, segs, hs, row.rental_billing_unit);
   }, 0);
 }
 
-/** Al menos un mes elegido en total (entre tramos). */
+/** Cumple mínimo de unidades (1 mes o 1 día según centro). */
 export function cartItemDatesValidForCheckout(item) {
   if (!item) return false;
-  return selectedMonthCountFromItem(item) >= MIN_RESERVATION_CALENDAR_MONTHS;
+  const n = selectedUnitsCountFromItem(item);
+  if (isDailyBilling(item)) return n >= MIN_RESERVATION_CALENDAR_DAYS;
+  return n >= MIN_RESERVATION_CALENDAR_MONTHS;
 }
 
 export function cartAllItemsMeetCheckoutRules(items) {
@@ -122,7 +142,12 @@ export function cartAllItemsMeetCheckoutRules(items) {
 export function cartLineSubtotalOrNull(item) {
   if (!cartItemDatesValidForCheckout(item)) return null;
   const segs = normalizeRentalSegments(item);
-  return lineSubtotalFromSegments(item.monthly_price_usd, segs, highSeasonFromSpace(item));
+  return lineSubtotalFromSegments(
+    item.monthly_price_usd,
+    segs,
+    highSeasonFromSpace(item),
+    item.rental_billing_unit,
+  );
 }
 
 /**

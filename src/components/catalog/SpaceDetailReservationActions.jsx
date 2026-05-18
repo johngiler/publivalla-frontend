@@ -5,16 +5,22 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { spaceStatusLabel, spaceStatusPillClassName } from "@/components/admin/adminConstants";
 import { adminPrimaryBtn } from "@/components/admin/adminFormStyles";
+import { SpaceDayRangePicker } from "@/components/catalog/SpaceDayRangePicker";
 import { SpaceMultiYearMonthRangePicker } from "@/components/catalog/SpaceMultiYearMonthRangePicker";
 import { marketplaceSecondaryBtn } from "@/lib/marketplaceActionButtons";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartProvider";
 import { spaceAllowsMarketplaceReservation } from "@/lib/spaceMarketplaceReservation";
 import {
+  MIN_RESERVATION_CALENDAR_DAYS,
+  firstAllowedDailyStartIso,
+  isDailyBilling,
+} from "@/lib/rentalBilling";
+import {
   MIN_RESERVATION_CALENDAR_MONTHS,
   normalizeRentalSegments,
   rentalSelectionEquals,
-  selectedMonthCountFromItem,
+  selectedUnitsCountFromItem,
 } from "@/lib/rentalDates";
 import { postSpaceRentalRangeCheck } from "@/services/api";
 import {
@@ -30,6 +36,7 @@ import { ROUNDED_CONTROL } from "@/lib/uiRounding";
  * Bloque de reserva en detalle de toma: meses sueltos + carrito.
  */
 export function SpaceDetailReservationActions({ space }) {
+  const dailyBilling = isDailyBilling(space);
   const { authReady, me, isClient, isAdmin } = useAuth();
   const { items, addItem, updateItemDates } = useCart();
   const [pick, setPick] = useState(null);
@@ -73,10 +80,12 @@ export function SpaceDetailReservationActions({ space }) {
 
   useEffect(() => {
     if (spaceInCart && cartBaselineSegments?.length) {
-      const indices = rentalSegmentsToLinearIndices(cartBaselineSegments);
-      if (selectedMonthsTouchOccupied(disabledByYear, indices)) {
-        setPick(null);
-        return;
+      if (!dailyBilling) {
+        const indices = rentalSegmentsToLinearIndices(cartBaselineSegments);
+        if (selectedMonthsTouchOccupied(disabledByYear, indices)) {
+          setPick(null);
+          return;
+        }
       }
       setPick({
         rental_segments: cartBaselineSegments,
@@ -94,16 +103,22 @@ export function SpaceDetailReservationActions({ space }) {
     cartBaselineIso?.start_date,
     cartBaselineIso?.end_date,
     disabledByYear,
+    dailyBilling,
   ]);
 
   const pickValid = useMemo(() => {
     if (!pick) return false;
     const segs = normalizeRentalSegments(pick);
     if (!segs.length) return false;
+    if (dailyBilling) {
+      const start = segs[0].start_date;
+      if (start < firstAllowedDailyStartIso()) return false;
+      return selectedUnitsCountFromItem({ ...pick, rental_billing_unit: space.rental_billing_unit }) >= MIN_RESERVATION_CALENDAR_DAYS;
+    }
     const indices = rentalSegmentsToLinearIndices(segs);
     if (selectedMonthsTouchOccupied(disabledByYear, indices)) return false;
-    return selectedMonthCountFromItem(pick) >= MIN_RESERVATION_CALENDAR_MONTHS;
-  }, [pick, disabledByYear]);
+    return selectedUnitsCountFromItem(pick) >= MIN_RESERVATION_CALENDAR_MONTHS;
+  }, [pick, disabledByYear, dailyBilling, space.rental_billing_unit]);
 
   const hasRealModification = useMemo(() => {
     if (!spaceInCart || !pickValid || !cartLine) return false;
@@ -219,22 +234,43 @@ export function SpaceDetailReservationActions({ space }) {
             Período de reserva
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-600">
-            Ventana <strong className="font-medium text-zinc-800">{yearLabel}</strong>: elige uno o más meses libres
-            (no tienen que ser consecutivos). Mínimo{" "}
-            <strong className="font-medium text-zinc-800">1</strong> mes en total. Los meses en gris no se pueden usar.
+            {dailyBilling ? (
+              <>
+                Elige <strong className="font-medium text-zinc-800">fecha de inicio y fin</strong> (mínimo{" "}
+                <strong className="font-medium text-zinc-800">1</strong> día). El canon se calcula por día (mensual ÷
+                30).
+              </>
+            ) : (
+              <>
+                Ventana <strong className="font-medium text-zinc-800">{yearLabel}</strong>: elige uno o más meses
+                libres (no tienen que ser consecutivos). Mínimo{" "}
+                <strong className="font-medium text-zinc-800">1</strong> mes en total. Los meses en gris no se pueden
+                usar.
+              </>
+            )}
           </p>
         </div>
 
         <div className="px-5 py-6 sm:px-8 sm:py-8">
-          <SpaceMultiYearMonthRangePicker
-            space={space}
-            monthlyPriceUsd={space.monthly_price_usd}
-            minMonths={MIN_RESERVATION_CALENDAR_MONTHS}
-            onRangeChange={setPick}
-            pickSync={pick}
-            cartBaselineIso={cartBaselineIso}
-            cartBaselineSegments={cartBaselineSegments}
-          />
+          {dailyBilling ? (
+            <SpaceDayRangePicker
+              space={space}
+              monthlyPriceUsd={space.monthly_price_usd}
+              minDays={MIN_RESERVATION_CALENDAR_DAYS}
+              onRangeChange={setPick}
+              pickSync={pick}
+            />
+          ) : (
+            <SpaceMultiYearMonthRangePicker
+              space={space}
+              monthlyPriceUsd={space.monthly_price_usd}
+              minMonths={MIN_RESERVATION_CALENDAR_MONTHS}
+              onRangeChange={setPick}
+              pickSync={pick}
+              cartBaselineIso={cartBaselineIso}
+              cartBaselineSegments={cartBaselineSegments}
+            />
+          )}
         </div>
 
         <div className="space-y-5 border-t border-zinc-100 bg-zinc-50/40 px-5 py-5 sm:px-8 sm:py-6">
@@ -272,7 +308,7 @@ export function SpaceDetailReservationActions({ space }) {
               </Link>
               {!pickValid ? (
                 <p className="text-center text-xs text-zinc-500">
-                  Elige al menos un mes válido para actualizar{" "}
+                  Elige un período válido para actualizar{" "}
                   <strong className="font-medium text-zinc-700">esta toma</strong> en el carrito.
                 </p>
               ) : null}
@@ -294,7 +330,9 @@ export function SpaceDetailReservationActions({ space }) {
           )}
           {!pickValid && !spaceInCart ? (
             <p className="text-center text-xs text-zinc-500">
-              Marca al menos un mes futuro libre para habilitar el botón.
+              {dailyBilling
+                ? "Indica fechas válidas (desde mañana) para habilitar el botón."
+                : "Marca al menos un mes futuro libre para habilitar el botón."}
             </p>
           ) : null}
         </div>
