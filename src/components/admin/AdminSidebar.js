@@ -12,7 +12,6 @@ import {
   IconMenu,
 } from "@/components/layout/navIcons";
 import { useWorkspace } from "@/context/WorkspaceContext";
-import { useWorkspaceCapabilities } from "@/hooks/useWorkspaceCapabilities";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 
 const ADMIN_SIDEBAR_COLLAPSED_KEY = "publivalla-admin-sidebar-collapsed";
@@ -34,12 +33,9 @@ export function AdminSidebar({ mobileOpen, setMobileOpen }) {
   const pathname = usePathname() || "";
   const router = useRouter();
   const { displayName } = useWorkspace();
-  const { caps } = useWorkspaceCapabilities();
   const [collapsed, setCollapsed] = useState(false);
 
-  const navItems = ADMIN_NAV.filter(
-    (item) => !item.biddingOnly || caps.marketplace_bidding_enabled,
-  );
+  const navItems = ADMIN_NAV;
 
   useEffect(() => {
     try {

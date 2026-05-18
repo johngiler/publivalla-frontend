@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
+import { mutate as globalMutate } from "swr";
 
 import { IconRowTrash } from "@/components/admin/rowActionIcons";
 import { FileDropZoneField } from "@/components/ui/FileDropZoneField";
@@ -596,6 +597,7 @@ export default function MiNegocioView() {
       setTxPwdSet(Boolean(data.transactional_email_password_set));
       setTxApiKey("");
       setTxApiKeySet(Boolean(data.transactional_email_api_key_set));
+      await globalMutate("/api/me/workspace/");
       setSaveOk("Cambios guardados.");
       await reloadWorkspace();
     } catch (err) {
@@ -776,6 +778,7 @@ export default function MiNegocioView() {
               </div>
             </div>
           </section>
+
 
           <section aria-labelledby="sec-colores">
             <SectionTitle id="sec-colores">Colores</SectionTitle>

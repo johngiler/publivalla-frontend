@@ -13,12 +13,7 @@ export const ADMIN_NAV_PATHS = [
     href: "/dashboard/bloqueos",
     label: "Bloqueos de disponibilidad",
   },
-  {
-    segment: "pujas",
-    href: "/dashboard/pujas",
-    label: "Pujas",
-    biddingOnly: true,
-  },
+  { segment: "pujas", href: "/dashboard/pujas", label: "Pujas" },
   { segment: "usuarios", href: "/dashboard/usuarios", label: "Usuarios" },
   { segment: "clientes", href: "/dashboard/clientes", label: "Clientes" },
   { segment: "contratos", href: "/dashboard/contratos", label: "Contratos" },
