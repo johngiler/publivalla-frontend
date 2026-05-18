@@ -412,7 +412,7 @@ export function ContratosAdminSection() {
                   id="contratos-filter-q"
                   value={filterQ}
                   onChange={setFilterQ}
-                  placeholder="Cliente, pedido, código de toma (ej. SLC-T5A o SLC - T5A)…"
+                  placeholder="Cliente, pedido, código de toma (ej. DEMO-T5A o DEMO - T5A)…"
                 />
               </div>
               <AdminFilterSelect

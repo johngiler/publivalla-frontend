@@ -242,7 +242,7 @@ export default function MisContratosView() {
               id="mis-contratos-search"
               value={filterSearch}
               onChange={setFilterSearch}
-              placeholder="Nombre de la toma o código (ej. SLC-T9A)…"
+              placeholder="Nombre de la toma o código (ej. DEMO-T9A)…"
             />
             <AdminFilterSelect
               id="mis-contratos-phase"

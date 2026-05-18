@@ -100,7 +100,7 @@ function validateTomaCodeFormat(code) {
   if (!c) return "Indica el código de la toma.";
   if (c.length > 32) return "El código no puede superar 32 caracteres.";
   if (!/^[A-Z0-9][A-Z0-9_-]*-T[0-9]+[A-Z]*$/.test(c)) {
-    return "Usa un prefijo (letras, números, guiones o guiones bajos), luego «-T», un número y, si aplica, letras (ej. SCC-T1, SLC-T1A).";
+    return "Usa un prefijo (letras, números, guiones o guiones bajos), luego «-T», un número y, si aplica, letras (ej. DEMO-T1, CC-T2A).";
   }
   return null;
 }
@@ -961,8 +961,8 @@ export function TomasAdminSection() {
                   <span className="font-mono text-zinc-600">
                     {"{prefijo}-T{número}[sufijo]"}
                   </span>
-                  . Ejemplos: <span className="font-mono">SCC-T1</span>,{" "}
-                  <span className="font-mono">SLC-T1A</span>. El prefijo es el código único de la toma (no tiene
+                  . Ejemplos: <span className="font-mono">DEMO-T1</span>,{" "}
+                  <span className="font-mono">CC-T2A</span>. El prefijo es el código único de la toma (no tiene
                   que coincidir con el slug del centro).
                 </p>
               ) : null}

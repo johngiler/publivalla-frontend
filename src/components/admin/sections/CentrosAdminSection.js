@@ -34,6 +34,7 @@ import { ThumbnailPlaceholder } from "@/components/media/ThumbnailPlaceholder";
 import { rawMediaUrlFromApiField } from "@/lib/mediaUrls";
 import { IconBuildingSection } from "@/components/admin/rowActionIcons";
 import { useAuth } from "@/context/AuthContext";
+import { useWorkspace } from "@/context/WorkspaceContext";
 import { useWorkspaceCapabilities } from "@/hooks/useWorkspaceCapabilities";
 import { EmptyState, EmptyStateIconBuilding } from "@/components/ui/EmptyState";
 import { centersAdminListPath } from "@/lib/adminListQuery";
@@ -89,6 +90,7 @@ function centerCatalogEnabled(c) {
 
 export function CentrosAdminSection() {
   const { authReady, accessToken } = useAuth();
+  const { workspace } = useWorkspace();
   const { caps } = useWorkspaceCapabilities();
   const canCreateCenters = caps.can_create_shopping_centers;
   const [expandedId, setExpandedId] = useState(null);
@@ -263,8 +265,9 @@ export function CentrosAdminSection() {
     const raw = String(nm || "").trim();
     if (!raw) return "";
     const low = raw.toLowerCase();
-    if (low.startsWith("acme ")) {
-      const rest = raw.slice(7).trim();
+    const wsPrefix = (workspace?.slug || "").trim().toLowerCase();
+    if (wsPrefix && low.startsWith(`${wsPrefix} `)) {
+      const rest = raw.slice(wsPrefix.length + 1).trim();
       const tokens = rest
         .split(/\s+/)
         .filter(Boolean)
