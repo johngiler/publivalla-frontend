@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { spaceStatusLabel, spaceStatusPillClassName } from "@/components/admin/adminConstants";
 import { adminPrimaryBtn } from "@/components/admin/adminFormStyles";
+import { SpaceAuctionBidPanel } from "@/components/catalog/SpaceAuctionBidPanel";
 import { SpaceDayRangePicker } from "@/components/catalog/SpaceDayRangePicker";
 import { SpaceMultiYearMonthRangePicker } from "@/components/catalog/SpaceMultiYearMonthRangePicker";
 import { marketplaceSecondaryBtn } from "@/lib/marketplaceActionButtons";
@@ -35,7 +36,7 @@ import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 /**
  * Bloque de reserva en detalle de toma: meses sueltos + carrito.
  */
-export function SpaceDetailReservationActions({ space }) {
+export function SpaceDetailReservationActions({ space, onAuctionBidPlaced }) {
   const dailyBilling = isDailyBilling(space);
   const { authReady, me, isClient, isAdmin } = useAuth();
   const { items, addItem, updateItemDates } = useCart();
@@ -158,6 +159,13 @@ export function SpaceDetailReservationActions({ space }) {
       setRangeCheckLoading(false);
     }
   }, [addItem, hasRealModification, pick, pickValid, space, spaceInCart, updateItemDates]);
+
+  const activeAuction = space?.active_auction;
+  const biddingEnabled = Boolean(space?.marketplace_bidding_enabled);
+
+  if (biddingEnabled && activeAuction) {
+    return <SpaceAuctionBidPanel auction={activeAuction} onBidPlaced={onAuctionBidPlaced} />;
+  }
 
   if (!authReady) {
     return (

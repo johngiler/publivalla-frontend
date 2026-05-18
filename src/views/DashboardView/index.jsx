@@ -8,6 +8,7 @@ import { CentrosAdminSection } from "@/components/admin/sections/CentrosAdminSec
 import { ClientesAdminSection } from "@/components/admin/sections/ClientesAdminSection";
 import { ContratosAdminSection } from "@/components/admin/sections/ContratosAdminSection";
 import { BloqueosDisponibilidadAdminSection } from "@/components/admin/sections/BloqueosDisponibilidadAdminSection";
+import { PujasAdminSection } from "@/components/admin/sections/PujasAdminSection";
 import { MountingProvidersAdminSection } from "@/components/admin/sections/MountingProvidersAdminSection";
 import { PedidosAdminSection } from "@/components/admin/sections/PedidosAdminSection";
 import { TomasAdminSection } from "@/components/admin/sections/TomasAdminSection";
@@ -169,6 +170,7 @@ export default function DashboardView({ section = "resumen" }) {
         {section === "proveedores-montaje" ? <MountingProvidersAdminSection /> : null}
         {section === "tomas" ? <TomasAdminSection /> : null}
         {section === "bloqueos" ? <BloqueosDisponibilidadAdminSection /> : null}
+        {section === "pujas" ? <PujasAdminSection /> : null}
         {section === "usuarios" ? <UsuariosAdminSection /> : null}
         {section === "clientes" ? <ClientesAdminSection /> : null}
         {section === "contratos" ? <ContratosAdminSection /> : null}

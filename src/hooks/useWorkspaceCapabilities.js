@@ -15,12 +15,14 @@ export function normalizeWorkspaceCapabilities(data) {
       can_create_shopping_centers: true,
       can_create_ad_spaces: true,
       can_create_marketplace_admin_users: true,
+      marketplace_bidding_enabled: false,
     };
   }
   return {
     can_create_shopping_centers: data.can_create_shopping_centers !== false,
     can_create_ad_spaces: data.can_create_ad_spaces !== false,
     can_create_marketplace_admin_users: data.can_create_marketplace_admin_users !== false,
+    marketplace_bidding_enabled: data.marketplace_bidding_enabled === true,
   };
 }
 

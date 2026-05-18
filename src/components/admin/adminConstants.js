@@ -42,6 +42,33 @@ export function availabilityBlockTypePillClassName(type) {
   return "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80";
 }
 
+export const AUCTION_STATUS_FILTER_OPTIONS = [
+  { v: "all", l: "Todos los estados" },
+  { v: "draft", l: "Borrador" },
+  { v: "open", l: "Abierta" },
+  { v: "closed", l: "Cerrada" },
+  { v: "awarded", l: "Adjudicada" },
+  { v: "cancelled", l: "Cancelada" },
+];
+
+export function auctionStatusLabel(status, statusLabelFromApi) {
+  if (typeof statusLabelFromApi === "string" && statusLabelFromApi.trim() !== "") {
+    return statusLabelFromApi.trim();
+  }
+  const o = AUCTION_STATUS_FILTER_OPTIONS.find((x) => String(x.v) === String(status ?? ""));
+  return o ? o.l : status ? String(status) : "—";
+}
+
+export function auctionStatusPillClassName(status) {
+  const s = String(status ?? "");
+  if (s === "open") return "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/80";
+  if (s === "closed") return "bg-amber-50 text-amber-900 ring-1 ring-amber-200/80";
+  if (s === "awarded") return "bg-violet-50 text-violet-900 ring-1 ring-violet-200/80";
+  if (s === "cancelled") return "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80";
+  if (s === "draft") return "bg-sky-50 text-sky-900 ring-1 ring-sky-200/80";
+  return "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80";
+}
+
 export const SPACE_STATUS = [
   { v: "available", l: "Disponible" },
   { v: "reserved", l: "Reservado" },

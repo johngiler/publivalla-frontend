@@ -156,6 +156,29 @@ export function IconAdminArrowsPointingOut({ className = "" }) {
 }
 
 /** Bloqueos de disponibilidad (calendario / fechas no reservables). */
+export function IconAdminGavel({ className = "" }) {
+  return (
+    <svg
+      className={className}
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="m14 13 5.5 5.5" />
+      <path d="M8.5 6.5 14 12" />
+      <path d="M3 21 8.5 15.5" />
+      <path d="M10.5 2 6 6.5 3 10l4.5 4.5L15 7 10.5 2Z" />
+      <path d="M18 10 21 7" />
+    </svg>
+  );
+}
+
 export function IconAdminCalendarBlock({ className = "" }) {
   return (
     <svg className={`${c} ${className}`} viewBox="0 0 24 24" fill="none" aria-hidden>

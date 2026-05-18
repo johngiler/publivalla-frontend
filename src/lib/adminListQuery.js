@@ -89,6 +89,28 @@ export function availabilityBlocksListPath(
   return `/api/admin/availability-blocks/?${p.toString()}`;
 }
 
+/**
+ * @param {number} page
+ * @param {string} [search]
+ * @param {string} [shoppingCenterId]
+ * @param {string} [adSpaceId]
+ * @param {string} [status] — draft | open | closed | awarded | cancelled | all
+ * @param {string} [active] — `1` | `0` | `all`
+ */
+export function auctionsListPath(page, search, shoppingCenterId, adSpaceId, status, active) {
+  const p = new URLSearchParams();
+  p.set("page", String(page));
+  p.set("page_size", "50");
+  if (search?.trim()) p.set("search", search.trim());
+  const cid = shoppingCenterId != null ? String(shoppingCenterId).trim() : "";
+  if (cid) p.set("shopping_center", cid);
+  const aid = adSpaceId != null ? String(adSpaceId).trim() : "";
+  if (aid) p.set("ad_space", aid);
+  if (status && status !== "all") p.set("status", status);
+  if (active === "1" || active === "0") p.set("active", active);
+  return `/api/admin/auctions/?${p.toString()}`;
+}
+
 export function mountingProvidersListPath(page, shoppingCenterId) {
   const p = new URLSearchParams();
   p.set("page", String(page));

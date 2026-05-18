@@ -310,6 +310,15 @@ export async function testMyWorkspaceTransactionalSmtp(body, { token } = {}) {
   return data;
 }
 
+/** Registra una oferta en una puja abierta (cliente marketplace). */
+export async function postAuctionBid(auctionId, amountUsd, { token } = {}) {
+  return authFetch(`/api/auctions/${encodeURIComponent(String(auctionId))}/bids/`, {
+    method: "POST",
+    body: { amount_usd: amountUsd },
+    token,
+  });
+}
+
 export async function authFetch(path, { method = "GET", body, token } = {}) {
   const parsed = await fetchWithAuth(path, { method, body, token });
   if (!parsed.ok) {
