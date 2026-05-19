@@ -215,8 +215,8 @@ export function AdminSidebar({ mobileOpen, setMobileOpen }) {
       />
 
       <aside
-        className={`flex w-[min(17rem,88vw)] flex-col border-r border-zinc-200 bg-zinc-50 transition-[width,transform] duration-200 ease-out max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-[60] max-lg:h-[100dvh] max-lg:overflow-y-auto max-lg:shadow-xl lg:sticky lg:z-20 lg:max-h-[calc(100dvh_-_var(--mp-admin-sidebar-sticky-top))] lg:min-h-0 lg:shrink-0 lg:self-start lg:transform-none lg:shadow-none lg:top-[var(--mp-admin-sidebar-sticky-top)] ${
-          collapsed ? "lg:w-[4.25rem]" : "lg:w-56"
+        className={`flex w-[min(18.25rem,88vw)] flex-col border-r border-zinc-200 bg-zinc-50 transition-[width,transform] duration-200 ease-out max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-[60] max-lg:h-[100dvh] max-lg:overflow-y-auto max-lg:shadow-xl lg:sticky lg:z-20 lg:max-h-[calc(100dvh_-_var(--mp-admin-sidebar-sticky-top))] lg:min-h-0 lg:shrink-0 lg:self-start lg:transform-none lg:shadow-none lg:top-[var(--mp-admin-sidebar-sticky-top)] ${
+          collapsed ? "lg:w-[4.25rem]" : "lg:w-[15.25rem]"
         } ${mobileOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full"}`}
       >
         <div className="flex items-center justify-between border-b border-zinc-200 px-3 py-3 lg:hidden">
