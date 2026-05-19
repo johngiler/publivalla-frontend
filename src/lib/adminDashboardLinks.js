@@ -10,6 +10,19 @@ export function dashboardCentrosSearchHref(query) {
   return `/dashboard/centros?q=${encodeURIComponent(q)}`;
 }
 
+export function dashboardTomasSearchHref(query) {
+  const q = String(query ?? "").trim();
+  if (!q) return "/dashboard/tomas";
+  return `/dashboard/tomas?q=${encodeURIComponent(q)}`;
+}
+
+/** Abre el modal de detalle (solo lectura) de una toma en Espacios publicitarios. */
+export function dashboardTomasViewHref(spaceId) {
+  const id = String(spaceId ?? "").trim();
+  if (!id) return "/dashboard/tomas";
+  return `/dashboard/tomas?view=${encodeURIComponent(id)}`;
+}
+
 export function dashboardClientesSearchHref(query) {
   const q = String(query ?? "").trim();
   if (!q) return "/dashboard/clientes";

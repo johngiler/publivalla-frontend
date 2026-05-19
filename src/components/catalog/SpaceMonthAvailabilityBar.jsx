@@ -3,13 +3,19 @@
 import { useMemo } from "react";
 
 import {
+  CATALOG_MONTH_ACTIVE_BG,
+  CATALOG_MONTH_ACTIVE_LABEL,
+  CATALOG_MONTH_ACTIVE_RING,
   CATALOG_MONTH_AVAILABLE_BG,
   CATALOG_MONTH_AVAILABLE_RING,
+  CATALOG_MONTH_RESERVED_BG,
+  CATALOG_MONTH_RESERVED_LABEL,
+  CATALOG_MONTH_RESERVED_RING,
   CATALOG_MONTH_SELECTED_BG,
   CATALOG_MONTH_SELECTED_RING,
   CATALOG_MONTH_UNAVAILABLE_BG,
   CATALOG_MONTH_UNAVAILABLE_RING,
-  CATALOG_MONTH_SELECTION_LABEL,
+  CATALOG_MONTH_CART_LABEL,
 } from "@/lib/catalogMonthColors";
 import {
   futureAvailableMonthsCount,
@@ -23,20 +29,18 @@ import {
 
 import { CatalogMonthLegend } from "@/components/catalog/CatalogMonthLegend";
 
-/**
- * @param {number} availabilityYear
- * @param {number} month1to12
- * @param {boolean} busyFromApi
- * @param {Date} ref
- */
 function monthSegmentTitle(
   availabilityYear,
   month1to12,
   busyFromApi,
   inCartRange,
+  isActive,
+  isReserved,
   ref,
 ) {
-  if (inCartRange && !busyFromApi) return CATALOG_MONTH_SELECTION_LABEL;
+  if (isActive) return CATALOG_MONTH_ACTIVE_LABEL;
+  if (isReserved) return CATALOG_MONTH_RESERVED_LABEL;
+  if (inCartRange && !busyFromApi) return CATALOG_MONTH_CART_LABEL;
   if (isMonthPastOrCurrentInYear(availabilityYear, month1to12, ref)) {
     return "Ocupado o pasado";
   }
@@ -44,10 +48,6 @@ function monthSegmentTitle(
   return "Disponible";
 }
 
-/**
- * @param {{ lo: number, hi: number } | null | undefined} cartMonths
- * @param {number} month1to12
- */
 function isMonthInCartRange(cartMonths, month1to12) {
   if (!cartMonths || cartMonths.lo == null || cartMonths.hi == null)
     return false;
@@ -56,19 +56,11 @@ function isMonthInCartRange(cartMonths, month1to12) {
 
 /**
  * Franja de 12 meses; leyenda solo al pasar el cursor o al enfocar el bloque.
- * @param {{
- *   monthsOccupied?: unknown,
- *   availabilityYear?: number,
- *   cartMonthsInYear?: { lo: number, hi: number } | null,
- *   cartRentalSegments?: Array<{ start_date?: string, end_date?: string }> | null,
- *   className?: string,
- *   showLegend?: boolean,
- *   showMonthLabels?: boolean,
- *   legendPosition?: "above" | "below",
- * }} props
  */
 export function SpaceMonthAvailabilityBar({
   monthsOccupied,
+  clientMonthsReserved = null,
+  clientMonthsActive = null,
   availabilityYear,
   cartMonthsInYear = null,
   cartRentalSegments = null,
@@ -80,10 +72,26 @@ export function SpaceMonthAvailabilityBar({
   const refDate = useMemo(() => new Date(), []);
   const year = Number(availabilityYear) || refDate.getFullYear();
   const occRaw = normalizeMonthsOccupied(monthsOccupied);
+  const reservedRaw = useMemo(
+    () =>
+      clientMonthsReserved != null
+        ? normalizeMonthsOccupied(clientMonthsReserved)
+        : null,
+    [clientMonthsReserved],
+  );
+  const activeRaw = useMemo(
+    () =>
+      clientMonthsActive != null
+        ? normalizeMonthsOccupied(clientMonthsActive)
+        : null,
+    [clientMonthsActive],
+  );
   const displayFlags = useMemo(
     () => mergeOccupiedWithPastMonths(year, occRaw, refDate),
     [year, occRaw, refDate],
   );
+  const hasReservedMonths = Boolean(reservedRaw?.some(Boolean));
+  const hasActiveMonths = Boolean(activeRaw?.some(Boolean));
   const freeFuture = futureAvailableMonthsCount(year, occRaw, refDate);
   const futureTotal = futureMonthsInYear(year, refDate);
   const ariaLabel = `Disponibilidad anual: ${freeFuture} de ${futureTotal} meses por delante disponibles. Pasa el cursor para ver la leyenda de colores.`;
@@ -104,16 +112,30 @@ export function SpaceMonthAvailabilityBar({
             Array.isArray(cartRentalSegments) && cartRentalSegments.length
               ? isMonthInRentalSegments(cartRentalSegments, year, month)
               : isMonthInCartRange(cartMonthsInYear, month);
-          const segmentClass = busy
-            ? `${CATALOG_MONTH_UNAVAILABLE_BG} ${CATALOG_MONTH_UNAVAILABLE_RING}`
-            : inCart
-              ? `${CATALOG_MONTH_SELECTED_BG} ${CATALOG_MONTH_SELECTED_RING}`
-              : `${CATALOG_MONTH_AVAILABLE_BG} ${CATALOG_MONTH_AVAILABLE_RING}`;
+          const isActive = Boolean(activeRaw?.[i]);
+          const isReserved = !isActive && Boolean(reservedRaw?.[i]);
+          const segmentClass = isActive
+            ? `${CATALOG_MONTH_ACTIVE_BG} ${CATALOG_MONTH_ACTIVE_RING}`
+            : isReserved
+              ? `${CATALOG_MONTH_RESERVED_BG} ${CATALOG_MONTH_RESERVED_RING}`
+              : busy
+                ? `${CATALOG_MONTH_UNAVAILABLE_BG} ${CATALOG_MONTH_UNAVAILABLE_RING}`
+                : inCart
+                  ? `${CATALOG_MONTH_SELECTED_BG} ${CATALOG_MONTH_SELECTED_RING}`
+                  : `${CATALOG_MONTH_AVAILABLE_BG} ${CATALOG_MONTH_AVAILABLE_RING}`;
           return (
             <div
               key={i}
               className="flex min-w-0 flex-1 flex-col items-stretch gap-0.5"
-              title={monthSegmentTitle(year, month, occRaw[i], inCart, refDate)}
+              title={monthSegmentTitle(
+                year,
+                month,
+                occRaw[i],
+                inCart,
+                isActive,
+                isReserved,
+                refDate,
+              )}
             >
               <span
                 className={`box-border h-2.5 w-full rounded-md ${segmentClass}`}
@@ -137,9 +159,12 @@ export function SpaceMonthAvailabilityBar({
             <CatalogMonthLegend
               stacked
               title="Disponibilidad mensual"
+              showReserved={hasReservedMonths}
+              showActive={hasActiveMonths}
               showSelection={Boolean(
                 cartRentalSegments?.length || cartMonthsInYear,
               )}
+              selectionLabel={CATALOG_MONTH_CART_LABEL}
             />
           </div>
         </div>

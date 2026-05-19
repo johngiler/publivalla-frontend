@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { IconRowEdit, IconRowTrash } from "@/components/admin/rowActionIcons";
-import { CatalogSpaceLink } from "@/components/catalog/CatalogSpaceLink";
+import { MarketplaceLineSpaceHeading } from "@/components/catalog/MarketplaceLineSpaceHeading";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { RasterFromApiUrl } from "@/components/media/RasterFromApiUrl";
 import { EmptyState, EmptyStateIconCart } from "@/components/ui/EmptyState";
@@ -13,6 +14,10 @@ import { useCart } from "@/context/CartProvider";
 import { marketplaceItemsFromCartLine } from "@/lib/imageLightboxItems";
 import { catalogRasterImgAttrs } from "@/lib/catalogImageProps";
 import { primaryAdSpaceMediaRawFromOrderLike } from "@/lib/mediaUrls";
+import {
+  marketplaceLineFieldLabelClass,
+  marketplaceLinePriceClass,
+} from "@/lib/marketplaceLineTypography";
 import {
   formatUsdInteger,
   formatUsdMoney,
@@ -31,9 +36,9 @@ import {
   cartTotalUsd,
 } from "@/lib/rentalDates";
 import {
-  squareAdminTablePortadaFrameClass,
-  squareAdminTablePortadaImgClass,
   squareListImagePreviewButtonRingClass,
+  squareMarketplaceLinePreviewFrameClass,
+  squareMarketplaceLinePreviewImgClass,
 } from "@/lib/squareImagePreview";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 
@@ -41,9 +46,21 @@ const accent = "mp-text-brand";
 
 const cardShell = `${ROUNDED_CONTROL} border border-zinc-200/90 bg-white p-4 shadow-sm sm:p-5`;
 
+function normalizeCartHighlightCode(raw) {
+  return String(raw ?? "")
+    .trim()
+    .replace(/^#/, "")
+    .toLowerCase();
+}
+
 export default function CartView() {
+  const searchParams = useSearchParams();
   const { authReady, me, isClient, isAdmin } = useAuth();
   const { items, removeItem, clear } = useCart();
+  const highlightCode = useMemo(
+    () => normalizeCartHighlightCode(searchParams.get("code")),
+    [searchParams],
+  );
   const [lightbox, setLightbox] = useState({
     open: false,
     items: /** @type {{ src: string; alt: string }[]} */ ([]),
@@ -55,6 +72,16 @@ export default function CartView() {
     if (!lbItems.length) return;
     setLightbox({ open: true, items: lbItems, initialIndex: 0 });
   }, []);
+
+  useEffect(() => {
+    if (!highlightCode || items.length === 0) return;
+    const match = items.find(
+      (item) => normalizeCartHighlightCode(item.code) === highlightCode,
+    );
+    if (!match) return;
+    const el = document.getElementById(`cart-line-${match.id}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlightCode, items]);
 
   const meetsMin = cartAllItemsMeetCheckoutRules(items);
   const subtotal = meetsMin ? cartTotalUsd(items) : 0;
@@ -137,20 +164,30 @@ export default function CartView() {
               typeof item.end_date === "string"
                 ? formatDailyRangeLabel(item.start_date, item.end_date)
                 : null;
-            const center =
-              typeof item.shopping_center_name === "string" ? item.shopping_center_name : "";
-            const detail =
-              typeof item.detail_line === "string" ? item.detail_line : "";
             const thumbRaw = primaryAdSpaceMediaRawFromOrderLike(item);
+            const isHighlighted =
+              Boolean(highlightCode) &&
+              normalizeCartHighlightCode(item.code) === highlightCode;
             return (
-              <li key={item.id} className={cardShell}>
+              <li
+                key={item.id}
+                id={isHighlighted ? `cart-line-${item.id}` : undefined}
+                data-cart-space-code={
+                  typeof item.code === "string" ? item.code : undefined
+                }
+                className={`${cardShell}${
+                  isHighlighted
+                    ? " ring-2 ring-[color:var(--mp-primary)] ring-offset-2"
+                    : ""
+                }`}
+              >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex min-w-0 flex-1 gap-3 sm:gap-4">
                     {thumbRaw ? (
                       <button
                         type="button"
                         onClick={() => openCartLineLightbox(item)}
-                        className={`${squareAdminTablePortadaFrameClass} ${squareListImagePreviewButtonRingClass} shrink-0 p-0`}
+                        className={`${squareMarketplaceLinePreviewFrameClass} ${squareListImagePreviewButtonRingClass} shrink-0 p-0`}
                         aria-label={
                           typeof item.title === "string" && item.title.trim()
                             ? `Ver imágenes: ${item.title.trim()}`
@@ -160,15 +197,15 @@ export default function CartView() {
                         <RasterFromApiUrl
                           url={thumbRaw}
                           alt=""
-                          width={60}
-                          height={60}
-                          className={`${squareAdminTablePortadaImgClass} transition duration-200 group-hover:scale-105`}
+                          width={120}
+                          height={120}
+                          className={`${squareMarketplaceLinePreviewImgClass} transition duration-200 group-hover:scale-105`}
                           {...catalogRasterImgAttrs}
                         />
                       </button>
                     ) : (
                       <div
-                        className={`${squareAdminTablePortadaFrameClass} shrink-0 bg-zinc-100`}
+                        className={`${squareMarketplaceLinePreviewFrameClass} shrink-0 bg-zinc-100`}
                         aria-hidden
                       >
                         <div className="flex h-full w-full items-center justify-center px-1 text-center text-[10px] font-medium uppercase leading-tight tracking-wide text-zinc-400">
@@ -177,30 +214,7 @@ export default function CartView() {
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                    <p className="break-words text-base font-semibold text-zinc-900">
-                      <CatalogSpaceLink spaceId={item.id} className="text-inherit">
-                        {item.title}
-                      </CatalogSpaceLink>
-                      {center ? (
-                        <>
-                          {" "}
-                          <span className="text-zinc-400">·</span> {center}
-                        </>
-                      ) : null}
-                    </p>
-                    {detail ? (
-                      <p className="mt-1.5 break-words text-sm text-zinc-500">{detail}</p>
-                    ) : (
-                      <p className="mt-1.5 text-sm text-zinc-500">
-                        <CatalogSpaceLink
-                          spaceId={item.id}
-                          variant="mono"
-                          className="text-inherit text-zinc-500 hover:text-[color:var(--mp-primary)]"
-                        >
-                          {item.code}
-                        </CatalogSpaceLink>
-                      </p>
-                    )}
+                      <MarketplaceLineSpaceHeading item={item} />
                     {dayRangeLabel ? (
                       <p className="mt-3 text-sm font-medium text-zinc-700">{dayRangeLabel}</p>
                     ) : null}
@@ -229,9 +243,7 @@ export default function CartView() {
                   </div>
                   <div className="flex flex-row items-start justify-between gap-4 sm:flex-col sm:items-end">
                     {line != null ? (
-                      <p className={`text-lg font-bold tabular-nums ${accent}`}>
-                        {formatUsdInteger(line)}
-                      </p>
+                      <p className={marketplaceLinePriceClass}>{formatUsdInteger(line)}</p>
                     ) : (
                       <p className="text-sm text-zinc-400">—</p>
                     )}

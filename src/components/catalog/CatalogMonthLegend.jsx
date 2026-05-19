@@ -7,7 +7,16 @@ import {
   CATALOG_MONTH_HIGH_SEASON_RING,
   CATALOG_MONTH_SELECTED_BG,
   CATALOG_MONTH_SELECTED_RING,
+  CATALOG_MONTH_ACTIVE_BG,
+  CATALOG_MONTH_ACTIVE_LABEL,
+  CATALOG_MONTH_ACTIVE_RING,
+  CATALOG_MONTH_RESERVED_BG,
+  CATALOG_MONTH_RESERVED_LABEL,
+  CATALOG_MONTH_RESERVED_RING,
   CATALOG_MONTH_SELECTION_LABEL,
+  CATALOG_MONTH_BLOCKED_FORBIDDEN_BG,
+  CATALOG_MONTH_BLOCKED_FORBIDDEN_LABEL,
+  CATALOG_MONTH_BLOCKED_FORBIDDEN_RING,
   CATALOG_MONTH_UNAVAILABLE_BG,
   CATALOG_MONTH_UNAVAILABLE_RING,
 } from "@/lib/catalogMonthColors";
@@ -30,9 +39,22 @@ function LegendItem({ swatchClass, label }) {
  * - SpaceMonthRangePicker
  * - SpaceMonthAvailabilityBar (tooltip apilado)
  */
+function ForbiddenLegendIcon({ className = "h-2.5 w-2.5" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+      <path d="M7 7l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function CatalogMonthLegend({
   showSelection = true,
+  showReserved = false,
+  showActive = false,
   showHighSeason = false,
+  showBlockedForbidden = false,
+  selectionLabel = CATALOG_MONTH_SELECTION_LABEL,
   stacked = false,
   title = null,
 }) {
@@ -42,14 +64,44 @@ export function CatalogMonthLegend({
         swatchClass={`${CATALOG_MONTH_AVAILABLE_BG} ${CATALOG_MONTH_AVAILABLE_RING}`}
         label="Libre"
       />
-      <LegendItem
-        swatchClass={`${CATALOG_MONTH_UNAVAILABLE_BG} ${CATALOG_MONTH_UNAVAILABLE_RING}`}
-        label="No disponible"
-      />
+      {showBlockedForbidden ? (
+        <>
+          <LegendItem
+            swatchClass={`${CATALOG_MONTH_UNAVAILABLE_BG} ${CATALOG_MONTH_UNAVAILABLE_RING}`}
+            label="No disponible"
+          />
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className={`${SWATCH} inline-flex items-center justify-center text-red-700 ${CATALOG_MONTH_BLOCKED_FORBIDDEN_BG} ${CATALOG_MONTH_BLOCKED_FORBIDDEN_RING}`}
+              aria-hidden
+            >
+              <ForbiddenLegendIcon />
+            </span>
+            {CATALOG_MONTH_BLOCKED_FORBIDDEN_LABEL}
+          </span>
+        </>
+      ) : (
+        <LegendItem
+          swatchClass={`${CATALOG_MONTH_UNAVAILABLE_BG} ${CATALOG_MONTH_UNAVAILABLE_RING}`}
+          label="No disponible"
+        />
+      )}
+      {showReserved ? (
+        <LegendItem
+          swatchClass={`${CATALOG_MONTH_RESERVED_BG} ${CATALOG_MONTH_RESERVED_RING}`}
+          label={CATALOG_MONTH_RESERVED_LABEL}
+        />
+      ) : null}
+      {showActive ? (
+        <LegendItem
+          swatchClass={`${CATALOG_MONTH_ACTIVE_BG} ${CATALOG_MONTH_ACTIVE_RING}`}
+          label={CATALOG_MONTH_ACTIVE_LABEL}
+        />
+      ) : null}
       {showSelection ? (
         <LegendItem
           swatchClass={`${CATALOG_MONTH_SELECTED_BG} ${CATALOG_MONTH_SELECTED_RING}`}
-          label={CATALOG_MONTH_SELECTION_LABEL}
+          label={selectionLabel}
         />
       ) : null}
       {showHighSeason ? (

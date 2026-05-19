@@ -123,7 +123,7 @@ function contractLineLightboxItems(it) {
       ? it.ad_space_title.trim()
       : it?.ad_space_code
         ? String(it.ad_space_code)
-        : "Toma";
+        : "Espacio publicitario";
   const out = [];
   if (Array.isArray(it?.ad_space_gallery_images) && it.ad_space_gallery_images.length > 0) {
     const seenSrc = new Set();
@@ -412,7 +412,7 @@ export function ContratosAdminSection() {
                   id="contratos-filter-q"
                   value={filterQ}
                   onChange={setFilterQ}
-                  placeholder="Cliente, pedido, código de toma (ej. DEMO-T5A o DEMO - T5A)…"
+                  placeholder="Cliente, pedido, código de espacio (ej. DEMO-T5A o DEMO - T5A)…"
                 />
               </div>
               <AdminFilterSelect
@@ -485,7 +485,7 @@ export function ContratosAdminSection() {
                     <tr className="border-b border-zinc-200/80">
                       <th className="w-10 px-2 py-3" aria-hidden />
                       <th className="w-14 px-2 py-2">Foto</th>
-                      <th className="min-w-[11rem] max-w-[18rem] px-3 py-2">Toma</th>
+                      <th className="min-w-[11rem] max-w-[18rem] px-3 py-2">Espacio publicitario</th>
                       <th className="min-w-[9rem] max-w-[16rem] px-3 py-2">Cliente</th>
                       <th className="min-w-[14rem] px-3 py-2">Línea de tiempo / ocupación</th>
                       <th className="min-w-[8rem] px-3 py-2">Pedido</th>
@@ -609,7 +609,7 @@ export function ContratosAdminSection() {
                               <AdminDetailInset className="space-y-4">
                                 <AdminAccordionDetailHeader
                                   titleLabel="Línea de contrato"
-                                  titleLine={`${it.ad_space_code} — ${it.ad_space_title || "Toma"}`}
+                                  titleLine={`${it.ad_space_code} — ${it.ad_space_title || "Espacio publicitario"}`}
                                   hint={clientName || undefined}
                                 />
                                 <AdminDetailSection panelId={panelId} sectionId="econom" title="Importes">
@@ -653,7 +653,7 @@ export function ContratosAdminSection() {
         initialIndex={galleryLightbox.initialIndex}
         showDownload={false}
         showThumbnails={galleryLightbox.items.length > 1}
-        ariaLabel="Imágenes de la toma"
+        ariaLabel="Imágenes del espacio publicitario"
       />
     </>
   );

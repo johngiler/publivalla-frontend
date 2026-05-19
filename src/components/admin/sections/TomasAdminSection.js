@@ -71,6 +71,7 @@ import {
   FilterClearAction,
 } from "@/components/admin/AdminListFilters";
 import { AdminListPagination } from "@/components/admin/AdminListPagination";
+import { AdminTomasViewQuerySync } from "@/components/admin/AdminTomasViewQuerySync";
 import {
   AdminDashboardFilterLink,
   dashboardCentrosSearchHref,
@@ -299,6 +300,27 @@ export function TomasAdminSection() {
     setModal("view");
   }
 
+  const openViewById = useCallback(
+    async (id) => {
+      const sid = String(id ?? "").trim();
+      if (!sid) return;
+      const fromList = rows.find((s) => String(s.id) === sid);
+      if (fromList) {
+        openView(fromList);
+        return;
+      }
+      try {
+        const data = await authFetch(`/api/admin/spaces/${sid}/`);
+        openView(data);
+      } catch (e) {
+        setPageErr(
+          e instanceof Error ? e.message : "No se pudo abrir el detalle del espacio publicitario.",
+        );
+      }
+    },
+    [rows],
+  );
+
   function openEdit(s) {
     if (!s) return;
     setSelected(s);
@@ -503,6 +525,7 @@ export function TomasAdminSection() {
 
   return (
     <div className={adminPanelCard}>
+      <AdminTomasViewQuerySync onViewId={openViewById} />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">
           <div className={adminSectionHeaderIconWrap}>
@@ -511,7 +534,7 @@ export function TomasAdminSection() {
           <div>
             <h2 className="text-xl font-bold text-slate-900">Espacios publicitarios</h2>
             <p className="mt-0.5 text-sm text-zinc-500">
-              {totalCount} espacio{totalCount === 1 ? "" : "s"}
+              {totalCount} {totalCount === 1 ? "espacio publicitario" : "espacios publicitarios"}
             </p>
           </div>
         </div>
@@ -534,11 +557,11 @@ export function TomasAdminSection() {
         <div className="mt-6">
           <EmptyState
             icon={<EmptyStateIconGrid />}
-            title="No hay tomas en el catálogo"
+            title="No hay espacios publicitarios en el catálogo"
             description={
               canCreateSpaces
-                ? "Aún no hay espacios publicitarios cargados. Puedes crear el primero con «Nueva toma»."
-                : "Aún no hay espacios publicitarios cargados. La creación de tomas no está habilitada para este workspace; si necesitas cambiarlo, contacta a la plataforma."
+                ? "Aún no hay espacios publicitarios cargados. Puedes crear el primero con «Nuevo espacio»."
+                : "Aún no hay espacios publicitarios cargados. La creación de espacios publicitarios no está habilitada para este workspace; si necesitas cambiarlo, contacta a la plataforma."
             }
           />
         </div>
@@ -553,7 +576,7 @@ export function TomasAdminSection() {
             />
             <AdminFilterSelect
               id="tomas-filter-status"
-              label="Estado de la toma"
+              label="Estado del espacio publicitario"
               value={filterSpaceStatus}
               onChange={setFilterSpaceStatus}
               options={SPACE_STATUS_FILTERS}
@@ -570,7 +593,7 @@ export function TomasAdminSection() {
 
           {rows.length === 0 && filtersActive ? (
             <div className="mt-6 rounded-[15px] border border-zinc-200 bg-zinc-50/80 px-4 py-8 text-center text-sm text-zinc-600">
-              <p>Ninguna toma coincide con los filtros.</p>
+              <p>Ningún espacio publicitario coincide con los filtros.</p>
               <div className="mt-5 flex justify-center">
                 <FilterClearAction
                   onClick={() => {
@@ -652,7 +675,7 @@ export function TomasAdminSection() {
                               aria-label={
                                 s.title
                                   ? `Ver galería: ${s.title}`
-                                  : "Ver imágenes de la toma"
+                                  : "Ver imágenes del espacio publicitario"
                               }
                               onClick={() => {
                                 const fallback = mediaUrlForUiWithWebp(thumbRaw);
@@ -720,14 +743,16 @@ export function TomasAdminSection() {
                       <AdminAccordionRowPanel colSpan={7} panelId={panelId}>
                         <AdminAccordionDetailHeader
                           badgeText={s.code || "—"}
-                          titleLabel={publicOk ? "Toma en catálogo" : "No visible en catálogo"}
+                          titleLabel={
+                            publicOk ? "Espacio publicitario en catálogo" : "No visible en catálogo"
+                          }
                           titleLine={
                             <p className="truncate text-sm font-medium text-zinc-900">{s.title}</p>
                           }
                           hint={
                             publicOk
                               ? "Vista ampliada sin editar"
-                              : "Activa el catálogo del centro y/o la toma para que aparezca en el marketplace"
+                              : "Activa el catálogo del centro y/o el espacio publicitario para que aparezca en el marketplace"
                           }
                         />
 

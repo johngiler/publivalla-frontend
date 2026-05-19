@@ -27,7 +27,7 @@ import {
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 
 const DISABLED = `cursor-not-allowed ${CATALOG_MONTH_UNAVAILABLE_BG} ${CATALOG_MONTH_UNAVAILABLE_RING} text-zinc-400`;
-const BASELINE_ONLY = `${CATALOG_MONTH_CART_BASELINE_RING} ${CATALOG_MONTH_CART_BASELINE_BG} text-sky-900 hover:border-sky-500/80 hover:bg-sky-50`;
+const BASELINE_ONLY = `${CATALOG_MONTH_CART_BASELINE_RING} ${CATALOG_MONTH_CART_BASELINE_BG} text-[#b45309] hover:border-[#d98e32]/90 hover:bg-white`;
 
 /**
  * Selector de meses dentro del año del API. El contrato sigue siendo un intervalo continuo
@@ -221,7 +221,7 @@ export function SpaceMonthRangePicker({
             if (inRange) {
               cellClass = `${CATALOG_MONTH_SELECTED_RING} ${CATALOG_MONTH_SELECTED_BG} text-[#b45309]`;
               if (hasCartBaseline && inBaseline && !selectionMatchesBaseline) {
-                cellClass += " shadow-[inset_0_0_0_1px_rgba(14,165,233,0.45)]";
+                cellClass += " shadow-[inset_0_0_0_1px_rgba(217,142,50,0.45)]";
               }
             } else if (baselineOnly) {
               cellClass = BASELINE_ONLY;

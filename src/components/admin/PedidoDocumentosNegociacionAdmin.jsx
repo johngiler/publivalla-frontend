@@ -423,7 +423,7 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
                     {e.lineCaption}
                   </p>
                 ) : orderLineCount > 1 ? (
-                  <p className="text-[10px] leading-snug text-zinc-400">Toma no indicada</p>
+                  <p className="text-[10px] leading-snug text-zinc-400">Espacio publicitario no indicado</p>
                 ) : null;
                 if (e.kind === "image") {
                   const imgIdx = artImageEntries.findIndex((x) => x.id === e.id);

@@ -1,10 +1,15 @@
 /** Rutas de listado admin con paginación y filtros (parámetros alineados con el backend). */
 
-export function ordersListPath(page, search, status) {
+/**
+ * @param {string} [excludeStatus] — p. ej. `active` (excluye ese estado del listado).
+ */
+export function ordersListPath(page, search, status, excludeStatus) {
   const p = new URLSearchParams();
   p.set("page", String(page));
   if (search.trim()) p.set("search", search.trim());
   if (status && status !== "all") p.set("status", status);
+  const ex = (excludeStatus ?? "").trim();
+  if (ex) p.set("exclude_status", ex);
   return `/api/orders/?${p.toString()}`;
 }
 

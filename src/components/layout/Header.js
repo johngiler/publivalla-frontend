@@ -12,7 +12,6 @@ import {
   IconCart,
   IconCentros,
   IconClose,
-  IconHeart,
   IconLock,
   IconLogout,
   IconMenu,
@@ -51,7 +50,6 @@ export function Header() {
   const cartActive = path.startsWith("/cart");
   const ordersActive = path.startsWith("/cuenta/pedidos");
   const contractsActive = path.startsWith("/cuenta/contratos");
-  const favoritesActive = path.startsWith("/cuenta/favoritos");
   /** Activo: fondo oscuro; texto e iconos en blanco (no mezclar con `navLink` para evitar `text-zinc-600` de Tailwind). */
   const navItem = (active) =>
     active
@@ -182,10 +180,6 @@ export function Header() {
                       <IconLock className="text-zinc-500" />
                       Mis contratos
                     </Link>
-                    <Link href="/cuenta/favoritos" className={mobileRow} onClick={closeMenu}>
-                      <IconHeart className="text-zinc-500" />
-                      Mis favoritos
-                    </Link>
                   </>
                 ) : null}
                 {authReady && me ? (
@@ -275,10 +269,6 @@ export function Header() {
               <Link href="/cuenta/contratos" className={navItem(contractsActive)} aria-label="Mis contratos">
                 <IconLock />
                 <span className="whitespace-nowrap">Mis contratos</span>
-              </Link>
-              <Link href="/cuenta/favoritos" className={navItem(favoritesActive)} aria-label="Mis favoritos">
-                <IconHeart />
-                <span className="whitespace-nowrap">Mis favoritos</span>
               </Link>
             </>
           ) : null}

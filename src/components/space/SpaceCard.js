@@ -8,6 +8,7 @@ import {
   spaceStatusPillClassName,
 } from "@/components/admin/adminConstants";
 import { IconCart } from "@/components/layout/navIcons";
+import { CATALOG_CART_BADGE_CLASS } from "@/lib/catalogMonthColors";
 import { formatCatalogTitle } from "@/lib/catalogDisplay";
 import { spaceCoverCandidatesForUi } from "@/lib/mediaUrls";
 
@@ -116,8 +117,10 @@ export function SpaceCard({
               </div>
             ) : null}
             {inCart ? (
-              <span className="absolute right-2.5 top-2.5 inline-flex max-w-[min(100%-4rem,9.5rem)] items-center gap-1 rounded-full bg-[var(--mp-secondary)] px-2.5 py-1 text-[10px] font-semibold leading-tight text-white shadow-[0_2px_10px_rgba(234,88,12,0.45)] ring-1 ring-white/35">
-                <IconCart className="h-3 w-3 shrink-0 text-white" aria-hidden />
+              <span
+                className={`absolute right-2.5 top-2.5 inline-flex max-w-[min(100%-4rem,9.5rem)] items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold leading-tight shadow-[0_1px_3px_rgba(0,0,0,0.08)] ${CATALOG_CART_BADGE_CLASS}`}
+              >
+                <IconCart className="h-3 w-3 shrink-0" aria-hidden />
                 <span className="truncate">En carrito</span>
               </span>
             ) : null}

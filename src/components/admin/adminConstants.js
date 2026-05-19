@@ -1,3 +1,8 @@
+import {
+  CATALOG_MONTH_AVAILABLE_BG,
+  CATALOG_MONTH_AVAILABLE_RING,
+} from "@/lib/catalogMonthColors";
+
 /** Tipos de toma: genéricos + formatos de catálogo PDF (espacios publicitarios en CC). */
 export const SPACE_TYPES = [
   { v: "billboard", l: "Valla (genérico)" },
@@ -83,7 +88,9 @@ export function spaceStatusLabel(status, statusLabelFromApi) {
 
 export function spaceStatusPillClassName(status) {
   const s = String(status ?? "");
-  if (s === "available") return "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/80";
+  if (s === "available") {
+    return `${CATALOG_MONTH_AVAILABLE_BG} text-zinc-800 ${CATALOG_MONTH_AVAILABLE_RING}`;
+  }
   if (s === "occupied") return "bg-violet-50 text-violet-900 ring-1 ring-violet-200/80";
   if (s === "reserved") return "bg-violet-50 text-violet-900 ring-1 ring-violet-200/80";
   if (s === "blocked") return "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200/80";

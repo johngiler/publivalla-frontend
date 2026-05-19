@@ -14,18 +14,24 @@ import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { FilterClearAction } from "@/components/admin/AdminListFilters";
 import { IconAdminChevronDown } from "@/components/admin/adminIcons";
 import { AdminListPagination } from "@/components/admin/AdminListPagination";
+import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartProvider";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import {
   buildHomeCatalogCenterFacetsKey,
+  buildHomeCatalogClientScopeFacetsKey,
   buildHomeCatalogFacetsKey,
   buildHomeCatalogPageKey,
   buildHomeCatalogTypeFacetsKey,
   homeCatalogCenterFacetsFetcher,
+  homeCatalogClientScopeFacetsFetcher,
   homeCatalogFacetsFetcher,
   homeCatalogPageFetcher,
   homeCatalogTypeFacetsFetcher,
   homeCatalogSwrOptions,
 } from "@/lib/swr/homeCatalogSwr";
+
+const MINE_SCOPES = new Set(["favorites", "active", "cart", "reserved"]);
 
 function heroAvailabilityLine(totalSpaces, locationCount, omitLocations) {
   const esp =
@@ -58,13 +64,27 @@ function facetLabel(item) {
 }
 
 export function HomeSpacesCatalogClient() {
+  const { authReady, isClient } = useAuth();
   const { displayName } = useWorkspace();
+  const catalogAuthScope = authReady && isClient ? "client" : "guest";
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const centerSlug = useMemo(
     () => (searchParams.get("center") || "").trim(),
     [searchParams],
+  );
+  const selectedMine = useMemo(() => {
+    const m = (searchParams.get("mine") || "").trim().toLowerCase();
+    return MINE_SCOPES.has(m) ? m : "";
+  }, [searchParams]);
+  const { items: cartItems } = useCart();
+  const cartAdSpaceIds = useMemo(
+    () =>
+      cartItems
+        .map((i) => Number(i.id))
+        .filter((n) => Number.isFinite(n) && n > 0),
+    [cartItems],
   );
   const filterUid = useId();
   const filtersPanelId = `${filterUid}-filters-panel`;
@@ -77,15 +97,28 @@ export function HomeSpacesCatalogClient() {
   const debouncedQuery = useDebouncedValue(query, 400);
 
   const pageKey = useMemo(
-    () =>
-      buildHomeCatalogPageKey({
+    () => [
+      ...      buildHomeCatalogPageKey({
         search: debouncedQuery,
         city: selectedCity,
         center: centerSlug,
         type: selectedType,
+        mine: selectedMine,
+        cartIds: cartAdSpaceIds,
         page,
       }),
-    [debouncedQuery, selectedCity, centerSlug, selectedType, page],
+      catalogAuthScope,
+    ],
+    [
+      debouncedQuery,
+      selectedCity,
+      centerSlug,
+      selectedType,
+      selectedMine,
+      cartAdSpaceIds,
+      page,
+      catalogAuthScope,
+    ],
   );
   const facetsKey = useMemo(
     () =>
@@ -93,8 +126,10 @@ export function HomeSpacesCatalogClient() {
         search: debouncedQuery,
         center: centerSlug,
         type: selectedType,
+        mine: selectedMine,
+        cartIds: cartAdSpaceIds,
       }),
-    [debouncedQuery, centerSlug, selectedType],
+    [debouncedQuery, centerSlug, selectedType, selectedMine, cartAdSpaceIds],
   );
   const centerFacetsKey = useMemo(
     () =>
@@ -102,8 +137,10 @@ export function HomeSpacesCatalogClient() {
         search: debouncedQuery,
         city: selectedCity,
         type: selectedType,
+        mine: selectedMine,
+        cartIds: cartAdSpaceIds,
       }),
-    [debouncedQuery, selectedCity, selectedType],
+    [debouncedQuery, selectedCity, selectedType, selectedMine, cartAdSpaceIds],
   );
   const typeFacetsKey = useMemo(
     () =>
@@ -111,8 +148,34 @@ export function HomeSpacesCatalogClient() {
         search: debouncedQuery,
         city: selectedCity,
         center: centerSlug,
+        mine: selectedMine,
+        cartIds: cartAdSpaceIds,
       }),
-    [debouncedQuery, selectedCity, centerSlug],
+    [debouncedQuery, selectedCity, centerSlug, selectedMine, cartAdSpaceIds],
+  );
+  const clientScopeFacetsKey = useMemo(
+    () =>
+      isClient
+        ? [
+            ...buildHomeCatalogClientScopeFacetsKey({
+              search: debouncedQuery,
+              city: selectedCity,
+              center: centerSlug,
+              type: selectedType,
+              cartIds: cartAdSpaceIds,
+            }),
+            catalogAuthScope,
+          ]
+        : null,
+    [
+      isClient,
+      debouncedQuery,
+      selectedCity,
+      centerSlug,
+      selectedType,
+      cartAdSpaceIds,
+      catalogAuthScope,
+    ],
   );
 
   const {
@@ -138,6 +201,24 @@ export function HomeSpacesCatalogClient() {
     homeCatalogTypeFacetsFetcher,
     homeCatalogSwrOptions,
   );
+
+  const { data: clientScopeFacetsData } = useSWR(
+    clientScopeFacetsKey,
+    homeCatalogClientScopeFacetsFetcher,
+    homeCatalogSwrOptions,
+  );
+
+  const clientScopeFacets = useMemo(() => {
+    const items = Array.isArray(clientScopeFacetsData?.items)
+      ? clientScopeFacetsData.items
+      : [];
+    return items.filter(
+      (row) =>
+        row &&
+        typeof row.scope === "string" &&
+        MINE_SCOPES.has(row.scope.trim().toLowerCase()),
+    );
+  }, [clientScopeFacetsData]);
 
   const spaces = useMemo(
     () => (Array.isArray(pageData?.results) ? pageData.results : []),
@@ -177,8 +258,9 @@ export function HomeSpacesCatalogClient() {
       selectedCity.trim() !== "" ||
       query.trim() !== "" ||
       centerSlug !== "" ||
-      selectedType.trim() !== "",
-    [selectedCity, query, centerSlug, selectedType],
+      selectedType.trim() !== "" ||
+      selectedMine !== "",
+    [selectedCity, query, centerSlug, selectedType, selectedMine],
   );
 
   const dataReady = pageData !== undefined || loadError != null;
@@ -186,7 +268,30 @@ export function HomeSpacesCatalogClient() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedQuery, selectedCity, centerSlug, selectedType]);
+  }, [debouncedQuery, selectedCity, centerSlug, selectedType, selectedMine]);
+
+  useEffect(() => {
+    if (!authReady) return;
+    const m = (searchParams.get("mine") || "").trim().toLowerCase();
+    if (m && MINE_SCOPES.has(m) && !isClient) {
+      const qs = searchParams.toString();
+      const next = qs ? `${pathname}?${qs}` : pathname;
+      router.replace(`/login?next=${encodeURIComponent(next)}`);
+    }
+  }, [authReady, isClient, searchParams, pathname, router]);
+
+  useEffect(() => {
+    if (selectedMine) setFiltersPanelOpen(true);
+  }, [selectedMine]);
+
+  function setMineInUrl(nextMine) {
+    const p = new URLSearchParams(searchParams.toString());
+    const scope = (nextMine || "").trim().toLowerCase();
+    if (scope && MINE_SCOPES.has(scope)) p.set("mine", scope);
+    else p.delete("mine");
+    const qs = p.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
 
   function clearFilters() {
     setSelectedCity("");
@@ -195,6 +300,7 @@ export function HomeSpacesCatalogClient() {
     setPage(1);
     const p = new URLSearchParams(searchParams.toString());
     p.delete("center");
+    p.delete("mine");
     const s = p.toString();
     router.replace(s ? `${pathname}?${s}` : pathname, { scroll: false });
   }
@@ -342,7 +448,7 @@ export function HomeSpacesCatalogClient() {
                     : "pointer-events-none opacity-0 -translate-y-1"
                 }`}
                 aria-hidden={!filtersPanelOpen}
-                aria-label="Filtros por ciudad, centro comercial y tipo de toma"
+                aria-label="Filtros por lo mío, ciudad, centro comercial y tipo de espacio publicitario"
               >
                 {filtersActive ? (
                   <div className="mb-3 flex justify-end">
@@ -354,6 +460,61 @@ export function HomeSpacesCatalogClient() {
                 ) : null}
 
                 <div className="space-y-4">
+                  {isClient ? (
+                    <div>
+                      <p
+                        className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500"
+                        id="home-filter-mine-label"
+                      >
+                        Lo mío
+                      </p>
+                      <div
+                        className="mp-hide-scrollbar -mx-1 w-full overflow-x-auto overscroll-x-contain px-1 [-webkit-overflow-scrolling:touch] sm:-mx-0 sm:overflow-visible sm:px-0"
+                        role="toolbar"
+                        aria-labelledby="home-filter-mine-label"
+                      >
+                        <div className="flex w-max max-w-none flex-nowrap items-center gap-2 sm:w-full sm:flex-wrap">
+                          {clientScopeFacets.map((item) => {
+                            const scope =
+                              typeof item.scope === "string"
+                                ? item.scope.trim().toLowerCase()
+                                : "";
+                            const label =
+                              typeof item.label === "string" && item.label.trim()
+                                ? item.label.trim()
+                                : scope;
+                            const count =
+                              typeof item.count === "number" ? item.count : 0;
+                            const active = selectedMine === scope;
+                            return (
+                              <button
+                                key={scope}
+                                type="button"
+                                title={`${label} · ${count} espacios`}
+                                onClick={() =>
+                                  setMineInUrl(active ? "" : scope)
+                                }
+                                className={`${chipBase} ${active ? chipOn : chipOff}`}
+                              >
+                                <span className="max-w-[11rem] truncate">
+                                  {label}
+                                </span>
+                                <span
+                                  className={
+                                    active
+                                      ? "tabular-nums text-zinc-200"
+                                      : "tabular-nums font-medium text-zinc-400"
+                                  }
+                                >
+                                  {count}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                   <div>
                     <p
                       className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500"
@@ -494,7 +655,7 @@ export function HomeSpacesCatalogClient() {
                       className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500"
                       id="home-filter-type-label"
                     >
-                      Tipo de toma
+                      Tipo de espacio publicitario
                     </p>
                     <div
                       className="mp-hide-scrollbar -mx-1 w-full overflow-x-auto overscroll-x-contain px-1 [-webkit-overflow-scrolling:touch] sm:-mx-0 sm:overflow-visible sm:px-0"
@@ -593,7 +754,7 @@ export function HomeSpacesCatalogClient() {
         <EmptyState
           icon={<EmptyStateIconSearchOff />}
           title="Nada coincide con tu búsqueda"
-          description="Prueba otra búsqueda o abre Filtros para ajustar ciudad, centro y tipo de toma."
+          description="Prueba otra búsqueda o abre Filtros para ajustar lo mío, ciudad, centro o tipo de espacio publicitario."
           action={
             <FilterClearAction
               onClick={clearFilters}

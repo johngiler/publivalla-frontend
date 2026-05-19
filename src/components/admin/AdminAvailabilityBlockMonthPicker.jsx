@@ -13,7 +13,7 @@ import {
   formatSelectedMonthsLabel,
   linearIndicesFromPick,
   monthLinearIndex,
-  rentalSegmentsToLinearIndices,
+  disabledMonthsForBlockPicker,
   resolveMonthsOccupiedByYear,
   selectedMonthsTouchOccupied,
   selectionFromLinearIndices,
@@ -32,33 +32,7 @@ const DISABLED = `cursor-not-allowed ${CATALOG_MONTH_UNAVAILABLE_BG} ${CATALOG_M
 const SELECTED = `${CATALOG_MONTH_SELECTED_RING} ${CATALOG_MONTH_SELECTED_BG} text-[#b45309]`;
 const AVAILABLE = `${CATALOG_MONTH_AVAILABLE_RING} ${CATALOG_MONTH_AVAILABLE_BG} text-zinc-800 hover:border-zinc-400 hover:bg-white`;
 
-/**
- * Meses elegibles al editar el bloqueo actual (no contar como «no disponible» en el picker).
- * @param {Record<number, boolean[]>} disabledByYear
- * @param {number[]} years
- * @param {{ rental_segments?: Array<{ start_date?: string, end_date?: string }>, start_date?: string, end_date?: string } | null} editingPick
- */
-function disabledMonthsForBlockPicker(disabledByYear, years, editingPick) {
-  if (!editingPick) return disabledByYear;
-  const editable = new Set(
-    rentalSegmentsToLinearIndices(
-      editingPick.rental_segments?.length
-        ? editingPick.rental_segments
-        : [{ start_date: editingPick.start_date, end_date: editingPick.end_date }],
-    ),
-  );
-  /** @type {Record<number, boolean[]>} */
-  const out = {};
-  for (const y of years) {
-    const row = disabledByYear[y] ?? Array(12).fill(true);
-    out[y] = row.map((busy, i) => {
-      if (!busy) return false;
-      const idx = monthLinearIndex(y, i + 1);
-      return editable.has(idx) ? false : true;
-    });
-  }
-  return out;
-}
+const MONTH_CELL_LAYOUT = "flex items-center justify-center text-center";
 
 /**
  * Selector de meses sueltos (sin secuencia obligatoria); emite tramos contiguos al guardar.
@@ -67,6 +41,7 @@ function disabledMonthsForBlockPicker(disabledByYear, years, editingPick) {
  *   pickSync?: { rental_segments?: Array<{ start_date?: string, end_date?: string }>, start_date?: string, end_date?: string } | null,
  *   editingPick?: { start_date?: string, end_date?: string } | null,
  *   onSelectionChange?: (payload: ReturnType<typeof selectionFromLinearIndices>) => void,
+ *   readOnly?: boolean,
  * }} props
  */
 export function AdminAvailabilityBlockMonthPicker({
@@ -74,6 +49,7 @@ export function AdminAvailabilityBlockMonthPicker({
   pickSync = null,
   editingPick = null,
   onSelectionChange,
+  readOnly = false,
 }) {
   const refDate = useMemo(() => new Date(), []);
   const pickKey = useMemo(() => {
@@ -130,6 +106,7 @@ export function AdminAvailabilityBlockMonthPicker({
 
   const onMonthClick = useCallback(
     (year, month) => {
+      if (readOnly) return;
       if (disabledByYear[year]?.[month - 1]) return;
       const idx = monthLinearIndex(year, month);
       setSelected((prev) => {
@@ -140,7 +117,7 @@ export function AdminAvailabilityBlockMonthPicker({
         return next;
       });
     },
-    [disabledByYear, emitSelection],
+    [disabledByYear, emitSelection, readOnly],
   );
 
   const reset = useCallback(() => {
@@ -159,30 +136,45 @@ export function AdminAvailabilityBlockMonthPicker({
 
   if (!adSpaceId) {
     return (
-      <p className="text-sm text-zinc-500">Selecciona una toma para elegir los meses a bloquear.</p>
+      <p className="text-sm text-zinc-500">
+        {readOnly
+          ? "Sin espacio publicitario asociado."
+          : "Selecciona un espacio publicitario para elegir los meses a bloquear."}
+      </p>
     );
   }
   if (isLoading) {
-    return <p className="text-sm text-zinc-500">Cargando calendario de la toma…</p>;
+    return <p className="text-sm text-zinc-500">Cargando calendario del espacio publicitario…</p>;
   }
   if (error) {
     return (
       <p className="text-sm text-red-700" role="alert">
-        No se pudo cargar el calendario de la toma.
+        No se pudo cargar el calendario del espacio publicitario.
       </p>
     );
   }
 
+  const monthCellClass = (blocked, isSelected) => {
+    if (blocked && !isSelected) return DISABLED;
+    if (isSelected) return SELECTED;
+    if (readOnly) {
+      return `${CATALOG_MONTH_AVAILABLE_RING} ${CATALOG_MONTH_AVAILABLE_BG} text-zinc-800`;
+    }
+    return AVAILABLE;
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-readonly={readOnly || undefined}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-semibold text-zinc-900">Meses a bloquear</p>
+        <p className="text-sm font-semibold text-zinc-900">
+          {readOnly ? "Calendario del espacio publicitario" : "Meses a bloquear"}
+        </p>
         <CatalogMonthLegend />
       </div>
 
-      {!anySelectable ? (
+      {!readOnly && !anySelectable ? (
         <p className="text-sm text-amber-900">
-          No quedan meses futuros libres en la ventana del calendario para esta toma.
+          No quedan meses futuros libres en la ventana del calendario para este espacio publicitario.
         </p>
       ) : null}
 
@@ -199,6 +191,21 @@ export function AdminAvailabilityBlockMonthPicker({
               const blocked = disabledByYear[year]?.[i];
               const idx = monthLinearIndex(year, m);
               const isSelected = selected.has(idx);
+              const cellClass = `min-h-11 min-w-0 rounded-xl border text-xs font-semibold sm:min-h-10 ${MONTH_CELL_LAYOUT} ${monthCellClass(
+                blocked,
+                isSelected,
+              )} ${readOnly ? "" : "transition-colors"}`;
+              if (readOnly) {
+                return (
+                  <span
+                    key={label}
+                    aria-label={`${label} ${year}${isSelected ? ", bloqueado en este registro" : blocked ? ", no disponible" : ", libre"}`}
+                    className={cellClass}
+                  >
+                    {label}
+                  </span>
+                );
+              }
               return (
                 <button
                   key={label}
@@ -206,9 +213,7 @@ export function AdminAvailabilityBlockMonthPicker({
                   disabled={blocked}
                   onClick={() => onMonthClick(year, m)}
                   aria-pressed={isSelected}
-                  className={`min-h-11 rounded-xl border text-xs font-semibold transition-colors sm:min-h-10 ${
-                    blocked ? DISABLED : isSelected ? SELECTED : AVAILABLE
-                  }`}
+                  className={cellClass}
                 >
                   {label}
                 </button>
@@ -218,7 +223,7 @@ export function AdminAvailabilityBlockMonthPicker({
         </div>
       ))}
 
-      {selectionValid ? (
+      {!readOnly && selectionValid ? (
         <div className="flex flex-wrap items-center gap-3">
           <FilterClearAction onClick={reset} label="Limpiar selección" />
         </div>
@@ -226,21 +231,24 @@ export function AdminAvailabilityBlockMonthPicker({
 
       {rangeLabel ? (
         <p className="text-sm text-zinc-700">
-          Selección: <strong className="font-medium text-zinc-900">{rangeLabel}</strong>
-          {segmentCount > 1 ? (
+          {readOnly ? "Periodo bloqueado: " : "Selección: "}
+          <strong className="font-medium text-zinc-900">{rangeLabel}</strong>
+          {!readOnly && segmentCount > 1 ? (
             <span className="text-zinc-500">
               {" "}
               ({segmentCount} tramos al guardar)
             </span>
           ) : null}
         </p>
+      ) : readOnly ? (
+        <p className="text-sm text-zinc-500">Sin meses definidos en este bloqueo.</p>
       ) : (
         <p className="text-sm text-zinc-500">
           Haz clic en cada mes que quieras bloquear; no tienen que ser consecutivos.
         </p>
       )}
 
-      {selectionValid && touchesBlocked ? (
+      {!readOnly && selectionValid && touchesBlocked ? (
         <p className="text-sm font-medium text-red-600" role="alert">
           Hay meses seleccionados que ya están ocupados. Quítalos de la selección.
         </p>

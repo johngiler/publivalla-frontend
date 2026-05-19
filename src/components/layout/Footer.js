@@ -7,7 +7,6 @@ import {
   IconBuilding,
   IconCart,
   IconCentros,
-  IconHeart,
   IconLock,
   IconMail,
   IconMapPin,
@@ -129,9 +128,6 @@ function FooterExploreList({ me, authReady, isClient, isAdmin }) {
           <>
             <FooterExploreLink href="/cuenta/contratos" icon={IconLock}>
               Mis contratos
-            </FooterExploreLink>
-            <FooterExploreLink href="/cuenta/favoritos" icon={IconHeart}>
-              Mis favoritos
             </FooterExploreLink>
             <FooterExploreLink href="/cuenta" icon={IconBuilding}>
               Mi empresa

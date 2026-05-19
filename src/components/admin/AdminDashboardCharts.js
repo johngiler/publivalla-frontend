@@ -142,7 +142,7 @@ function CentersBarChart({ data, gradId }) {
   if (!data.length) {
     return (
       <div className="flex h-[160px] items-center justify-center text-sm text-zinc-500">
-        Añade tomas en los centros para ver esta comparación.
+        Añade espacios publicitarios en los centros para ver esta comparación.
       </div>
     );
   }
@@ -168,7 +168,7 @@ function CentersBarChart({ data, gradId }) {
           tickLine={false}
         />
         <Tooltip
-          formatter={(v) => [v, "Tomas"]}
+          formatter={(v) => [v, "Espacios publicitarios"]}
           contentStyle={{ borderRadius: 12, border: "1px solid #e4e4e7", fontSize: 12 }}
         />
         <Bar dataKey="count" fill={`url(#${gradId})`} radius={[0, 8, 8, 0]} maxBarSize={20} />
@@ -202,7 +202,7 @@ export function AdminDashboardCharts({ stats }) {
     <div className="space-y-5">
       <div className="grid gap-5 lg:grid-cols-2">
         <StatusDonut
-          title="Tomas por estado"
+          title="Espacios publicitarios por estado"
           subtitle="Disponible, reservado, ocupado, bloqueado"
           rows={Array.isArray(stats?.spaces_by_status) ? stats.spaces_by_status : []}
           mapChoices={SPACE_STATUS}
@@ -234,7 +234,7 @@ export function AdminDashboardCharts({ stats }) {
           aria-hidden
         />
         <div className="relative">
-          <p className={TITLE}>Centros con más tomas</p>
+          <p className={TITLE}>Centros con más espacios publicitarios</p>
           <p className={SUB}>Hasta 8 centros ordenados por cantidad de espacios</p>
           <div className="mt-2">
             <CentersBarChart data={centersBarData} gradId={gCenters} />

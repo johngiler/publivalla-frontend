@@ -411,7 +411,7 @@ export function MountingProvidersAdminSection() {
               <h2 className="text-xl font-bold text-slate-900">Proveedores de montaje</h2>
               <p className="mt-0.5 text-sm text-zinc-500">
                 {centers.length === 0
-                  ? "Empresas autorizadas por centro; se muestran en el detalle de cada toma del catálogo."
+                  ? "Empresas autorizadas por centro; se muestran en el detalle de cada espacio publicitario del catálogo."
                   : `${totalCount} proveedor${totalCount === 1 ? "" : "es"}`}
               </p>
             </div>
@@ -792,7 +792,8 @@ export function MountingProvidersAdminSection() {
         }}
       >
         <p>
-          ¿Eliminar este proveedor de montaje? Dejará de mostrarse en las tomas de este centro. Esta acción no se puede
+          ¿Eliminar este proveedor de montaje? Dejará de mostrarse en los espacios publicitarios de este centro. Esta
+          acción no se puede
           deshacer.
         </p>
       </AdminConfirmDialog>

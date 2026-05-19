@@ -3,11 +3,13 @@
 import { useMemo } from "react";
 
 import { SpaceMonthAvailabilityBar } from "@/components/catalog/SpaceMonthAvailabilityBar";
+import { useCatalogSpaceWithClientMonths } from "@/hooks/useCatalogSpaceWithClientMonths";
 import {
   catalogAvailabilityYears,
   catalogSummaryAvailabilityYears,
   isMonthInCartIsoRange,
   monthBoundsFromIsoInYear,
+  resolveClientMonthsHighlightByYear,
   resolveMonthsOccupiedByYear,
 } from "@/lib/spaceCalendar";
 
@@ -40,19 +42,24 @@ export function SpaceMultiYearAvailabilityBar({
   variant = "summary",
   showYearTitle = true,
 }) {
+  const spaceWithClient = useCatalogSpaceWithClientMonths(space);
   const refDate = useMemo(() => new Date(), []);
   const isSummary = variant === "summary";
   const years = useMemo(
     () =>
       isSummary
-        ? catalogSummaryAvailabilityYears(refDate, space)
-        : catalogAvailabilityYears(refDate, space),
-    [isSummary, refDate, space],
+        ? catalogSummaryAvailabilityYears(refDate, spaceWithClient)
+        : catalogAvailabilityYears(refDate, spaceWithClient),
+    [isSummary, refDate, spaceWithClient],
   );
   const byYear = useMemo(() => {
     if (byYearProp) return byYearProp;
-    return resolveMonthsOccupiedByYear(space, refDate, years);
-  }, [byYearProp, space, refDate, years]);
+    return resolveMonthsOccupiedByYear(spaceWithClient, refDate, years);
+  }, [byYearProp, spaceWithClient, refDate, years]);
+  const clientHighlight = useMemo(
+    () => resolveClientMonthsHighlightByYear(spaceWithClient, refDate, years),
+    [spaceWithClient, refDate, years],
+  );
 
   return (
     <div className={`${compact ? "space-y-2" : "space-y-3"} ${className}`}>
@@ -76,6 +83,8 @@ export function SpaceMultiYearAvailabilityBar({
             {showYearTitle ? <p className={yearTitleClass}>{year}</p> : null}
             <SpaceMonthAvailabilityBar
               monthsOccupied={byYear[year]}
+              clientMonthsReserved={clientHighlight?.reserved?.[year] ?? null}
+              clientMonthsActive={clientHighlight?.active?.[year] ?? null}
               availabilityYear={year}
               cartMonthsInYear={hasCartInYear ? cartMonthsInYear : null}
               cartRentalSegments={cartRentalSegments}

@@ -1,14 +1,21 @@
 /**
  * Miniaturas cuadradas compartidas: radio **10px** en todos los marcos de esta lib.
  * - 100×100: lightbox, galería admin de toma, comprobante checkout (`squareListImagePreview*`).
- * - 60×60: columna Portada en tablas admin CC y tomas; miniaturas en «Reserva — líneas» de Mis pedidos (`squareAdminTablePortada*`).
- * - Líneas de pedido (panel Pedidos): miniatura **120×120** cuadrada (`squareOrderLinePreview*`).
+ * - 60×60: columna Portada en tablas admin CC y tomas (`squareAdminTablePortada*`).
+ * - 120×120: carrito y tarjetas de línea en Mis pedidos (`squareMarketplaceLinePreview*`).
+ * - Líneas de pedido (panel admin Pedidos): miniatura **120×120** (`squareOrderLinePreview*`).
  * No usar en portadas hero del catálogo ni en avatares circulares de persona.
  */
 export const squareListImagePreviewFrameClass =
   "relative h-[100px] w-[100px] shrink-0 overflow-hidden rounded-[10px] border border-zinc-200/90 bg-zinc-100 shadow-sm";
 
 export const squareListImagePreviewImgClass = "h-full w-full object-cover";
+
+/** Carrito y listado Mis pedidos (cliente). */
+export const squareMarketplaceLinePreviewFrameClass =
+  "relative h-[120px] w-[120px] shrink-0 overflow-hidden rounded-[10px] border border-zinc-200/90 bg-zinc-100 shadow-sm";
+
+export const squareMarketplaceLinePreviewImgClass = "h-full w-full object-cover";
 
 /** Columna «Portada» en tablas admin (centros, tomas). */
 export const squareAdminTablePortadaFrameClass =

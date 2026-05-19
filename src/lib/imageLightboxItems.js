@@ -8,7 +8,7 @@ import {
  * Línea de carrito marketplace (tras `addItem`): URLs ya pueden venir absolutas del API.
  */
 export function marketplaceItemsFromCartLine(item) {
-  const alt = typeof item?.title === "string" && item.title.trim() ? item.title.trim() : "Toma";
+  const alt = typeof item?.title === "string" && item.title.trim() ? item.title.trim() : "Espacio publicitario";
   const list = [];
   if (Array.isArray(item?.gallery_images)) {
     for (const u of item.gallery_images) {
@@ -33,7 +33,7 @@ export function cartLineThumbSrc(item) {
 /** Fila de toma en listado admin: `gallery_images[]` con `{ image }` o `cover_image`. */
 export function adminTomaRowLightboxItems(row, altText) {
   const alt =
-    typeof altText === "string" && altText.trim() ? altText.trim() : "Portada de la toma";
+    typeof altText === "string" && altText.trim() ? altText.trim() : "Portada del espacio publicitario";
   const out = [];
   if (Array.isArray(row?.gallery_images) && row.gallery_images.length > 0) {
     for (const g of row.gallery_images) {
@@ -64,7 +64,7 @@ export function adminOrderLineCoverLightboxItems(line) {
       ? line.ad_space_title.trim()
       : line?.ad_space_code
         ? `Portada ${line.ad_space_code}`
-        : "Portada de la toma";
+        : "Portada del espacio publicitario";
   const out = [];
   if (Array.isArray(line?.ad_space_gallery_images) && line.ad_space_gallery_images.length > 0) {
     for (const u of line.ad_space_gallery_images) {

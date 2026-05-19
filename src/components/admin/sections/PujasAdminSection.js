@@ -14,7 +14,7 @@ import {
   AdminFiltersRow,
   FilterClearAction,
 } from "@/components/admin/AdminListFilters";
-import { AdminListPagination, ADMIN_LIST_PAGE_SIZE } from "@/components/admin/AdminListPagination";
+import { AdminListPagination } from "@/components/admin/AdminListPagination";
 import { IconAdminGavel } from "@/components/admin/adminIcons";
 import {
   adminPanelCard,
@@ -25,6 +25,7 @@ import {
 import { RentalMonthsByYearPills } from "@/components/catalog/RentalMonthsByYearPills";
 import { PujasSectionSkeleton } from "@/components/admin/skeletons/PujasSectionSkeleton";
 import { useAuth } from "@/context/AuthContext";
+import { isAdminCompetingCountSwrKey } from "@/lib/adminCompetingReservations";
 import { dashboardPedidosSearchHref } from "@/lib/adminDashboardLinks";
 import { formatUsdMoney } from "@/lib/marketplacePricing";
 import { cartLineMonthsByYear } from "@/lib/rentalMonthPills";
@@ -34,7 +35,8 @@ import { authJsonFetcher } from "@/lib/swr/fetchers";
 import { revalidateHomeCatalog } from "@/lib/swr/homeCatalogSwr";
 import { authFetch } from "@/services/authApi";
 
-const PUJAS_PAGE_SIZE = ADMIN_LIST_PAGE_SIZE;
+/** Disputas (tomas) por página; cada bloque agrupa todas las solicitudes de esa toma. */
+const PUJAS_GROUPS_PAGE_SIZE = 10;
 
 function formatSubmittedAt(iso) {
   if (!iso) return "—";
@@ -79,6 +81,145 @@ function rowMatchesSearch(group, order, q) {
   return hay.includes(q);
 }
 
+/**
+ * @param {Array<Record<string, unknown>>} groups
+ * @param {string} debouncedSearch
+ * @param {string} filterCenter
+ * @param {string} filterSpace
+ */
+function filterCompetingGroups(groups, debouncedSearch, filterCenter, filterSpace) {
+  const q = debouncedSearch.trim().toLowerCase();
+  return groups
+    .map((group) => {
+      const orders = (group.orders ?? []).filter((order) => {
+        if (filterCenter !== "all" && group.shopping_center_name !== filterCenter) return false;
+        if (filterSpace !== "all" && String(group.ad_space_id) !== filterSpace) return false;
+        if (!q) return true;
+        return rowMatchesSearch(group, order, q);
+      });
+      return { ...group, orders };
+    })
+    .filter((g) => Array.isArray(g.orders) && g.orders.length >= 2);
+}
+
+function CompetingBidGroupBlock({ group, onAward }) {
+  const orders = Array.isArray(group.orders) ? group.orders : [];
+  const bidCount = orders.length;
+
+  return (
+    <section
+      className={`${adminTableCard} border-l-4 border-l-[color:var(--mp-primary)]`}
+      aria-label={`Pujas para ${group.ad_space_code}`}
+    >
+      <header className="border-b border-zinc-100 bg-zinc-50/80 px-4 py-3.5 sm:px-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-mono text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              {group.ad_space_code}
+            </p>
+            <h3 className="mt-0.5 text-base font-semibold text-zinc-900">{group.ad_space_title}</h3>
+            <p className="mt-1 text-sm text-zinc-600">{group.shopping_center_name}</p>
+          </div>
+          <p className="shrink-0 rounded-full bg-zinc-900 px-3 py-1 text-xs font-semibold text-white">
+            {bidCount} participante{bidCount === 1 ? "" : "s"}
+          </p>
+        </div>
+      </header>
+      <div className="overflow-x-auto">
+        <table className="min-w-[40rem] w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-zinc-100 bg-white">
+              <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 sm:px-5">
+                Cliente
+              </th>
+              <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Pedido
+              </th>
+              <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Meses solicitados
+              </th>
+              <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Importe (sin IVA)
+              </th>
+              <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 sm:px-5">
+                Acción
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-100">
+            {orders.map((order) => {
+              const monthGroups = competingOrderMonthGroups(order);
+              const periodLineCount = Array.isArray(order.period_lines)
+                ? order.period_lines.length
+                : 0;
+              const orderRef = order.code || `#${order.id}`;
+              const pedidosHref = dashboardPedidosSearchHref(orderRef.replace(/^#/, ""));
+              return (
+                <tr key={order.id} className="align-top bg-white">
+                  <td className="px-4 py-3 align-middle sm:px-5">
+                    <p className="font-medium text-zinc-900">{order.client_name || "Cliente"}</p>
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                      Enviado: {formatSubmittedAt(order.submitted_at)}
+                    </p>
+                  </td>
+                  <td className="px-3 py-3 align-middle">
+                    <Link
+                      href={pedidosHref}
+                      className="font-mono text-xs font-semibold text-[color:var(--mp-primary)] hover:underline"
+                    >
+                      {orderRef}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-3">
+                    {monthGroups.length > 0 ? (
+                      <div>
+                        {periodLineCount > 1 ? (
+                          <p className="mb-1.5 text-[11px] text-zinc-500">
+                            {periodLineCount} periodos en este pedido
+                          </p>
+                        ) : null}
+                        <RentalMonthsByYearPills
+                          groups={monthGroups}
+                          keyPrefix={`puja-${group.ad_space_id}-${order.id}`}
+                          className="mt-0"
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-zinc-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-3 text-right align-middle tabular-nums">
+                    <span className="font-semibold text-zinc-900">
+                      {formatUsdMoney(Number(order.total_amount))}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right align-middle sm:px-5">
+                    <button
+                      type="button"
+                      className={`${adminPrimaryBtn} min-w-[9.5rem]`}
+                      onClick={() =>
+                        onAward({
+                          adSpaceId: group.ad_space_id,
+                          orderId: order.id,
+                          label: orderRef,
+                          clientName: order.client_name || "Cliente",
+                          spaceLabel: `${group.ad_space_code} — ${group.ad_space_title}`,
+                        })
+                      }
+                    >
+                      Adjudicar
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export function PujasAdminSection() {
   const { authReady, accessToken } = useAuth();
   const [message, setMessage] = useState("");
@@ -99,19 +240,11 @@ export function PujasAdminSection() {
 
   const groups = Array.isArray(data?.groups) ? data.groups : [];
 
-  const tableRows = useMemo(
-    () =>
-      groups.flatMap((group) =>
-        (group.orders ?? []).map((order) => ({
-          group,
-          order,
-        })),
-      ),
+  const disputeCount = groups.length;
+  const requestCount = useMemo(
+    () => groups.reduce((n, g) => n + (g.orders?.length ?? 0), 0),
     [groups],
   );
-
-  const disputeCount = groups.length;
-  const requestCount = tableRows.length;
 
   const centerFilterOptions = useMemo(() => {
     const names = [...new Set(groups.map((g) => g.shopping_center_name).filter(Boolean))].sort(
@@ -126,7 +259,7 @@ export function PujasAdminSection() {
       scoped = scoped.filter((g) => g.shopping_center_name === filterCenter);
     }
     return [
-      { v: "all", l: "Todas las tomas" },
+      { v: "all", l: "Todos los espacios publicitarios" },
       ...scoped.map((g) => ({
         v: String(g.ad_space_id),
         l: `${g.ad_space_code} — ${g.ad_space_title}`,
@@ -144,24 +277,24 @@ export function PujasAdminSection() {
   const filtersActive =
     debouncedSearch.trim() !== "" || filterCenter !== "all" || filterSpace !== "all";
 
-  const filteredRows = useMemo(() => {
-    const q = debouncedSearch.trim().toLowerCase();
-    return tableRows.filter(({ group, order }) => {
-      if (filterCenter !== "all" && group.shopping_center_name !== filterCenter) return false;
-      if (filterSpace !== "all" && String(group.ad_space_id) !== filterSpace) return false;
-      if (!q) return true;
-      return rowMatchesSearch(group, order, q);
-    });
-  }, [tableRows, debouncedSearch, filterCenter, filterSpace]);
+  const filteredGroups = useMemo(
+    () => filterCompetingGroups(groups, debouncedSearch, filterCenter, filterSpace),
+    [groups, debouncedSearch, filterCenter, filterSpace],
+  );
+
+  const filteredRequestCount = useMemo(
+    () => filteredGroups.reduce((n, g) => n + (g.orders?.length ?? 0), 0),
+    [filteredGroups],
+  );
 
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, filterCenter, filterSpace]);
 
-  const paginatedRows = useMemo(() => {
-    const start = (page - 1) * PUJAS_PAGE_SIZE;
-    return filteredRows.slice(start, start + PUJAS_PAGE_SIZE);
-  }, [filteredRows, page]);
+  const paginatedGroups = useMemo(() => {
+    const start = (page - 1) * PUJAS_GROUPS_PAGE_SIZE;
+    return filteredGroups.slice(start, start + PUJAS_GROUPS_PAGE_SIZE);
+  }, [filteredGroups, page]);
 
   const clearFilters = useCallback(() => {
     setSearch("");
@@ -178,8 +311,11 @@ export function PujasAdminSection() {
       body: { winner_order_id: orderId },
     });
     await mutate();
+    await globalMutate(isAdminCompetingCountSwrKey);
     await revalidateHomeCatalog(globalMutate);
-    setMessage("Solicitud adjudicada. Las demás solicitudes de esta toma se cancelaron.");
+    setMessage(
+      "Solicitud adjudicada. Las demás solicitudes de este espacio publicitario se cancelaron.",
+    );
     setError("");
     setAwardTarget(null);
   }, [awardTarget, mutate]);
@@ -188,7 +324,7 @@ export function PujasAdminSection() {
     return <PujasSectionSkeleton />;
   }
 
-  const hasDisputes = tableRows.length > 0;
+  const hasDisputes = groups.length > 0;
 
   return (
     <>
@@ -203,7 +339,7 @@ export function PujasAdminSection() {
               <p className="mt-0.5 text-sm text-zinc-500">
                 {disputeCount === 0
                   ? "Sin disputas pendientes"
-                  : `${disputeCount} toma${disputeCount === 1 ? "" : "s"} · ${requestCount} solicitud${requestCount === 1 ? "" : "es"}`}
+                  : `${disputeCount} ${disputeCount === 1 ? "espacio publicitario" : "espacios publicitarios"} · ${requestCount} solicitud${requestCount === 1 ? "" : "es"}`}
               </p>
             </div>
           </div>
@@ -229,7 +365,7 @@ export function PujasAdminSection() {
             <EmptyState
               icon={<EmptyStateIconBuilding />}
               title="Sin disputas pendientes"
-              description="No hay tomas con varias solicitudes enviadas a la vez. Cuando ocurra, aparecerán aquí."
+              description="No hay espacios publicitarios con varias solicitudes enviadas a la vez. Cuando ocurra, aparecerán aquí."
             />
           </div>
         ) : (
@@ -242,7 +378,7 @@ export function PujasAdminSection() {
                   setSearch(v);
                   setPage(1);
                 }}
-                placeholder="Toma, centro, cliente o pedido…"
+                placeholder="Espacio publicitario, centro, cliente o pedido…"
               />
               <AdminFilterSelect
                 id="pujas-filter-center"
@@ -256,7 +392,7 @@ export function PujasAdminSection() {
               />
               <AdminFilterSelect
                 id="pujas-filter-space"
-                label="Toma"
+                label="Espacio publicitario"
                 value={filterSpace}
                 onChange={(v) => {
                   setFilterSpace(v);
@@ -267,127 +403,42 @@ export function PujasAdminSection() {
               <AdminFilterClearButton show={filtersActive} onClick={clearFilters} />
             </AdminFiltersRow>
 
-            <AdminFilterResultHint shown={filteredRows.length} total={requestCount} noun="solicitudes" />
+            <AdminFilterResultHint
+              shown={filteredGroups.length}
+              total={disputeCount}
+              noun="disputas"
+            />
+            {filteredRequestCount !== requestCount && filtersActive ? (
+              <p className="mt-1 text-xs text-zinc-500">
+                {filteredRequestCount} solicitud{filteredRequestCount === 1 ? "" : "es"} en esta vista
+              </p>
+            ) : null}
 
-            {filteredRows.length === 0 && filtersActive ? (
+            {filteredGroups.length === 0 && filtersActive ? (
               <div className="mt-6 rounded-[15px] border border-zinc-200 bg-zinc-50/80 px-4 py-8 text-center text-sm text-zinc-600">
-                <p>Ninguna solicitud coincide con los filtros.</p>
+                <p>Ninguna disputa coincide con los filtros.</p>
                 <div className="mt-5 flex justify-center">
                   <FilterClearAction onClick={clearFilters} />
                 </div>
               </div>
             ) : (
-              <div className={`mt-6 ${adminTableCard}`}>
-                <div className="overflow-x-auto">
-                  <table className="min-w-[48rem] w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-zinc-100 bg-zinc-50/90">
-                        <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                          Toma
-                        </th>
-                        <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                          Cliente
-                        </th>
-                        <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                          Pedido
-                        </th>
-                        <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                          Meses solicitados
-                        </th>
-                        <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                          Importe (sin IVA)
-                        </th>
-                        <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                          Acción
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-100">
-                      {paginatedRows.map(({ group, order }) => {
-                        const monthGroups = competingOrderMonthGroups(order);
-                        const periodLineCount = Array.isArray(order.period_lines)
-                          ? order.period_lines.length
-                          : 0;
-                        const orderRef = order.code || `#${order.id}`;
-                        const pedidosHref = dashboardPedidosSearchHref(orderRef.replace(/^#/, ""));
-                        return (
-                          <tr key={`${group.ad_space_id}-${order.id}`} className="align-top">
-                            <td className="px-3 py-3 align-middle">
-                              <p className="font-mono text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                                {group.ad_space_code}
-                              </p>
-                              <p className="mt-0.5 font-medium text-zinc-900">{group.ad_space_title}</p>
-                              <p className="mt-0.5 text-xs text-zinc-500">{group.shopping_center_name}</p>
-                            </td>
-                            <td className="px-3 py-3 align-middle">
-                              <p className="font-medium text-zinc-900">{order.client_name || "Cliente"}</p>
-                              <p className="mt-0.5 text-xs text-zinc-500">
-                                Enviado: {formatSubmittedAt(order.submitted_at)}
-                              </p>
-                            </td>
-                            <td className="px-3 py-3 align-middle">
-                              <Link
-                                href={pedidosHref}
-                                className="font-mono text-xs font-semibold text-[color:var(--mp-primary)] hover:underline"
-                              >
-                                {orderRef}
-                              </Link>
-                            </td>
-                            <td className="px-3 py-3">
-                              {monthGroups.length > 0 ? (
-                                <div>
-                                  {periodLineCount > 1 ? (
-                                    <p className="mb-1.5 text-[11px] text-zinc-500">
-                                      {periodLineCount} periodos en este pedido
-                                    </p>
-                                  ) : null}
-                                  <RentalMonthsByYearPills
-                                    groups={monthGroups}
-                                    keyPrefix={`puja-${group.ad_space_id}-${order.id}`}
-                                    className="mt-0"
-                                  />
-                                </div>
-                              ) : (
-                                <span className="text-zinc-400">—</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-right align-middle tabular-nums">
-                              <span className="font-semibold text-zinc-900">
-                                {formatUsdMoney(Number(order.total_amount))}
-                              </span>
-                            </td>
-                            <td className="px-3 py-3 text-right align-middle">
-                              <button
-                                type="button"
-                                className={`${adminPrimaryBtn} min-w-[9.5rem]`}
-                                onClick={() =>
-                                  setAwardTarget({
-                                    adSpaceId: group.ad_space_id,
-                                    orderId: order.id,
-                                    label: orderRef,
-                                    clientName: order.client_name || "Cliente",
-                                    spaceLabel: `${group.ad_space_code} — ${group.ad_space_title}`,
-                                  })
-                                }
-                              >
-                                Adjudicar
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+              <div className="mt-6 space-y-5">
+                {paginatedGroups.map((group) => (
+                  <CompetingBidGroupBlock
+                    key={group.ad_space_id}
+                    group={group}
+                    onAward={setAwardTarget}
+                  />
+                ))}
               </div>
             )}
 
-            {filteredRows.length > 0 ? (
+            {filteredGroups.length > 0 ? (
               <AdminListPagination
                 page={page}
-                totalCount={filteredRows.length}
+                totalCount={filteredGroups.length}
                 onPageChange={setPage}
-                pageSize={PUJAS_PAGE_SIZE}
+                pageSize={PUJAS_GROUPS_PAGE_SIZE}
               />
             ) : null}
           </>
@@ -411,8 +462,8 @@ export function PujasAdminSection() {
         {awardTarget ? (
           <p>
             ¿Adjudicas la solicitud de <strong>{awardTarget.clientName}</strong> (
-            <span className="font-mono text-zinc-800">{awardTarget.label}</span>) para la toma{" "}
-            <strong>{awardTarget.spaceLabel}</strong>? Las demás solicitudes enviadas para esta toma
+            <span className="font-mono text-zinc-800">{awardTarget.label}</span>) para el espacio publicitario{" "}
+            <strong>{awardTarget.spaceLabel}</strong>? Las demás solicitudes enviadas para este espacio publicitario
             se cancelarán.
           </p>
         ) : null}

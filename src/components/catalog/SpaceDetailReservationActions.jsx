@@ -7,6 +7,7 @@ import { spaceStatusLabel, spaceStatusPillClassName } from "@/components/admin/a
 import { adminPrimaryBtn } from "@/components/admin/adminFormStyles";
 import { SpaceDayRangePicker } from "@/components/catalog/SpaceDayRangePicker";
 import { SpaceMultiYearMonthRangePicker } from "@/components/catalog/SpaceMultiYearMonthRangePicker";
+import { CATALOG_MONTH_CART_LABEL } from "@/lib/catalogMonthColors";
 import { marketplaceSecondaryBtn } from "@/lib/marketplaceActionButtons";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartProvider";
@@ -246,7 +247,8 @@ export function SpaceDetailReservationActions({ space }) {
                 Ventana <strong className="font-medium text-zinc-800">{yearLabel}</strong>: elige uno o más meses
                 libres (no tienen que ser consecutivos). Mínimo{" "}
                 <strong className="font-medium text-zinc-800">1</strong> mes en total. Los meses en gris no se pueden
-                usar.
+                usar. Los meses en <strong className="font-medium text-zinc-800">azul</strong> son tu solicitud
+                reservada; los <strong className="font-medium text-zinc-800">verdes</strong>, tu pedido o contrato activo.
               </>
             )}
           </p>
@@ -270,6 +272,7 @@ export function SpaceDetailReservationActions({ space }) {
               pickSync={pick}
               cartBaselineIso={cartBaselineIso}
               cartBaselineSegments={cartBaselineSegments}
+              selectionLabel={CATALOG_MONTH_CART_LABEL}
             />
           )}
         </div>

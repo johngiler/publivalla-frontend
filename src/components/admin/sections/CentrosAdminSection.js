@@ -1164,7 +1164,7 @@ export function CentrosAdminSection() {
                     checked={isActive}
                     onChange={(e) => setIsActive(e.target.checked)}
                   />
-                  Centro activo (inactivo: sin catálogo de tomas ni reservas en
+                  Centro activo (inactivo: sin catálogo de espacios publicitarios ni reservas en
                   el marketplace)
                 </label>
               </div>
@@ -1178,7 +1178,7 @@ export function CentrosAdminSection() {
                       setMarketplaceCatalogEnabled(e.target.checked)
                     }
                   />
-                  Catálogo de reservas en marketplace (tomas públicas y ruta
+                  Catálogo de reservas en marketplace (espacios publicitarios públicos y ruta
                   /m/…)
                 </label>
               </div>
@@ -1214,7 +1214,7 @@ export function CentrosAdminSection() {
                   Incluir en listado público de centros
                 </label>
                 <p className="ml-6 text-xs text-zinc-500">
-                  La portada principal del sitio muestra tomas, no centros. Esto
+                  La portada principal del sitio muestra espacios publicitarios, no centros. Esto
                   solo afecta el API de centros y posibles integraciones.
                 </p>
               </div>
@@ -1318,7 +1318,7 @@ export function CentrosAdminSection() {
             await executeDeleteCenter(deleteTargetId);
           }}
         >
-          <p>¿Eliminar este centro? Se borrarán tomas asociadas.</p>
+          <p>¿Eliminar este centro? Se borrarán los espacios publicitarios asociados.</p>
         </AdminConfirmDialog>
 
         <ImageLightbox

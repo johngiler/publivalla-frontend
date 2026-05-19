@@ -8,11 +8,14 @@ import {
   anySelectableMonthInCalendar,
   buildDisabledMonthsByYear,
   catalogAvailabilityYears,
+  disabledMonthsForBlockPicker,
   formatSelectedMonthsLabel,
   isMonthInCartIsoRange,
   isMonthInRentalSegments,
   linearIndicesFromPick,
   monthLinearIndex,
+  resolveClientMonthsHighlightByYear,
+  resolveMonthsAdminBlockedByYear,
   resolveMonthsOccupiedByYear,
   selectedMonthsTouchOccupied,
   selectionFromLinearIndices,
@@ -26,16 +29,39 @@ import {
   CATALOG_MONTH_CART_BASELINE_RING,
   CATALOG_MONTH_HIGH_SEASON_BG,
   CATALOG_MONTH_HIGH_SEASON_RING,
+  CATALOG_MONTH_ACTIVE_BG,
+  CATALOG_MONTH_ACTIVE_RING,
+  CATALOG_MONTH_RESERVED_BG,
+  CATALOG_MONTH_RESERVED_RING,
   CATALOG_MONTH_SELECTED_BG,
   CATALOG_MONTH_SELECTED_RING,
+  CATALOG_MONTH_BLOCKED_FORBIDDEN_BG,
+  CATALOG_MONTH_BLOCKED_FORBIDDEN_RING,
   CATALOG_MONTH_UNAVAILABLE_BG,
   CATALOG_MONTH_UNAVAILABLE_RING,
+  CATALOG_MONTH_SELECTION_LABEL,
 } from "@/lib/catalogMonthColors";
 import { CatalogMonthLegend } from "@/components/catalog/CatalogMonthLegend";
+import { useCatalogSpaceWithClientMonths } from "@/hooks/useCatalogSpaceWithClientMonths";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 
 const DISABLED = `cursor-not-allowed ${CATALOG_MONTH_UNAVAILABLE_BG} ${CATALOG_MONTH_UNAVAILABLE_RING} text-zinc-400`;
-const BASELINE_ONLY = `${CATALOG_MONTH_CART_BASELINE_RING} ${CATALOG_MONTH_CART_BASELINE_BG} text-sky-900 hover:border-sky-500/80 hover:bg-sky-50`;
+const BLOCK_FORBIDDEN = `cursor-default ${CATALOG_MONTH_BLOCKED_FORBIDDEN_BG} ${CATALOG_MONTH_BLOCKED_FORBIDDEN_RING} text-red-800`;
+const RESERVED_DISABLED = `cursor-default ${CATALOG_MONTH_RESERVED_RING} ${CATALOG_MONTH_RESERVED_BG} text-sky-900`;
+const ACTIVE_DISABLED = `cursor-default ${CATALOG_MONTH_ACTIVE_RING} ${CATALOG_MONTH_ACTIVE_BG} text-emerald-900`;
+const BASELINE_ONLY = `${CATALOG_MONTH_CART_BASELINE_RING} ${CATALOG_MONTH_CART_BASELINE_BG} text-[#b45309] hover:border-[#d98e32]/90 hover:bg-white`;
+
+/** Alineación común de celdas de mes (botón o solo lectura). */
+const MONTH_CELL_LAYOUT = "flex items-center justify-center text-center";
+
+function MonthForbiddenIcon({ className = "h-3.5 w-3.5 shrink-0" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+      <path d="M7 7l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 /**
  * Selector multi-año: meses sueltos (no tienen que ser consecutivos).
@@ -50,17 +76,53 @@ export function SpaceMultiYearMonthRangePicker({
   pickSync = null,
   cartBaselineIso = null,
   cartBaselineSegments = null,
+  readOnly = false,
+  editingPick = null,
+  readOnlyPeriodLabel = null,
+  /** Solo vista admin de bloqueo de disponibilidad: bloqueos del admin en rojo con icono. */
+  readOnlyVariant = "default",
+  selectionLabel = CATALOG_MONTH_SELECTION_LABEL,
 }) {
+  const blockForbiddenView = readOnly && readOnlyVariant === "availabilityBlock";
+  const spaceWithClient = useCatalogSpaceWithClientMonths(space);
   const refDate = useMemo(() => new Date(), []);
-  const years = useMemo(() => catalogAvailabilityYears(refDate, space), [refDate, space]);
+  const years = useMemo(
+    () => catalogAvailabilityYears(refDate, spaceWithClient),
+    [refDate, spaceWithClient],
+  );
   const byYear = useMemo(
-    () => byYearProp ?? resolveMonthsOccupiedByYear(space, refDate),
-    [byYearProp, space, refDate],
+    () => byYearProp ?? resolveMonthsOccupiedByYear(spaceWithClient, refDate),
+    [byYearProp, spaceWithClient, refDate],
   );
-  const disabledByYear = useMemo(
-    () => buildDisabledMonthsByYear(byYear, years, refDate),
-    [byYear, years, refDate],
+  const clientHighlight = useMemo(
+    () => resolveClientMonthsHighlightByYear(spaceWithClient, refDate, years),
+    [spaceWithClient, refDate, years],
   );
+  const hasReservedMonths = useMemo(
+    () =>
+      clientHighlight
+        ? Object.values(clientHighlight.reserved).some((flags) => flags.some(Boolean))
+        : false,
+    [clientHighlight],
+  );
+  const hasActiveMonths = useMemo(
+    () =>
+      clientHighlight
+        ? Object.values(clientHighlight.active).some((flags) => flags.some(Boolean))
+        : false,
+    [clientHighlight],
+  );
+  const disabledByYear = useMemo(() => {
+    const base = buildDisabledMonthsByYear(byYear, years, refDate);
+    if (readOnly && editingPick) {
+      return disabledMonthsForBlockPicker(base, years, editingPick);
+    }
+    return base;
+  }, [byYear, years, refDate, readOnly, editingPick]);
+  const adminBlockedByYear = useMemo(() => {
+    if (!blockForbiddenView) return null;
+    return resolveMonthsAdminBlockedByYear(spaceWithClient, refDate, years);
+  }, [blockForbiddenView, spaceWithClient, refDate, years]);
   const anySelectable = useMemo(
     () => anySelectableMonthInCalendar(years, byYear, refDate),
     [years, byYear, refDate],
@@ -98,7 +160,11 @@ export function SpaceMultiYearMonthRangePicker({
 
   const onMonthClick = useCallback(
     (year, m) => {
+      if (readOnly) return;
+      if (blockForbiddenView && adminBlockedByYear?.[year]?.[m - 1]) return;
       if (disabledByYear[year]?.[m - 1]) return;
+      if (clientHighlight?.active?.[year]?.[m - 1]) return;
+      if (clientHighlight?.reserved?.[year]?.[m - 1]) return;
       const idx = monthLinearIndex(year, m);
       setSelected((prev) => {
         const next = new Set(prev);
@@ -108,7 +174,7 @@ export function SpaceMultiYearMonthRangePicker({
         return next;
       });
     },
-    [disabledByYear, emitSelection],
+    [blockForbiddenView, adminBlockedByYear, disabledByYear, clientHighlight, emitSelection, readOnly],
   );
 
   const reset = useCallback(() => {
@@ -117,7 +183,7 @@ export function SpaceMultiYearMonthRangePicker({
   }, []);
 
   const indices = useMemo(() => [...selected].sort((a, b) => a - b), [selected]);
-  const selectionValid = indices.length >= minMonths;
+  const selectionValid = readOnly ? indices.length > 0 : indices.length >= minMonths;
   const touchesBlocked = selectionValid && selectedMonthsTouchOccupied(disabledByYear, indices);
   const rentalSegments = useMemo(() => {
     if (!selectionValid) return [];
@@ -158,17 +224,28 @@ export function SpaceMultiYearMonthRangePicker({
 
   const yearLabel =
     years.length > 1 ? `${years[0]}–${years[years.length - 1]}` : String(years[0] ?? "");
+  const displayRangeLabel =
+    readOnly && readOnlyPeriodLabel?.trim()
+      ? readOnlyPeriodLabel.trim()
+      : rangeLabel;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-readonly={readOnly || undefined}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-semibold text-zinc-900">
           Calendario {yearLabel ? `(${yearLabel})` : ""}
         </p>
-        <CatalogMonthLegend showHighSeason={highSeason.months.length > 0} />
+        <CatalogMonthLegend
+          showReserved={!readOnly && hasReservedMonths}
+          showActive={!readOnly && hasActiveMonths}
+          showHighSeason={!readOnly && highSeason.months.length > 0}
+          showBlockedForbidden={blockForbiddenView}
+          showSelection={!blockForbiddenView}
+          selectionLabel={selectionLabel}
+        />
       </div>
 
-      {!anySelectable ? (
+      {!readOnly && !anySelectable ? (
         <p className="text-sm text-amber-900">
           No quedan meses futuros disponibles en esta ventana de calendario. Contacta al centro comercial.
         </p>
@@ -179,28 +256,45 @@ export function SpaceMultiYearMonthRangePicker({
           key={year}
           year={year}
           disabled={disabledByYear[year] ?? Array(12).fill(true)}
+          clientMonthsReserved={clientHighlight?.reserved?.[year] ?? null}
+          clientMonthsActive={clientHighlight?.active?.[year] ?? null}
           selected={selected}
           baselineSegments={baselineSegments}
           selectionMatchesBaseline={selectionMatchesBaseline}
           highSeasonMonths={highSeason.months}
           onMonthClick={onMonthClick}
+          readOnly={readOnly}
+          blockForbiddenView={blockForbiddenView}
+          adminBlocked={
+            blockForbiddenView
+              ? (adminBlockedByYear?.[year] ?? Array(12).fill(false))
+              : null
+          }
         />
       ))}
 
-      {selectionValid ? (
+      {!readOnly && selectionValid ? (
         <div className="flex flex-wrap items-center gap-3">
           <FilterClearAction onClick={reset} label="Limpiar selección" />
         </div>
       ) : null}
 
-      <SummaryFooter rangeLabel={rangeLabel} spanMonths={spanMonths} subtotal={subtotal} />
+      {readOnly ? (
+        <ReadOnlyPeriodFooter
+          title="Periodo bloqueado"
+          rangeLabel={displayRangeLabel}
+          emptyHint="Sin meses definidos en este bloqueo."
+        />
+      ) : (
+        <SummaryFooter rangeLabel={rangeLabel} spanMonths={spanMonths} subtotal={subtotal} />
+      )}
 
-      {selectionValid && touchesBlocked ? (
+      {!readOnly && selectionValid && touchesBlocked ? (
         <p className="text-sm font-medium text-red-600">
           La selección incluye meses no disponibles. Quítalos e intenta de nuevo.
         </p>
       ) : null}
-      {indices.length > 0 && !selectionValid ? (
+      {!readOnly && indices.length > 0 && !selectionValid ? (
         <p className="text-sm text-amber-800">
           Mínimo <strong>{minMonths}</strong> {minMonths === 1 ? "mes" : "meses"} en total. Marca otro mes libre.
         </p>
@@ -213,11 +307,16 @@ export function SpaceMultiYearMonthRangePicker({
 function YearGrid({
   year,
   disabled,
+  clientMonthsReserved,
+  clientMonthsActive,
   selected,
   baselineSegments,
   selectionMatchesBaseline,
   highSeasonMonths,
   onMonthClick,
+  readOnly = false,
+  blockForbiddenView = false,
+  adminBlocked = null,
 }) {
   return (
     <div>
@@ -225,9 +324,19 @@ function YearGrid({
       <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 sm:gap-2.5" role="group" aria-label={`Meses de ${year}`}>
         {MONTH_SHORT_ES.map((label, i) => {
           const m = i + 1;
-          const blocked = disabled[i];
           const idx = monthLinearIndex(year, m);
           const isSelected = selected.has(idx);
+          const blocked = disabled[i] && !(readOnly && isSelected);
+          const isAdminBlocked =
+            blockForbiddenView && Boolean(adminBlocked?.[i]);
+          const showForbidden = isAdminBlocked;
+          const showUnavailable = blockForbiddenView
+            ? blocked && !isAdminBlocked
+            : blocked;
+          const isActive = !readOnly && Boolean(clientMonthsActive?.[i]);
+          const isReserved = !readOnly && !isActive && Boolean(clientMonthsReserved?.[i]);
+          const isClientMonth = isActive || isReserved;
+          const notSelectable = blocked || isClientMonth;
           const inBaseline =
             baselineSegments &&
             (isMonthInRentalSegments(baselineSegments, year, m) ||
@@ -241,13 +350,18 @@ function YearGrid({
                 )));
           const baselineOnly = inBaseline && !isSelected;
           const isHighSeason =
-            !blocked && highSeasonMonths?.includes(m) && !isSelected && !baselineOnly;
+            !notSelectable &&
+            highSeasonMonths?.includes(m) &&
+            !isSelected &&
+            !baselineOnly;
           let cellClass = `${CATALOG_MONTH_AVAILABLE_RING} ${CATALOG_MONTH_AVAILABLE_BG} text-zinc-800 hover:border-zinc-400 hover:bg-white`;
-          if (!blocked) {
+          if (readOnly && isSelected && !blockForbiddenView) {
+            cellClass = `${CATALOG_MONTH_SELECTED_RING} ${CATALOG_MONTH_SELECTED_BG} text-[#b45309]`;
+          } else if (!notSelectable) {
             if (isSelected) {
               cellClass = `${CATALOG_MONTH_SELECTED_RING} ${CATALOG_MONTH_SELECTED_BG} text-[#b45309]`;
               if (baselineSegments && inBaseline && !selectionMatchesBaseline) {
-                cellClass += " shadow-[inset_0_0_0_1px_rgba(14,165,233,0.45)]";
+                cellClass += " shadow-[inset_0_0_0_1px_rgba(217,142,50,0.45)]";
               }
             } else if (baselineOnly) {
               cellClass = BASELINE_ONLY;
@@ -255,22 +369,72 @@ function YearGrid({
               cellClass = `${CATALOG_MONTH_HIGH_SEASON_RING} ${CATALOG_MONTH_HIGH_SEASON_BG} text-amber-950 hover:border-amber-300`;
             }
           }
+          const blockedStyle = showForbidden
+            ? BLOCK_FORBIDDEN
+            : showUnavailable
+              ? DISABLED
+              : null;
+          const cellClassName = `min-h-11 min-w-0 rounded-xl border text-xs font-semibold sm:min-h-10 ${MONTH_CELL_LAYOUT} ${
+            isActive
+              ? ACTIVE_DISABLED
+              : isReserved
+                ? RESERVED_DISABLED
+                : blockedStyle ?? cellClass
+          } ${readOnly ? "" : "transition-colors"} ${
+            showForbidden ? "flex-col gap-0.5 py-1" : ""
+          }`;
+
+          if (readOnly) {
+            return (
+              <span
+                key={label}
+                aria-label={`${label} ${year}${
+                  showForbidden
+                    ? blockForbiddenView && isSelected
+                      ? ", bloqueado en este registro"
+                      : ", bloqueado"
+                    : showUnavailable
+                      ? ", no disponible"
+                      : isSelected
+                        ? ", en carrito"
+                        : ", libre"
+                }`}
+                className={cellClassName}
+              >
+                {showForbidden ? <MonthForbiddenIcon /> : null}
+                <span className={showForbidden ? "text-[10px] leading-none" : undefined}>{label}</span>
+              </span>
+            );
+          }
+
           return (
             <button
               key={label}
               type="button"
-              disabled={blocked}
+              disabled={notSelectable}
               onClick={() => onMonthClick(year, m)}
               aria-pressed={isSelected}
-              className={`min-h-11 rounded-xl border text-xs font-semibold transition-colors sm:min-h-10 ${
-                blocked ? DISABLED : cellClass
-              }`}
+              title={
+                isActive ? "Activa" : isReserved ? "Reservado" : undefined
+              }
+              className={cellClassName}
             >
               {label}
             </button>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function ReadOnlyPeriodFooter({ title, rangeLabel, emptyHint }) {
+  return (
+    <div className={`${ROUNDED_CONTROL} border border-zinc-200 bg-zinc-50 px-4 py-4 sm:px-5`}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{title}</p>
+      <p className="mt-1 text-sm font-medium text-zinc-900">
+        {rangeLabel ? rangeLabel : <span className="text-zinc-500">{emptyHint}</span>}
+      </p>
     </div>
   );
 }

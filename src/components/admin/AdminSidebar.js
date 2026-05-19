@@ -3,8 +3,12 @@
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import useSWR from "swr";
 
 import { ADMIN_NAV_GROUPED } from "@/components/admin/adminNavConfig";
+import { useAuth } from "@/context/AuthContext";
+import { ADMIN_COMPETING_RESERVATIONS_COUNT_PATH } from "@/lib/adminCompetingReservations";
+import { authFetch } from "@/services/authApi";
 import {
   IconChevronLeft,
   IconChevronRight,
@@ -29,11 +33,56 @@ function navActive(pathname, href) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function formatNavBadgeCount(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x) || x <= 0) return null;
+  if (x > 99) return "99+";
+  return String(x);
+}
+
+function AdminNavCountBadge({ count, collapsed, active }) {
+  const label = formatNavBadgeCount(count);
+  if (!label) return null;
+  if (collapsed) {
+    return (
+      <span
+        className={`absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold leading-none text-white lg:right-0 lg:top-0 ${
+          active ? "bg-white text-zinc-900 ring-1 ring-zinc-900/10" : "bg-[color:var(--mp-primary)]"
+        }`}
+        aria-hidden
+      >
+        {Number(label) > 9 ? "9+" : label}
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`ml-auto inline-flex min-h-[1.125rem] min-w-[1.125rem] shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-bold tabular-nums leading-none ${
+        active
+          ? "bg-white text-zinc-900 ring-1 ring-white/20"
+          : "bg-[color:var(--mp-primary)] text-white"
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
+
 export function AdminSidebar({ mobileOpen, setMobileOpen }) {
   const pathname = usePathname() || "";
   const router = useRouter();
   const { displayName } = useWorkspace();
+  const { authReady, accessToken, isAdmin } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+
+  const { data: competingCountData } = useSWR(
+    authReady && isAdmin && accessToken
+      ? [ADMIN_COMPETING_RESERVATIONS_COUNT_PATH, accessToken]
+      : null,
+    ([path]) => authFetch(path),
+    { revalidateOnFocus: true, dedupingInterval: 10_000 },
+  );
+  const competingCount = Number(competingCountData?.count) || 0;
 
   useEffect(() => {
     try {
@@ -93,12 +142,17 @@ export function AdminSidebar({ mobileOpen, setMobileOpen }) {
 
   const navLink = ({ href, label, Icon, segment }) => {
     const active = navActive(pathname, href);
+    const showCompetingBadge = segment === "pujas" && competingCount > 0;
+    const linkTitle =
+      showCompetingBadge && !collapsed
+        ? `${label} (${competingCount} pendiente${competingCount === 1 ? "" : "s"})`
+        : label;
     return (
       <Link
         key={segment}
         href={href}
         className={linkClass(active)}
-        title={label}
+        title={linkTitle}
         onClick={(e) => {
           if (isMobileAdminNav()) {
             e.preventDefault();
@@ -109,8 +163,18 @@ export function AdminSidebar({ mobileOpen, setMobileOpen }) {
           setMobileOpen(false);
         }}
       >
-        <Icon className={`shrink-0 ${active ? "text-white" : "text-zinc-500"}`} />
-        <span className={collapsed ? "lg:sr-only" : ""}>{label}</span>
+        <span className={`relative shrink-0 ${showCompetingBadge && collapsed ? "lg:mr-0" : ""}`}>
+          <Icon className={active ? "text-white" : "text-zinc-500"} />
+          {showCompetingBadge && collapsed ? (
+            <AdminNavCountBadge count={competingCount} collapsed active={active} />
+          ) : null}
+        </span>
+        <span className={`min-w-0 flex-1 truncate ${collapsed ? "lg:sr-only" : ""}`}>
+          {label}
+        </span>
+        {showCompetingBadge && !collapsed ? (
+          <AdminNavCountBadge count={competingCount} collapsed={false} active={active} />
+        ) : null}
       </Link>
     );
   };

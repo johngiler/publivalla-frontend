@@ -19,7 +19,10 @@ import {
   orderDisplayStatusLabel,
   orderDisplayStatusPillClassName,
 } from "@/lib/orderHoldDisplay";
-import { CatalogSpaceLink } from "@/components/catalog/CatalogSpaceLink";
+import {
+  MarketplaceLineSpaceHeading,
+  lineSpaceCode,
+} from "@/components/catalog/MarketplaceLineSpaceHeading";
 import { RentalMonthsByYearPills } from "@/components/catalog/RentalMonthsByYearPills";
 import { cartLineMonthsByYear } from "@/lib/rentalMonthPills";
 import { MisPedidosSkeleton } from "@/components/orders/MisPedidosSkeleton";
@@ -38,9 +41,14 @@ import {
 } from "@/lib/marketplacePricing";
 import { orderListReference } from "@/lib/orderDisplay";
 import {
-  squareAdminTablePortadaFrameClass,
-  squareAdminTablePortadaImgClass,
+  marketplaceLineFieldLabelClass,
+  marketplaceLinePriceClass,
+  marketplaceOrderRefClass,
+} from "@/lib/marketplaceLineTypography";
+import {
   squareListImagePreviewButtonRingClass,
+  squareMarketplaceLinePreviewFrameClass,
+  squareMarketplaceLinePreviewImgClass,
 } from "@/lib/squareImagePreview";
 import { ordersListPath } from "@/lib/adminListQuery";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
@@ -355,6 +363,7 @@ export default function MisPedidosView() {
   const debouncedSearch = useDebouncedValue(filterSearch, 400);
 
   const searchFromUrl = searchParams.get("search") ?? "";
+  const excludeStatusFromUrl = searchParams.get("exclude_status") ?? "";
   useEffect(() => {
     setFilterSearch(searchFromUrl);
   }, [searchFromUrl]);
@@ -377,7 +386,11 @@ export default function MisPedidosView() {
   }, []);
 
   const canFetchOrders = authReady && isClient && !!accessToken;
-  const listKey = canFetchOrders ? ordersListPath(page, debouncedSearch, filterStatus) : null;
+  const excludeStatusForApi =
+    filterStatus !== "all" ? "" : excludeStatusFromUrl.trim();
+  const listKey = canFetchOrders
+    ? ordersListPath(page, debouncedSearch, filterStatus, excludeStatusForApi)
+    : null;
   const { data, error: ordersError, isLoading: ordersLoading, mutate: mutateOrders } = useSWR(
     listKey,
     authJsonFetcher,
@@ -419,17 +432,23 @@ export default function MisPedidosView() {
     [],
   );
 
-  const filtersActive = filterStatus !== "all" || filterSearch.trim() !== "";
+  const filtersActive =
+    filterStatus !== "all" || filterSearch.trim() !== "" || excludeStatusFromUrl.trim() !== "";
 
   function clearFilters() {
     setFilterStatus("all");
     setFilterSearch("");
     setPage(1);
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("search");
+    next.delete("exclude_status");
+    const q = next.toString();
+    router.replace(q ? `/cuenta/pedidos?${q}` : "/cuenta/pedidos");
   }
 
   useEffect(() => {
     setPage(1);
-  }, [filterStatus, debouncedSearch]);
+  }, [filterStatus, debouncedSearch, excludeStatusFromUrl]);
 
   useEffect(() => {
     setOpenId(null);
@@ -524,7 +543,7 @@ export default function MisPedidosView() {
             id="mis-pedidos-search"
             value={filterSearch}
             onChange={setFilterSearch}
-            placeholder="Referencia, # o ID del pedido…"
+            placeholder="Referencia de pedido, código o nombre del espacio…"
           />
           <AdminFilterSelect
             id="mis-pedidos-status"
@@ -576,14 +595,7 @@ export default function MisPedidosView() {
             const items = Array.isArray(o.items) ? o.items : [];
             const first = items[0];
             const lineSub = first != null ? Number(first.subtotal) : NaN;
-            const singleCode =
-              first == null
-                ? ""
-                : typeof first.ad_space_code === "string" && first.ad_space_code.trim()
-                  ? first.ad_space_code.trim()
-                  : first.ad_space != null && first.ad_space !== ""
-                    ? `#${first.ad_space}`
-                    : "Toma";
+            const singleCode = first == null ? "" : lineSpaceCode(first);
             const singleCoverRaw = first ? primaryAdSpaceMediaRawFromOrderLike(first) : "";
             const singleCodeLabel = singleCode.replace(/^#/, "") || "toma";
             const lineDisplay = Number.isFinite(lineSub) ? lineSub : Number(o.total_amount);
@@ -610,26 +622,24 @@ export default function MisPedidosView() {
                 >
                   <div className="min-w-0 flex-1 space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="font-mono text-sm font-bold tracking-tight text-zinc-900">
-                        {orderRef}
-                      </span>
+                      <span className={marketplaceOrderRefClass}>{orderRef}</span>
                       <OrderStatusBadge order={o} />
                     </div>
                     <div className="flex flex-wrap items-start justify-between gap-3 border-t border-zinc-100 pt-3">
                       <div className="min-w-0 flex-1">
                         {!multi && first ? (
-                          <div className="flex items-center gap-2.5">
+                          <div className="flex items-start gap-3">
                             <div
-                              className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md border border-zinc-200/90 bg-zinc-100"
+                              className={squareMarketplaceLinePreviewFrameClass}
                               aria-hidden={!singleCoverRaw}
                             >
                               {singleCoverRaw ? (
                                 <RasterFromApiUrl
                                   url={singleCoverRaw}
                                   alt=""
-                                  width={40}
-                                  height={40}
-                                  className="h-full w-full object-cover"
+                                  width={120}
+                                  height={120}
+                                  className={squareMarketplaceLinePreviewImgClass}
                                   {...catalogRasterImgAttrs}
                                 />
                               ) : (
@@ -639,20 +649,7 @@ export default function MisPedidosView() {
                               )}
                             </div>
                             <div className="min-w-0 flex-1">
-                              {first.ad_space != null && first.ad_space !== "" ? (
-                                <CatalogSpaceLink
-                                  spaceId={first.ad_space}
-                                  stopPropagation
-                                  variant="mono"
-                                  className="text-[13px] font-semibold"
-                                >
-                                  {singleCode}
-                                </CatalogSpaceLink>
-                              ) : (
-                                <span className="font-mono text-[13px] font-semibold text-zinc-800">
-                                  {singleCode}
-                                </span>
-                              )}
+                              <MarketplaceLineSpaceHeading item={first} stopPropagation />
                               <RentalMonthsByYearPills
                                 groups={cartLineMonthsByYear(first)}
                                 keyPrefix={`order-${o.id}-line-${first.id}`}
@@ -673,30 +670,25 @@ export default function MisPedidosView() {
                             <ul className="mt-2 space-y-2.5">
                               {items.map((it) => {
                                 const thumbRaw = primaryAdSpaceMediaRawFromOrderLike(it);
-                                const code =
-                                  typeof it.ad_space_code === "string" && it.ad_space_code.trim()
-                                    ? it.ad_space_code.trim()
-                                    : it.ad_space != null && it.ad_space !== ""
-                                        ? `#${it.ad_space}`
-                                        : "Toma";
+                                const code = lineSpaceCode(it);
                                 const sub = Number(it.subtotal);
                                 const codeLabel = code.replace(/^#/, "") || "toma";
                                 return (
                                   <li
                                     key={it.id}
-                                    className="flex items-start gap-2.5 border-b border-zinc-100 pb-2.5 last:border-0 last:pb-0"
+                                    className="flex items-start gap-3 border-b border-zinc-100 pb-2.5 last:border-0 last:pb-0"
                                   >
                                     <div
-                                      className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md border border-zinc-200/90 bg-zinc-100"
+                                      className={squareMarketplaceLinePreviewFrameClass}
                                       aria-hidden={!thumbRaw}
                                     >
                                       {thumbRaw ? (
                                         <RasterFromApiUrl
                                           url={thumbRaw}
                                           alt=""
-                                          width={40}
-                                          height={40}
-                                          className="h-full w-full object-cover"
+                                          width={120}
+                                          height={120}
+                                          className={squareMarketplaceLinePreviewImgClass}
                                           {...catalogRasterImgAttrs}
                                         />
                                       ) : (
@@ -706,20 +698,7 @@ export default function MisPedidosView() {
                                       )}
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                      {it.ad_space != null && it.ad_space !== "" ? (
-                                        <CatalogSpaceLink
-                                          spaceId={it.ad_space}
-                                          stopPropagation
-                                          variant="mono"
-                                          className="text-[13px] font-semibold"
-                                        >
-                                          {code}
-                                        </CatalogSpaceLink>
-                                      ) : (
-                                        <span className="font-mono text-[13px] font-semibold text-zinc-800">
-                                          {code}
-                                        </span>
-                                      )}
+                                      <MarketplaceLineSpaceHeading item={it} stopPropagation />
                                       <RentalMonthsByYearPills
                                         groups={cartLineMonthsByYear(it)}
                                         keyPrefix={`order-${o.id}-line-${it.id}`}
@@ -727,7 +706,7 @@ export default function MisPedidosView() {
                                       />
                                     </div>
                                     <span
-                                      className="shrink-0 pt-0.5 text-sm font-bold tabular-nums text-[#d98e32]"
+                                      className={`shrink-0 pt-0.5 ${marketplaceLinePriceClass} text-sm`}
                                       aria-label={`Importe sin IVA para ${codeLabel}`}
                                     >
                                       {Number.isFinite(sub) ? formatUsdInteger(sub) : "—"}
@@ -744,11 +723,9 @@ export default function MisPedidosView() {
                       </div>
                       {!multi ? (
                         <div className="shrink-0 text-right">
-                          <p className="text-[10px] font-semibold uppercase leading-tight tracking-wide text-zinc-400">
-                            Subtotal (sin IVA)
-                          </p>
+                          <p className={marketplaceLineFieldLabelClass}>Subtotal (sin IVA)</p>
                           <p
-                            className="text-lg font-bold tabular-nums text-[#d98e32]"
+                            className={marketplaceLinePriceClass}
                             aria-label={`Importe sin IVA para ${singleCodeLabel}`}
                           >
                             {formatUsdInteger(lineDisplay)}
@@ -756,10 +733,8 @@ export default function MisPedidosView() {
                         </div>
                       ) : (
                         <div className="shrink-0 text-right">
-                          <p className="text-[10px] font-semibold uppercase leading-tight tracking-wide text-zinc-400">
-                            Subtotal pedido (sin IVA)
-                          </p>
-                          <p className="text-lg font-bold tabular-nums text-[#d98e32]">
+                          <p className={marketplaceLineFieldLabelClass}>Subtotal pedido (sin IVA)</p>
+                          <p className={marketplaceLinePriceClass}>
                             {formatUsdInteger(Number(o.total_amount))}
                           </p>
                         </div>
@@ -767,7 +742,7 @@ export default function MisPedidosView() {
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-3">
                       <div className="min-w-0">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+                        <p className={marketplaceLineFieldLabelClass}>
                           {o.submitted_at ? "Enviado el" : "Registrado el"}
                         </p>
                         <time
@@ -780,10 +755,10 @@ export default function MisPedidosView() {
                         </time>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] font-semibold uppercase leading-tight tracking-wide text-zinc-400">
+                        <p className={marketplaceLineFieldLabelClass}>
                           Total con IVA ({IVA_PERCENT_LABEL})
                         </p>
-                        <span className="text-lg font-bold tabular-nums text-[#d98e32]">
+                        <span className={marketplaceLinePriceClass}>
                           {formatUsdMoney(totalIva)}
                         </span>
                       </div>
@@ -894,7 +869,7 @@ export default function MisPedidosView() {
                                       <button
                                         type="button"
                                         onClick={() => openOrderLineGallery(o, it.id)}
-                                        className={`${squareAdminTablePortadaFrameClass} ${squareListImagePreviewButtonRingClass} p-0`}
+                                        className={`${squareMarketplaceLinePreviewFrameClass} ${squareListImagePreviewButtonRingClass} p-0`}
                                         aria-label={
                                           lineImgCount > 1
                                             ? `Abrir galería de esta toma (${lineImgCount} imágenes)`
@@ -904,25 +879,15 @@ export default function MisPedidosView() {
                                         <RasterFromApiUrl
                                           url={lineCoverRaw}
                                           alt=""
-                                          width={60}
-                                          height={60}
-                                          className={`${squareAdminTablePortadaImgClass} transition duration-200 group-hover:scale-105`}
+                                          width={120}
+                                          height={120}
+                                          className={`${squareMarketplaceLinePreviewImgClass} transition duration-200 group-hover:scale-105`}
                                           {...catalogRasterImgAttrs}
                                         />
                                       </button>
                                     ) : null}
                                     <div className="min-w-0">
-                                      <CatalogSpaceLink spaceId={it.ad_space} variant="mono">
-                                        {it.ad_space_code || `#${it.ad_space}`}
-                                      </CatalogSpaceLink>
-                                      {it.ad_space_title ? (
-                                        <CatalogSpaceLink
-                                          spaceId={it.ad_space}
-                                          className="mt-0.5 block text-sm leading-snug text-zinc-800"
-                                        >
-                                          {it.ad_space_title}
-                                        </CatalogSpaceLink>
-                                      ) : null}
+                                      <MarketplaceLineSpaceHeading item={it} />
                                       <p className="mt-1 text-xs text-zinc-600">
                                         <span className="font-medium text-zinc-700">Periodo reservado:</span>{" "}
                                         <span className="tabular-nums text-zinc-600">

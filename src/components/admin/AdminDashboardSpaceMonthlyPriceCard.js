@@ -57,9 +57,10 @@ export function AdminDashboardSpaceMonthlyPriceCard({ economics, gradId }) {
               <IconAdminCurrency />
             </div>
             <div>
-              <p className={TITLE}>Precio medio por toma (catálogo)</p>
+              <p className={TITLE}>Precio medio por espacio publicitario (catálogo)</p>
               <p className={SUB}>
-                Cuando tengas tomas con tarifa mensual en USD, aquí verás el promedio y un gráfico frente al mínimo y el
+                Cuando tengas espacios publicitarios con tarifa mensual en USD, aquí verás el promedio y un gráfico
+                frente al mínimo y el
                 máximo del workspace.
               </p>
             </div>
@@ -88,7 +89,7 @@ export function AdminDashboardSpaceMonthlyPriceCard({ economics, gradId }) {
               <IconAdminCurrency />
             </div>
             <div className="min-w-0">
-              <p className={TITLE}>Precio medio por toma</p>
+              <p className={TITLE}>Precio medio por espacio publicitario</p>
               <p className={SUB}>Tarifa mensual listada en catálogo (USD, sin IVA). Comparado con el mínimo y el máximo.</p>
             </div>
           </div>

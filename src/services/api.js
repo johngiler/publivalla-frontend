@@ -145,10 +145,11 @@ export async function getSpaces(centerSlug) {
   return [];
 }
 
-export async function getSpace(id) {
+export async function getSpace(id, { token = null } = {}) {
   const headers = {
     "Content-Type": "application/json",
     ...(await workspaceSlugHeadersForFetch()),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
   const sid = encodeURIComponent(String(id));
   const paths = [`/api/spaces/${sid}/`, `/api/catalog/spaces/${sid}/`];
@@ -244,9 +245,18 @@ export async function postSpaceRentalRangeCheck(
   throw last ?? new Error("No hubo respuesta del servicio");
 }
 
+/** @param {URLSearchParams} params @param {{ mine?: string, cartIds?: number[] }} scope */
+function appendCatalogMineQuery(params, { mine = "", cartIds = [] } = {}) {
+  const m = (mine || "").trim();
+  if (m) params.set("mine", m);
+  if (m === "cart" && Array.isArray(cartIds) && cartIds.length) {
+    params.set("cart_ids", cartIds.map(String).join(","));
+  }
+}
+
 /**
  * Portada: tomas paginadas con búsqueda y filtro por ciudad del centro.
- * @param {{ search?: string, city?: string, center?: string, type?: string, page?: number, pageSize?: number }} params
+ * @param {{ search?: string, city?: string, center?: string, type?: string, mine?: string, cartIds?: number[], page?: number, pageSize?: number }} params
  * @returns {Promise<{ results: Array<Record<string, unknown>>, count: number, next: string | null, previous: string | null }>}
  */
 export async function getSpacesCatalogPage({
@@ -254,8 +264,11 @@ export async function getSpacesCatalogPage({
   city = "",
   center = "",
   type = "",
+  mine = "",
+  cartIds = [],
   page = 1,
   pageSize = 20,
+  token = null,
 } = {}) {
   const params = new URLSearchParams();
   params.set("page", String(page));
@@ -264,11 +277,13 @@ export async function getSpacesCatalogPage({
   if (city.trim()) params.set("city", city.trim());
   if (center.trim()) params.set("center", center.trim());
   if (type.trim()) params.set("type", type.trim());
+  appendCatalogMineQuery(params, { mine, cartIds });
   const qs = `?${params.toString()}`;
   const paths = [`/api/spaces/${qs}`, `/api/catalog/spaces/${qs}`];
   const headers = {
     "Content-Type": "application/json",
     ...workspaceSlugRequestHeaders(),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
   let last = null;
   for (const path of paths) {
@@ -289,18 +304,21 @@ export async function getSpacesCatalogPage({
 
 /**
  * Conteos por ciudad para pills (respeta la misma búsqueda que el listado).
- * @param {{ search?: string, center?: string, type?: string }} params
+ * @param {{ search?: string, center?: string, type?: string, mine?: string, cartIds?: number[] }} params
  * @returns {Promise<{ total: number, items: Array<{ city: string, count: number, label?: string }> }>}
  */
 export async function getSpacesLocationFacets({
   search = "",
   center = "",
   type = "",
+  mine = "",
+  cartIds = [],
 } = {}) {
   const params = new URLSearchParams();
   if (search.trim()) params.set("search", search.trim());
   if (center.trim()) params.set("center", center.trim());
   if (type.trim()) params.set("type", type.trim());
+  appendCatalogMineQuery(params, { mine, cartIds });
   const q = params.toString();
   const suffix = q ? `?${q}` : "";
   const paths = [
@@ -329,18 +347,21 @@ export async function getSpacesLocationFacets({
 
 /**
  * Conteos por centro comercial para pills en portada (slug + nombre).
- * @param {{ search?: string, city?: string, type?: string }} params
+ * @param {{ search?: string, city?: string, type?: string, mine?: string, cartIds?: number[] }} params
  * @returns {Promise<{ total: number, items: Array<{ slug: string, name: string, count: number }> }>}
  */
 export async function getSpacesCenterFacets({
   search = "",
   city = "",
   type = "",
+  mine = "",
+  cartIds = [],
 } = {}) {
   const params = new URLSearchParams();
   if (search.trim()) params.set("search", search.trim());
   if (city.trim()) params.set("city", city.trim());
   if (type.trim()) params.set("type", type.trim());
+  appendCatalogMineQuery(params, { mine, cartIds });
   const q = params.toString();
   const suffix = q ? `?${q}` : "";
   const paths = [
@@ -369,18 +390,21 @@ export async function getSpacesCenterFacets({
 
 /**
  * Conteos por tipo de toma para filtros en portada.
- * @param {{ search?: string, city?: string, center?: string }} params
+ * @param {{ search?: string, city?: string, center?: string, mine?: string, cartIds?: number[] }} params
  * @returns {Promise<{ total: number, items: Array<{ type: string, label: string, count: number }> }>}
  */
 export async function getSpacesTypeFacets({
   search = "",
   city = "",
   center = "",
+  mine = "",
+  cartIds = [],
 } = {}) {
   const params = new URLSearchParams();
   if (search.trim()) params.set("search", search.trim());
   if (city.trim()) params.set("city", city.trim());
   if (center.trim()) params.set("center", center.trim());
+  appendCatalogMineQuery(params, { mine, cartIds });
   const q = params.toString();
   const suffix = q ? `?${q}` : "";
   const paths = [
@@ -390,6 +414,54 @@ export async function getSpacesTypeFacets({
   const headers = {
     "Content-Type": "application/json",
     ...workspaceSlugRequestHeaders(),
+  };
+  let last = null;
+  for (const path of paths) {
+    try {
+      const res = await fetch(apiUrl(path), { headers, cache: "no-store" });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || `HTTP ${res.status}`);
+      }
+      return await res.json();
+    } catch (e) {
+      last = e instanceof Error ? e : new Error(String(e));
+    }
+  }
+  throw last ?? new Error("No hubo respuesta del servicio");
+}
+
+/**
+ * Conteos para filtros de cuenta (favoritos, activos, carrito, reservas).
+ * @param {{ search?: string, city?: string, center?: string, type?: string, cartIds?: number[], token?: string | null }} params
+ * @returns {Promise<{ items: Array<{ scope: string, label: string, count: number }> }>}
+ */
+export async function getSpacesClientScopeFacets({
+  search = "",
+  city = "",
+  center = "",
+  type = "",
+  cartIds = [],
+  token = null,
+} = {}) {
+  const params = new URLSearchParams();
+  if (search.trim()) params.set("search", search.trim());
+  if (city.trim()) params.set("city", city.trim());
+  if (center.trim()) params.set("center", center.trim());
+  if (type.trim()) params.set("type", type.trim());
+  if (Array.isArray(cartIds) && cartIds.length) {
+    params.set("cart_ids", cartIds.map(String).join(","));
+  }
+  const q = params.toString();
+  const suffix = q ? `?${q}` : "";
+  const paths = [
+    `/api/spaces/client-scope-facets${suffix}`,
+    `/api/catalog/spaces/client-scope-facets${suffix}`,
+  ];
+  const headers = {
+    "Content-Type": "application/json",
+    ...workspaceSlugRequestHeaders(),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
   let last = null;
   for (const path of paths) {

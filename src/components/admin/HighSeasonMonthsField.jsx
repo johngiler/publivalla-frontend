@@ -37,7 +37,7 @@ export function HighSeasonMonthsField({
     <div>
       <p className={labelClass}>Meses de temporada alta</p>
       <p className="mt-1 text-xs text-zinc-500">
-        Se repiten cada año (p. ej. noviembre–enero). El canon de las tomas de este centro sube en esos meses.
+        Se repiten cada año (p. ej. noviembre–enero). El canon de los espacios publicitarios de este centro sube en esos meses.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         {MONTH_LABELS_ES.map((label, i) => {
@@ -67,7 +67,7 @@ export function HighSeasonMonthsField({
             Multiplicador del canon
           </label>
           <p className="mt-1 text-xs text-zinc-500">
-            En los meses marcados, el canon mensual de cada toma se multiplica por este factor (1 = sin cambio).
+            En los meses marcados, el canon mensual de cada espacio publicitario se multiplica por este factor (1 = sin cambio).
           </p>
           <input
             id={`${idPrefix}-mult`}

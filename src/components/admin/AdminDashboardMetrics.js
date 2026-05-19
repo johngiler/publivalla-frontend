@@ -111,7 +111,8 @@ export function AdminDashboardMetrics({ metrics }) {
       <div>
         <h2 className="text-lg font-bold text-zinc-900">Métricas operativas</h2>
         <p className="mt-1 max-w-3xl text-sm text-zinc-600">
-          Cálculos a partir de pedidos, líneas de contrato, tomas y eventos de estado del workspace. Lo que
+          Cálculos a partir de pedidos, líneas de contrato, espacios publicitarios y eventos de estado del
+          workspace. Lo que
           aún no está modelado (p. ej. renovaciones explícitas) se indica en cada bloque.
         </p>
       </div>
@@ -120,11 +121,12 @@ export function AdminDashboardMetrics({ metrics }) {
         <div className={G.violet}>
           <p className={TITLE}>Ocupación por contrato vigente</p>
           <p className={SUB}>
-            Tomas distintas con línea en pedido <strong>activo</strong> hoy (periodo que cubre la fecha).
+            Espacios publicitarios distintos con línea en pedido <strong>activo</strong> hoy (periodo que cubre
+            la fecha).
           </p>
           <p className={KPI_VAL}>{fmtPct(occ.occupancy_contract_pct)}</p>
           <p className="mt-1 text-xs text-zinc-600">
-            {occ.spaces_under_contract_today ?? 0} / {occ.spaces_total ?? 0} tomas
+            {occ.spaces_under_contract_today ?? 0} / {occ.spaces_total ?? 0} espacios publicitarios
           </p>
         </div>
         <div className={G.emerald}>
@@ -135,8 +137,8 @@ export function AdminDashboardMetrics({ metrics }) {
         <div className={G.cyan}>
           <p className={TITLE}>Uso vs capacidad tarifaria listada</p>
           <p className={SUB}>
-            Ingreso mensual contratado hoy frente a la suma de tarifas mensuales de todas las tomas del
-            catálogo.
+            Ingreso mensual contratado hoy frente a la suma de tarifas mensuales de todos los espacios
+            publicitarios del catálogo.
           </p>
           <p className={KPI_VAL}>{fmtPct(occ.capacity_use_pct)}</p>
           <p className="mt-1 text-xs text-zinc-600">
@@ -250,7 +252,7 @@ export function AdminDashboardMetrics({ metrics }) {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className={G.emerald}>
-          <p className={TITLE}>Toma más rentable (histórico contratado)</p>
+          <p className={TITLE}>Espacio publicitario más rentable (histórico contratado)</p>
           <p className={SUB}>Suma de subtotales de líneas en pedidos activos o vencidos.</p>
           {top ? (
             <div className="mt-3">
@@ -263,7 +265,7 @@ export function AdminDashboardMetrics({ metrics }) {
                 href={`/dashboard/tomas?q=${encodeURIComponent(top.code || "")}`}
                 className="mt-3 inline-block text-sm font-semibold text-[color:var(--mp-primary)] underline-offset-4 hover:underline"
               >
-                Ver espacios
+                Ver espacios publicitarios
               </Link>
             </div>
           ) : (
@@ -273,11 +275,12 @@ export function AdminDashboardMetrics({ metrics }) {
         <div className={G.amber}>
           <p className={TITLE}>Mayor tiempo sin contrato activo</p>
           <p className={SUB}>
-            Días desde el fin del último contrato (o desde el alta de la toma si nunca contrató). Excluye
-            tomas con contrato vigente hoy.
+            Días desde el fin del último contrato (o desde el alta del espacio publicitario si nunca contrató).
+            Excluye espacios con contrato vigente hoy.
           </p>
           <p className="mt-2 text-xs text-zinc-600">
-            Promedio días (todas las tomas): <strong>{metrics.avg_idle_days_per_space ?? "—"}</strong>
+            Promedio días (todos los espacios publicitarios):{" "}
+            <strong>{metrics.avg_idle_days_per_space ?? "—"}</strong>
           </p>
           <ul className="mt-3 space-y-2 text-sm">
             {coldest.length === 0 ? (
@@ -368,10 +371,10 @@ export function AdminDashboardMetrics({ metrics }) {
       </div>
 
       <div className={G.teal}>
-        <p className={TITLE}>Distribución de tomas por tipo</p>
+        <p className={TITLE}>Distribución de espacios publicitarios por tipo</p>
         <ul className="mt-3 grid gap-2 sm:grid-cols-2">
           {byType.length === 0 ? (
-            <li className="text-sm text-zinc-500">Sin tomas.</li>
+            <li className="text-sm text-zinc-500">Sin espacios publicitarios.</li>
           ) : (
             byType.map((r) => (
               <li

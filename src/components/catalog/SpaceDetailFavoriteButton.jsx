@@ -10,7 +10,7 @@ import { authJsonFetcher } from "@/lib/swr/fetchers";
 import { deleteFavorite, MY_FAVORITES_PATH, postFavorite } from "@/services/clientAccountApi";
 
 /**
- * Solo cliente marketplace autenticado. SWR comparte clave con `/cuenta/favoritos`.
+ * Solo cliente marketplace autenticado. SWR en `/api/me/favorites/` (catálogo: filtro «Mis favoritos»).
  * @param {{ spaceId: number|string; variant?: "overlay"; overlayAlign?: "left" | "right" }} props
  */
 export function SpaceDetailFavoriteButton({ spaceId, variant, overlayAlign = "right" }) {

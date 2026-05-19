@@ -1,5 +1,6 @@
-import MisFavoritosView from "@/views/MisFavoritosView";
+import { redirect } from "next/navigation";
 
+/** Redirige al catálogo con el filtro «Mis favoritos». */
 export default function MisFavoritosPage() {
-  return <MisFavoritosView />;
+  redirect("/?mine=favorites");
 }

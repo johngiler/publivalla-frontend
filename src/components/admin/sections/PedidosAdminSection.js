@@ -1022,8 +1022,8 @@ export function PedidosAdminSection() {
                                                         it.ad_space_title
                                                           ? `Portada: ${it.ad_space_title}`
                                                           : it.ad_space_code
-                                                            ? `Portada toma ${it.ad_space_code}`
-                                                            : "Portada de la toma"
+                                                            ? `Portada ${it.ad_space_code}`
+                                                            : "Portada del espacio publicitario"
                                                       }
                                                       width={120}
                                                       height={120}
@@ -1059,7 +1059,7 @@ export function PedidosAdminSection() {
                                                       className="text-zinc-900"
                                                     >
                                                       {it.ad_space_title ||
-                                                        "Toma"}
+                                                        "Espacio publicitario"}
                                                     </CatalogSpaceLink>
                                                   </p>
                                                   {centerName && centerHrefQ ? (
@@ -1154,7 +1154,7 @@ export function PedidosAdminSection() {
           initialIndex={lineCoverLightbox.initialIndex}
           showDownload={false}
           showThumbnails={lineCoverLightbox.items.length > 1}
-          ariaLabel="Imágenes de la toma en esta línea"
+          ariaLabel="Imágenes del espacio publicitario en esta línea"
         />
 
         <AdminConfirmDialog

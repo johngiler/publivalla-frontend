@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { SpaceDetailCoverWithLightbox } from "@/components/catalog/SpaceDetailCoverWithLightbox";
 import { SpaceDetailAvailabilityBar } from "@/components/catalog/SpaceDetailAvailabilityBar";
+import { SpaceDetailClientQuickLinks } from "@/components/catalog/SpaceDetailClientQuickLinks";
 import { SpaceMarketplaceCompliance } from "@/components/catalog/SpaceMarketplaceCompliance";
 import { SpaceDetailReservationActions } from "@/components/catalog/SpaceDetailReservationActions";
 import { SPACE_TYPES, spaceStatusLabel, spaceStatusPillClassName } from "@/components/admin/adminConstants";
@@ -164,6 +165,7 @@ export default function SpaceDetailView({ space }) {
               <div className="mt-2 min-w-0">
                 <SpaceDetailAvailabilityBar space={space} spaceId={space.id} />
               </div>
+              <SpaceDetailClientQuickLinks space={space} />
             </div>
           </div>
 

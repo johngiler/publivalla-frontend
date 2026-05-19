@@ -265,6 +265,79 @@ export function catalogSummaryAvailabilityYears(
  * @param {Date} [ref]
  * @returns {Record<number, boolean[]>}
  */
+/**
+ * @param {unknown} rawByYear
+ * @param {number[]} years
+ * @returns {Record<number, boolean[]> | null}
+ */
+function resolveClientMonthsMapFromApi(rawByYear, years) {
+  if (!rawByYear || typeof rawByYear !== "object" || Array.isArray(rawByYear)) {
+    return null;
+  }
+  /** @type {Record<number, boolean[]>} */
+  const out = {};
+  for (const y of years) {
+    const flags = rawByYear[String(y)] ?? rawByYear[y];
+    out[y] = flags != null ? normalizeMonthsOccupied(flags) : Array(12).fill(false);
+  }
+  return out;
+}
+
+/**
+ * Meses del cliente en la toma (`client_months_*_by_year` del API).
+ * @returns {{ reserved: Record<number, boolean[]>, active: Record<number, boolean[]> } | null}
+ */
+export function resolveClientMonthsHighlightByYear(
+  space,
+  ref = new Date(),
+  yearsOverride = null,
+) {
+  const years =
+    yearsOverride && yearsOverride.length > 0
+      ? yearsOverride
+      : catalogAvailabilityYears(ref, space);
+  const reserved = resolveClientMonthsMapFromApi(
+    space?.client_months_reserved_by_year,
+    years,
+  );
+  const active = resolveClientMonthsMapFromApi(
+    space?.client_months_active_by_year,
+    years,
+  );
+  if (!reserved && !active) return null;
+  return {
+    reserved: reserved ?? Object.fromEntries(years.map((y) => [y, Array(12).fill(false)])),
+    active: active ?? Object.fromEntries(years.map((y) => [y, Array(12).fill(false)])),
+  };
+}
+
+/**
+ * Meses cubiertos solo por bloqueos de disponibilidad del admin (no pedidos ni pasado).
+ * @param {Record<string, unknown> | null} space
+ * @param {Date} [ref]
+ * @param {number[] | null} [yearsOverride]
+ * @returns {Record<number, boolean[]>}
+ */
+export function resolveMonthsAdminBlockedByYear(
+  space,
+  ref = new Date(),
+  yearsOverride = null,
+) {
+  const years =
+    yearsOverride && yearsOverride.length > 0
+      ? yearsOverride
+      : catalogAvailabilityYears(ref, space);
+  const segments = normalizeBlockedRanges(space);
+  /** @type {Record<number, boolean[]>} */
+  const out = {};
+  for (const y of years) {
+    out[y] = Array.from({ length: 12 }, (_, i) =>
+      isMonthInRentalSegments(segments, y, i + 1),
+    );
+  }
+  return out;
+}
+
 export function resolveMonthsOccupiedByYear(
   space,
   ref = new Date(),
@@ -578,6 +651,34 @@ export function rentalSegmentsToLinearIndices(rentalSegments) {
     }
   }
   return out.sort((a, b) => a - b);
+}
+
+/**
+ * Al editar o ver un bloqueo, sus meses no deben contarse como «no disponibles» en el picker.
+ * @param {Record<number, boolean[]>} disabledByYear
+ * @param {number[]} years
+ * @param {{ rental_segments?: Array<{ start_date?: string, end_date?: string }>, start_date?: string, end_date?: string } | null} editingPick
+ */
+export function disabledMonthsForBlockPicker(disabledByYear, years, editingPick) {
+  if (!editingPick) return disabledByYear;
+  const editable = new Set(
+    rentalSegmentsToLinearIndices(
+      editingPick.rental_segments?.length
+        ? editingPick.rental_segments
+        : [{ start_date: editingPick.start_date, end_date: editingPick.end_date }],
+    ),
+  );
+  /** @type {Record<number, boolean[]>} */
+  const out = {};
+  for (const y of years) {
+    const row = disabledByYear[y] ?? Array(12).fill(true);
+    out[y] = row.map((busy, i) => {
+      if (!busy) return false;
+      const idx = monthLinearIndex(y, i + 1);
+      return editable.has(idx) ? false : true;
+    });
+  }
+  return out;
 }
 
 /**

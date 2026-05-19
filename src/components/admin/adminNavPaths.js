@@ -1,5 +1,6 @@
-/** Etiqueta unificada en panel (URL sigue en /dashboard/tomas). */
+/** Etiquetas unificadas en panel (URL sigue en /dashboard/tomas). */
 export const ADMIN_SPACES_LABEL = "Espacios publicitarios";
+export const ADMIN_SPACE_LABEL_SINGULAR = "Espacio publicitario";
 
 /**
  * Rutas del panel admin agrupadas por función (orden dentro de cada grupo).

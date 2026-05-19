@@ -40,7 +40,13 @@ import {
   availabilityBlockTypePillClassName,
 } from "@/components/admin/adminConstants";
 import { AdminAvailabilityBlockMonthPicker } from "@/components/admin/AdminAvailabilityBlockMonthPicker";
+import { AdminBlockViewAvailabilityCalendar } from "@/components/admin/AdminBlockViewAvailabilityCalendar";
 import { IconAdminCalendarBlock } from "@/components/admin/adminIcons";
+import {
+  AdminDashboardFilterLink,
+  dashboardCentrosSearchHref,
+} from "@/lib/adminDashboardLinks";
+import { CatalogSpaceLink } from "@/components/catalog/CatalogSpaceLink";
 import { BloqueosDisponibilidadSectionSkeleton } from "@/components/admin/skeletons/BloqueosDisponibilidadSectionSkeleton";
 import { AdminListPagination } from "@/components/admin/AdminListPagination";
 import { useAuth } from "@/context/AuthContext";
@@ -65,6 +71,31 @@ const ACTIVE_FILTER_OPTIONS = [
   { v: "1", l: "Solo vigentes" },
   { v: "0", l: "Solo caducados" },
 ];
+
+function blockMonthPickFromRow(row) {
+  const start = row?.start_date ? String(row.start_date).slice(0, 10) : "";
+  const end = row?.end_date ? String(row.end_date).slice(0, 10) : "";
+  if (!start || !end) return null;
+  return {
+    start_date: start,
+    end_date: end,
+    rental_segments: [{ start_date: start, end_date: end }],
+  };
+}
+
+function blockEditingPickFromRow(row) {
+  const start = row?.start_date ? String(row.start_date).slice(0, 10) : "";
+  const end = row?.end_date ? String(row.end_date).slice(0, 10) : "";
+  if (!start || !end) return null;
+  return { start_date: start, end_date: end };
+}
+
+function centerCentrosFilterHref(row) {
+  const name = String(row?.shopping_center_name ?? "").trim();
+  const slug = String(row?.shopping_center_slug ?? "").trim();
+  const q = slug || name;
+  return q ? dashboardCentrosSearchHref(q) : null;
+}
 
 function activePillClass(active) {
   return active
@@ -128,10 +159,10 @@ export function BloqueosDisponibilidadAdminSection() {
 
   const spaceFilterOptions = useMemo(
     () => [
-      { v: "all", l: "Todas las tomas" },
+      { v: "all", l: "Todos los espacios publicitarios" },
       ...spacesForFilter.map((s) => ({
         v: String(s.id),
-        l: [s.code, s.title].filter(Boolean).join(" — ") || `Toma #${s.id}`,
+        l: [s.code, s.title].filter(Boolean).join(" — ") || `Espacio #${s.id}`,
       })),
     ],
     [spacesForFilter],
@@ -144,10 +175,10 @@ export function BloqueosDisponibilidadAdminSection() {
 
   const modalSpaceOptions = useMemo(
     () => [
-      { v: "", l: "Selecciona la toma" },
+      { v: "", l: "Selecciona el espacio publicitario" },
       ...spacesForModal.map((s) => ({
         v: String(s.id),
-        l: [s.code, s.title].filter(Boolean).join(" — ") || `Toma #${s.id}`,
+        l: [s.code, s.title].filter(Boolean).join(" — ") || `Espacio #${s.id}`,
       })),
     ],
     [spacesForModal],
@@ -386,7 +417,7 @@ export function BloqueosDisponibilidadAdminSection() {
                   setSearch(v);
                   setPage(1);
                 }}
-                placeholder="Buscar toma, centro o nota…"
+                placeholder="Buscar espacio publicitario, centro o nota…"
               />
               <AdminFilterSelect
                 label="Centro"
@@ -398,7 +429,7 @@ export function BloqueosDisponibilidadAdminSection() {
                 options={centerFilterOptions}
               />
               <AdminFilterSelect
-                label="Toma"
+                label="Espacio publicitario"
                 value={filterSpace}
                 onChange={(v) => {
                   setFilterSpace(v);
@@ -471,7 +502,7 @@ export function BloqueosDisponibilidadAdminSection() {
                       <tr className="border-b border-zinc-100 bg-zinc-50/90">
                         <th className="w-10 px-2 py-3" scope="col" aria-label="Detalle" />
                         <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                          Toma
+                          Espacio publicitario
                         </th>
                         <th className="hidden px-3 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 md:table-cell">
                           Centro
@@ -494,6 +525,11 @@ export function BloqueosDisponibilidadAdminSection() {
                 {rows.map((row) => {
                   const open = expandedId === row.id;
                   const typeLbl = availabilityBlockTypeLabel(row.type, row.type_label);
+                  const centerName = String(row.shopping_center_name ?? "").trim();
+                  const centerHref = centerCentrosFilterHref(row);
+                  const epCode = String(row.ad_space_code ?? "").trim();
+                  const epTitle = String(row.ad_space_title ?? "").trim();
+                  const epLabel = [epCode, epTitle].filter(Boolean).join(" — ") || "Espacio publicitario";
                   return (
                     <Fragment key={row.id}>
                       <tr className="border-t border-zinc-100 hover:bg-zinc-50/80">
@@ -506,13 +542,32 @@ export function BloqueosDisponibilidadAdminSection() {
                           />
                         </td>
                         <td className="max-w-[14rem] px-3 py-2 align-middle">
-                          <span className="block truncate font-medium text-zinc-900" title={row.ad_space_title}>
+                          <CatalogSpaceLink
+                            spaceId={row.ad_space}
+                            variant="mono"
+                            className="block truncate font-semibold tracking-tight text-zinc-900"
+                          >
                             {row.ad_space_code || "—"}
-                          </span>
-                          <span className="block truncate text-xs text-zinc-500">{row.ad_space_title}</span>
+                          </CatalogSpaceLink>
+                          <CatalogSpaceLink
+                            spaceId={row.ad_space}
+                            className="block truncate text-xs text-zinc-500"
+                          >
+                            {row.ad_space_title || "—"}
+                          </CatalogSpaceLink>
                         </td>
-                        <td className="hidden max-w-[10rem] truncate px-3 py-2 text-zinc-700 md:table-cell">
-                          {row.shopping_center_name || "—"}
+                        <td className="hidden max-w-[10rem] truncate px-3 py-2 md:table-cell">
+                          {centerHref ? (
+                            <AdminDashboardFilterLink
+                              href={centerHref}
+                              className="block truncate"
+                              title={centerName}
+                            >
+                              {centerName}
+                            </AdminDashboardFilterLink>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2 text-zinc-800">
                           {formatAvailabilityBlockPeriod(row.start_date, row.end_date)}
@@ -543,10 +598,27 @@ export function BloqueosDisponibilidadAdminSection() {
                         <AdminAccordionRowPanel colSpan={7} panelId={`bloqueo-detail-${row.id}`}>
                           <AdminAccordionDetailHeader
                             titleLabel="Bloqueo"
-                            titleLine={[row.ad_space_code, row.ad_space_title].filter(Boolean).join(" — ") || "Toma"}
+                            titleLine={epLabel}
                           />
                           <AdminDetailInset className="mt-4 grid gap-4 sm:grid-cols-2">
-                            <AdminDetailField label="Centro">{row.shopping_center_name || adminDetailEmpty("")}</AdminDetailField>
+                            <AdminDetailField label="Espacio publicitario">
+                              {row.ad_space ? (
+                                <CatalogSpaceLink spaceId={row.ad_space} className="line-clamp-2">
+                                  {epLabel}
+                                </CatalogSpaceLink>
+                              ) : (
+                                adminDetailEmpty("")
+                              )}
+                            </AdminDetailField>
+                            <AdminDetailField label="Centro">
+                              {centerHref ? (
+                                <AdminDashboardFilterLink href={centerHref}>
+                                  {centerName}
+                                </AdminDashboardFilterLink>
+                              ) : (
+                                adminDetailEmpty("")
+                              )}
+                            </AdminDetailField>
                             <AdminDetailField label="Estado">{typeLbl}</AdminDetailField>
                             <AdminDetailField label="Periodo">
                               {formatAvailabilityBlockPeriod(row.start_date, row.end_date)}
@@ -558,6 +630,18 @@ export function BloqueosDisponibilidadAdminSection() {
                               </AdminDetailField>
                             </div>
                           </AdminDetailInset>
+                          <div className="mt-6 border-t border-zinc-200/90 pt-6">
+                            <AdminBlockViewAvailabilityCalendar
+                              panelId={`bloqueo-detail-${row.id}`}
+                              adSpaceId={row.ad_space}
+                              pickSync={blockMonthPickFromRow(row)}
+                              editingPick={blockEditingPickFromRow(row)}
+                              periodLabel={formatAvailabilityBlockPeriod(
+                                row.start_date,
+                                row.end_date,
+                              )}
+                            />
+                          </div>
                         </AdminAccordionRowPanel>
                       ) : null}
                     </Fragment>
@@ -612,7 +696,7 @@ export function BloqueosDisponibilidadAdminSection() {
             </div>
             <div>
               <label className={adminLabel} htmlFor="bloqueo-toma">
-                Toma
+                Espacio publicitario
               </label>
               <AdminSelect
                 inputId="bloqueo-toma"

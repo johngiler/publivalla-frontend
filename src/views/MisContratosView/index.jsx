@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 
@@ -13,21 +13,35 @@ import {
   shouldShowAdminListFilters,
 } from "@/components/admin/AdminListFilters";
 import { orderStatusPillClassName } from "@/components/admin/adminConstants";
-import { CatalogSpaceLink } from "@/components/catalog/CatalogSpaceLink";
+import { MarketplaceLineSpaceHeading } from "@/components/catalog/MarketplaceLineSpaceHeading";
+import { RentalMonthsByYearPills } from "@/components/catalog/RentalMonthsByYearPills";
+import { cartLineMonthsByYear } from "@/lib/rentalMonthPills";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { RasterFromApiUrl } from "@/components/media/RasterFromApiUrl";
 import { MisContratosSkeleton } from "@/components/orders/MisContratosSkeleton";
 import { useAuth } from "@/context/AuthContext";
+import {
+  marketplaceLineFieldLabelClass,
+  marketplaceLinePriceClass,
+  marketplaceOrderRefLinkClass,
+} from "@/lib/marketplaceLineTypography";
 import { formatUsdMoney } from "@/lib/marketplacePricing";
+import { catalogRasterImgAttrs } from "@/lib/catalogImageProps";
 import { mediaUrlForUiWithWebp, primaryAdSpaceMediaRawFromOrderLike } from "@/lib/mediaUrls";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { marketplacePrimaryBtn } from "@/lib/marketplaceActionButtons";
 import { contractsPath } from "@/services/clientAccountApi";
+import {
+  squareListImagePreviewButtonRingClass,
+  squareMarketplaceLinePreviewFrameClass,
+  squareMarketplaceLinePreviewImgClass,
+} from "@/lib/squareImagePreview";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 import { authJsonFetcher } from "@/lib/swr/fetchers";
 /** Mismo contrato que `AdminSelect` / resto del admin: `{ v, l }`, no `value`/`label`. */
 const PHASE_OPTIONS = [
   { v: "all", l: "Todos" },
+  { v: "open", l: "Vigentes" },
   { v: "running", l: "En curso" },
   { v: "upcoming", l: "Próximos" },
   { v: "ended", l: "Finalizados" },
@@ -112,10 +126,29 @@ function contractLineImageCount(it) {
 
 export default function MisContratosView() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { authReady, me, isAdmin, isClient, accessToken } = useAuth();
-  const [phase, setPhase] = useState("all");
-  const [filterSearch, setFilterSearch] = useState("");
+  const phaseFromUrl = (searchParams.get("phase") ?? "").trim();
+  const searchFromUrl = searchParams.get("search") ?? "";
+  const [phase, setPhase] = useState(() =>
+    PHASE_OPTIONS.some((o) => o.v === phaseFromUrl) ? phaseFromUrl : "all",
+  );
+  const [filterSearch, setFilterSearch] = useState(() => searchFromUrl);
   const debouncedSearch = useDebouncedValue(filterSearch, 400);
+
+  useEffect(() => {
+    setFilterSearch(searchFromUrl);
+  }, [searchFromUrl]);
+
+  useEffect(() => {
+    if (!phaseFromUrl || phaseFromUrl === "all") {
+      setPhase("all");
+      return;
+    }
+    if (PHASE_OPTIONS.some((o) => o.v === phaseFromUrl)) {
+      setPhase(phaseFromUrl);
+    }
+  }, [phaseFromUrl]);
   const [contractGallery, setContractGallery] = useState({
     open: false,
     items: /** @type {Array<{ src: string; alt?: string; thumbnailSrc?: string }>} */ ([]),
@@ -128,8 +161,9 @@ export default function MisContratosView() {
     setContractGallery({ open: true, items, initialIndex: 0 });
   }, []);
 
+  const phaseForApi = phaseFromUrl === "open" && phase !== "open" ? phase : phase;
   const canFetch = authReady && isClient && !!accessToken;
-  const swrKey = canFetch ? contractsPath(phase) : null;
+  const swrKey = canFetch ? contractsPath(phaseForApi) : null;
   const { data, error, isLoading } = useSWR(swrKey, authJsonFetcher);
 
   useEffect(() => {
@@ -161,11 +195,17 @@ export default function MisContratosView() {
     });
   }, [items, debouncedSearch]);
 
-  const filtersActive = phase !== "all" || filterSearch.trim() !== "";
+  const filtersActive =
+    phase !== "all" || filterSearch.trim() !== "" || phaseFromUrl !== "" || searchFromUrl !== "";
 
   function clearFilters() {
     setPhase("all");
     setFilterSearch("");
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("search");
+    next.delete("phase");
+    const q = next.toString();
+    router.replace(q ? `/cuenta/contratos?${q}` : "/cuenta/contratos");
   }
 
   const errMsg = error instanceof Error ? error.message : error ? String(error) : "";
@@ -257,7 +297,7 @@ export default function MisContratosView() {
             </AdminFiltersRow>
           ) : null}
 
-          {items.length === 0 ? (
+          {(summary?.line_counts?.total ?? 0) === 0 ? (
             <p className="mt-8 rounded-xl border border-dashed border-zinc-200 bg-zinc-50/50 px-4 py-8 text-center text-sm text-zinc-600">
               No hay contratos en esta vista. Cuando un pedido pase a{" "}
               <span className="font-medium text-zinc-800">activo</span> o quede{" "}
@@ -282,56 +322,55 @@ export default function MisContratosView() {
                 const coverRaw = primaryAdSpaceMediaRawFromOrderLike(it);
                 const galleryCount = contractLineImageCount(it);
                 const canOpenGallery = galleryCount > 0;
+                const periodMonths = cartLineMonthsByYear(it);
                 return (
                   <li
                     key={`${it.order_id}-${it.id}`}
                     className={`${ROUNDED_CONTROL} overflow-hidden border border-zinc-200/90 bg-white shadow-sm`}
                   >
-                    <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-stretch">
+                    <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:py-5">
+                      <div className="flex min-w-0 flex-1 gap-3">
                       {canOpenGallery ? (
                         <button
                           type="button"
                           onClick={() => openContractLineGallery(it)}
-                          className="group relative aspect-[4/3] w-full shrink-0 cursor-zoom-in overflow-hidden rounded-xl bg-zinc-100 text-left ring-zinc-300/80 transition hover:ring-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--mp-primary)_45%,transparent)] sm:w-36"
+                          className={`${squareMarketplaceLinePreviewFrameClass} ${squareListImagePreviewButtonRingClass} shrink-0 cursor-zoom-in p-0`}
                           aria-label={
                             galleryCount > 1
                               ? `Abrir galería de esta toma (${galleryCount} imágenes)`
                               : "Abrir imagen ampliada"
                           }
                         >
-                          {coverRaw ? (
-                            <RasterFromApiUrl
-                              url={coverRaw}
-                              alt=""
-                              fill
-                              className="object-cover transition duration-200 group-hover:scale-[1.02]"
-                              sizes="(max-width: 640px) 100vw, 144px"
-                              decoding="async"
-                            />
-                          ) : null}
+                          <RasterFromApiUrl
+                            url={coverRaw}
+                            alt=""
+                            width={120}
+                            height={120}
+                            className={`${squareMarketplaceLinePreviewImgClass} transition duration-200 group-hover:scale-105`}
+                            {...catalogRasterImgAttrs}
+                          />
                         </button>
                       ) : (
-                        <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-xl bg-zinc-100 sm:w-36">
-                          <div className="flex h-full min-h-[6rem] items-center justify-center text-xs text-zinc-400">
+                        <div
+                          className={`${squareMarketplaceLinePreviewFrameClass} shrink-0 bg-zinc-100`}
+                          aria-hidden
+                        >
+                          <span className="flex h-full w-full items-center justify-center text-[10px] font-medium text-zinc-400">
                             Sin imagen
-                          </div>
+                          </span>
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div>
-                            <CatalogSpaceLink
-                              spaceId={it.ad_space_id}
-                              className="text-base font-semibold text-zinc-900 no-underline hover:underline"
-                            >
-                              {it.ad_space_title || it.ad_space_code}
-                            </CatalogSpaceLink>
-                            <p className="mt-0.5 font-mono text-xs text-zinc-500">{it.ad_space_code}</p>
-                            <p className="mt-1 text-sm text-zinc-600">
-                              {it.shopping_center_name}
-                              {it.shopping_center_city ? ` · ${it.shopping_center_city}` : ""}
-                            </p>
-                          </div>
+                          <MarketplaceLineSpaceHeading
+                            item={{
+                              ad_space: it.ad_space_id,
+                              ad_space_title: it.ad_space_title,
+                              ad_space_code: it.ad_space_code,
+                              shopping_center_name: it.shopping_center_name,
+                              shopping_center_city: it.shopping_center_city,
+                            }}
+                          />
                           <div className="flex flex-wrap items-center gap-2">
                             <span
                               className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${kindPillClass(it.contract_row_kind)}`}
@@ -345,37 +384,33 @@ export default function MisContratosView() {
                             </span>
                           </div>
                         </div>
-                        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                          <div>
-                            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                              Periodo
-                            </dt>
-                            <dd className="font-medium text-zinc-800">
-                              {formatContractDay(it.start_date)} → {formatContractDay(it.end_date)}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                              Subtotal línea
-                            </dt>
-                            <dd className="font-semibold tabular-nums text-zinc-900">
-                              {formatUsdMoney(Number(it.subtotal))}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                              Pedido
-                            </dt>
-                            <dd>
-                              <Link
-                                href={pedidosHrefForOrder(it.order_code, it.order_id)}
-                                className="font-mono text-sm font-medium text-[color:var(--mp-primary)] underline-offset-2 hover:underline"
-                              >
-                                {it.order_code || `#${it.order_id}`}
-                              </Link>
-                            </dd>
-                          </div>
-                        </dl>
+                        {periodMonths.length > 0 ? (
+                          <RentalMonthsByYearPills
+                            groups={periodMonths}
+                            keyPrefix={`contract-${it.order_id}-${it.id}`}
+                            className="mt-2"
+                          />
+                        ) : (
+                          <p className="mt-2 text-sm font-medium text-zinc-800">
+                            {formatContractDay(it.start_date)} → {formatContractDay(it.end_date)}
+                          </p>
+                        )}
+                        <div className="mt-3">
+                          <p className={marketplaceLineFieldLabelClass}>Pedido</p>
+                          <Link
+                            href={pedidosHrefForOrder(it.order_code, it.order_id)}
+                            className={`mt-0.5 inline-block ${marketplaceOrderRefLinkClass}`}
+                          >
+                            {it.order_code || `#${it.order_id}`}
+                          </Link>
+                        </div>
+                      </div>
+                      </div>
+                      <div className="shrink-0 text-right sm:pt-0.5">
+                      <p className={marketplaceLineFieldLabelClass}>Subtotal (sin IVA)</p>
+                      <p className={marketplaceLinePriceClass}>
+                        {formatUsdMoney(Number(it.subtotal))}
+                      </p>
                       </div>
                     </div>
                   </li>

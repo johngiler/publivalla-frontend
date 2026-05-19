@@ -1,13 +1,13 @@
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 
-/** Una fila compacta: miniatura 40×40 + código + precio (como en `MisPedidosView` multi). */
+/** Una fila compacta: miniatura 120×120 + código + precio (como en `MisPedidosView` multi). */
 function SkeletonTomaRow({ withBorder = true }) {
   return (
     <li
-      className={`flex items-center gap-2.5 ${withBorder ? "border-b border-zinc-100 pb-2.5 last:border-0 last:pb-0" : ""}`}
+      className={`flex items-start gap-3 ${withBorder ? "border-b border-zinc-100 pb-2.5 last:border-0 last:pb-0" : ""}`}
     >
-      <Skeleton className="h-10 w-10 shrink-0 rounded-md" />
+      <Skeleton className="h-[120px] w-[120px] shrink-0 rounded-[10px]" />
       <Skeleton className="h-4 w-24 shrink-0" />
       <Skeleton className="ms-auto h-4 w-16 shrink-0" />
     </li>
@@ -34,9 +34,13 @@ export function MisPedidosSkeleton() {
             </div>
             <div className="flex flex-wrap items-start justify-between gap-3 border-t border-zinc-100 pt-3">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2.5">
-                  <Skeleton className="h-10 w-10 shrink-0 rounded-md" />
-                  <Skeleton className="h-4 w-28 max-w-[min(100%,12rem)]" />
+                <div className="flex items-start gap-3">
+                  <Skeleton className="h-[120px] w-[120px] shrink-0 rounded-[10px]" />
+                  <div className="min-w-0 space-y-1.5">
+                    <Skeleton className="h-4 w-28 max-w-[min(100%,12rem)]" />
+                    <Skeleton className="h-3.5 w-20 max-w-full" />
+                    <Skeleton className="h-3 w-36 max-w-full" />
+                  </div>
                 </div>
               </div>
               <div className="shrink-0 text-right">
@@ -107,9 +111,13 @@ export function MisPedidosSkeleton() {
             </div>
             <div className="flex flex-wrap items-start justify-between gap-3 border-t border-zinc-100 pt-3">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2.5">
-                  <Skeleton className="h-10 w-10 shrink-0 rounded-md" />
-                  <Skeleton className="h-4 w-24 max-w-[min(100%,11rem)]" />
+                <div className="flex items-start gap-3">
+                  <Skeleton className="h-[120px] w-[120px] shrink-0 rounded-[10px]" />
+                  <div className="min-w-0 space-y-1.5">
+                    <Skeleton className="h-4 w-24 max-w-[min(100%,11rem)]" />
+                    <Skeleton className="h-3.5 w-20 max-w-full" />
+                    <Skeleton className="h-3 w-36 max-w-full" />
+                  </div>
                 </div>
               </div>
               <div className="shrink-0 text-right">

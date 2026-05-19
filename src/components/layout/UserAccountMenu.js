@@ -10,6 +10,7 @@ import {
   IconLogout,
   IconUser,
 } from "@/components/layout/navIcons";
+import { useAuth } from "@/context/AuthContext";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 
 const menuItem =
@@ -17,7 +18,38 @@ const menuItem =
 
 const menuDanger = `${menuItem} text-red-700 hover:bg-red-50 focus:bg-red-50`;
 
-const triggerClass = `mp-ring-brand inline-flex min-h-11 max-w-[14rem] shrink-0 items-center gap-2 ${ROUNDED_CONTROL} border border-transparent px-2 text-sm font-medium text-zinc-600 transition-colors duration-200 ease-out hover:border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline-none sm:min-h-0 sm:py-1`;
+const triggerClass = `mp-ring-brand inline-flex min-h-11 max-w-[16rem] shrink-0 items-center gap-2 ${ROUNDED_CONTROL} border border-transparent px-2 text-sm font-medium text-zinc-600 transition-colors duration-200 ease-out hover:border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline-none sm:min-h-0 sm:py-1`;
+
+function accountPrimaryLine(me) {
+  const first = String(me?.first_name ?? "").trim();
+  const last = String(me?.last_name ?? "").trim();
+  const fullName = [first, last].filter(Boolean).join(" ");
+  if (fullName) return fullName;
+  const email = String(me?.email ?? "").trim();
+  if (email) return email;
+  return String(me?.username ?? "").trim();
+}
+
+function accountMenuTitle(me, primary, subtitle) {
+  const email = String(me?.email ?? "").trim();
+  let line = primary;
+  if (email && email !== primary) {
+    line = `${primary} (${email})`;
+  }
+  return subtitle ? `${line} — ${subtitle}` : line;
+}
+
+function accountSubtitleLine(me, { isAdmin, isClient, company }) {
+  if (isAdmin) {
+    const name = String(me?.workspace_name ?? "").trim();
+    return name || null;
+  }
+  if (isClient && company && typeof company === "object") {
+    const name = String(company.company_name ?? "").trim();
+    return name || null;
+  }
+  return null;
+}
 
 export function UserAccountMenu({
   me,
@@ -26,9 +58,12 @@ export function UserAccountMenu({
   showMiEmpresa = false,
   showMiNegocio = false,
 }) {
+  const { isAdmin, isClient, company } = useAuth();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
+  const primary = accountPrimaryLine(me);
+  const subtitle = accountSubtitleLine(me, { isAdmin, isClient, company });
 
   useEffect(() => {
     setOpen(false);
@@ -69,10 +104,17 @@ export function UserAccountMenu({
         aria-controls="user-account-menu"
         id="user-account-trigger"
         onClick={() => setOpen((v) => !v)}
-        title={me.email || me.username}
+        title={accountMenuTitle(me, primary, subtitle)}
       >
-        <IconUser className="text-zinc-400" />
-        <span className="truncate">{me.username}</span>
+        <IconUser className="shrink-0 text-zinc-400" />
+        <span className="flex min-w-0 flex-col items-start text-left leading-tight">
+          <span className="max-w-full truncate">{primary}</span>
+          {subtitle ? (
+            <span className="max-w-full truncate text-xs font-normal text-zinc-500">
+              {subtitle}
+            </span>
+          ) : null}
+        </span>
         <IconChevronDown
           className={`text-zinc-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         />
