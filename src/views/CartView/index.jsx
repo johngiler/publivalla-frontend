@@ -327,7 +327,7 @@ export default function CartView() {
               if (!meetsMin) e.preventDefault();
             }}
           >
-            Proceder al pago
+            Continuar
           </Link>
           <button
             type="button"

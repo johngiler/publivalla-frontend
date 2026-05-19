@@ -853,23 +853,26 @@ export default function MisPedidosView() {
                             las tomas comparten las mismas fechas si reservaste periodos distintos.
                           </p>
                           <ul
-                            className="mt-4 space-y-3 text-sm"
+                            className="mt-4 list-none space-y-4 p-0"
                             aria-labelledby={`${panelId}-lineas`}
                           >
                             {(o.items || []).map((it) => {
                               const lineCoverRaw = primaryAdSpaceMediaRawFromOrderLike(it);
                               const lineImgCount = orderLineItemImageCount(it);
+                              const periodMonths = cartLineMonthsByYear(it);
+                              const codeLabel = lineSpaceCode(it).replace(/^#/, "") || "toma";
                               return (
                                 <li
                                   key={it.id}
-                                  className="flex flex-col gap-3 border-b border-zinc-100 pb-3 last:border-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between"
+                                  className={`${ROUNDED_CONTROL} overflow-hidden border border-zinc-200/90 bg-white shadow-sm`}
                                 >
-                                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                                  <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:py-5">
+                                    <div className="flex min-w-0 flex-1 gap-3">
                                     {lineCoverRaw ? (
                                       <button
                                         type="button"
                                         onClick={() => openOrderLineGallery(o, it.id)}
-                                        className={`${squareMarketplaceLinePreviewFrameClass} ${squareListImagePreviewButtonRingClass} p-0`}
+                                        className={`${squareMarketplaceLinePreviewFrameClass} ${squareListImagePreviewButtonRingClass} shrink-0 p-0`}
                                         aria-label={
                                           lineImgCount > 1
                                             ? `Abrir galería de esta toma (${lineImgCount} imágenes)`
@@ -885,24 +888,40 @@ export default function MisPedidosView() {
                                           {...catalogRasterImgAttrs}
                                         />
                                       </button>
-                                    ) : null}
-                                    <div className="min-w-0">
+                                    ) : (
+                                        <div
+                                          className={`${squareMarketplaceLinePreviewFrameClass} shrink-0 bg-zinc-100`}
+                                          aria-hidden
+                                        >
+                                          <span className="flex h-full w-full items-center justify-center text-[10px] font-medium text-zinc-400">
+                                            Sin imagen
+                                          </span>
+                                        </div>
+                                      )}
+                                    <div className="min-w-0 flex-1">
                                       <MarketplaceLineSpaceHeading item={it} />
-                                      <p className="mt-1 text-xs text-zinc-600">
-                                        <span className="font-medium text-zinc-700">Periodo reservado:</span>{" "}
-                                        <span className="tabular-nums text-zinc-600">
+                                      {periodMonths.length > 0 ? (
+                                        <RentalMonthsByYearPills
+                                          groups={periodMonths}
+                                          keyPrefix={`detail-${o.id}-${it.id}`}
+                                          className="mt-2"
+                                        />
+                                      ) : (
+                                        <p className="mt-2 text-sm font-medium text-zinc-800">
                                           {formatContractRange(it.start_date, it.end_date)}
-                                        </span>
-                                      </p>
+                                        </p>
+                                      )}
                                     </div>
                                   </div>
                                   <div className="shrink-0 text-right sm:pt-0.5">
-                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
-                                      Línea (sin IVA)
-                                    </p>
-                                    <span className="tabular-nums text-sm font-semibold text-zinc-900">
+                                    <p className={marketplaceLineFieldLabelClass}>Subtotal (sin IVA)</p>
+                                    <p
+                                      className={marketplaceLinePriceClass}
+                                      aria-label={`Importe sin IVA para ${codeLabel}`}
+                                    >
                                       {formatUsdMoney(Number(it.subtotal))}
-                                    </span>
+                                    </p>
+                                  </div>
                                   </div>
                                 </li>
                               );

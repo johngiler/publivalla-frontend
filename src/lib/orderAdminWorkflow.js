@@ -85,6 +85,10 @@ export function buildOrderAdminStatusSelectOptions(order) {
       return { ...opt, disabled: false, disabledReason: "" };
     }
 
+    if (v === "draft") {
+      return { ...opt, disabled: false, disabledReason: "" };
+    }
+
     if (TERMINAL.has(current)) {
       return {
         ...opt,
@@ -103,25 +107,6 @@ export function buildOrderAdminStatusSelectOptions(order) {
         disabled: true,
         disabledReason:
           "La vencida la asigna el sistema cuando la última línea supera su fecha de fin (tarea programada).",
-      };
-    }
-
-    if (v === "draft") {
-      if (current === "draft") {
-        return { ...opt, disabled: false, disabledReason: "" };
-      }
-      if (current === "submitted") {
-        return {
-          ...opt,
-          disabled: false,
-          disabledReason: "",
-        };
-      }
-      return {
-        ...opt,
-        disabled: true,
-        disabledReason:
-          "Volver a borrador solo está disponible desde «Enviada».",
       };
     }
 

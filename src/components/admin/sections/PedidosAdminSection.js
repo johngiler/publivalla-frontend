@@ -57,7 +57,8 @@ import {
 } from "@/components/admin/adminIcons";
 import { PedidoDocumentosNegociacionAdmin } from "@/components/admin/PedidoDocumentosNegociacionAdmin";
 import { PedidosSectionSkeleton } from "@/components/admin/skeletons/PedidosSectionSkeleton";
-import { CatalogSpaceLink } from "@/components/catalog/CatalogSpaceLink";
+import { MarketplaceLineSpaceHeading } from "@/components/catalog/MarketplaceLineSpaceHeading";
+import { RentalMonthsByYearPills } from "@/components/catalog/RentalMonthsByYearPills";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { RasterFromApiUrl } from "@/components/media/RasterFromApiUrl";
 import { PaymentReceiptLightbox } from "@/components/orders/PaymentReceiptLightbox";
@@ -68,13 +69,17 @@ import {
 } from "@/components/ui/EmptyState";
 import {
   AdminDashboardFilterLink,
-  dashboardCentrosSearchHref,
   dashboardClientesSearchHref,
 } from "@/lib/adminDashboardLinks";
+import {
+  marketplaceLineFieldLabelClass,
+  marketplaceLinePriceClass,
+} from "@/lib/marketplaceLineTypography";
+import { formatUsdMoney } from "@/lib/marketplacePricing";
+import { cartLineMonthsByYear } from "@/lib/rentalMonthPills";
 import { ordersExportReportPath, ordersListPath } from "@/lib/adminListQuery";
 import { authJsonFetcher } from "@/lib/swr/fetchers";
 import { catalogRasterImgAttrs } from "@/lib/catalogImageProps";
-import { subtitleCityAfterCenterName } from "@/lib/shoppingCenterDisplay";
 import { adminOrderLineCoverLightboxItems } from "@/lib/imageLightboxItems";
 import {
   buildOrderAdminStatusSelectOptions,
@@ -111,18 +116,6 @@ function formatUsdAmount(value) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-}
-
-function formatLineDate(d) {
-  if (!d) return "—";
-  const s = String(d);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    const [y, m, day] = s.split("-").map(Number);
-    return new Date(y, m - 1, day).toLocaleDateString("es-VE", {
-      dateStyle: "medium",
-    });
-  }
-  return s;
 }
 
 function clientDisplayName(o) {
@@ -960,7 +953,7 @@ export function PedidosAdminSection() {
                                           Sin líneas en este pedido.
                                         </p>
                                       ) : (
-                                        <ul className="space-y-3">
+                                        <ul className="list-none space-y-4 p-0">
                                           {o.items.map((it) => {
                                             const coverRaw =
                                               it.ad_space_cover_image &&
@@ -971,31 +964,29 @@ export function PedidosAdminSection() {
                                                     it.ad_space_cover_image,
                                                   ).trim()
                                                 : "";
-                                            const centerName = (
-                                              it.shopping_center_name || ""
-                                            ).trim();
-                                            const centerSlug = (
-                                              it.shopping_center_slug || ""
-                                            ).trim();
-                                            const centerCityRaw = (
-                                              it.shopping_center_city || ""
-                                            ).trim();
-                                            const centerCityLine =
-                                              subtitleCityAfterCenterName(
-                                                centerName,
-                                                centerCityRaw,
-                                              );
-                                            const centerHrefQ =
-                                              centerSlug || centerName;
+                                            const periodMonths = cartLineMonthsByYear(it);
+                                            const lineItem = {
+                                              ad_space: it.ad_space,
+                                              ad_space_title: it.ad_space_title,
+                                              ad_space_code: it.ad_space_code,
+                                              shopping_center_name:
+                                                it.shopping_center_name,
+                                              shopping_center_city:
+                                                it.shopping_center_city,
+                                              start_date: it.start_date,
+                                              end_date: it.end_date,
+                                            };
                                             return (
                                               <li
                                                 key={it.id}
-                                                className={`${ROUNDED_CONTROL} flex items-start gap-3 border border-zinc-200 bg-white p-3 sm:gap-4`}
+                                                className={`${ROUNDED_CONTROL} overflow-hidden border border-zinc-200/90 bg-white shadow-sm`}
                                               >
+                                                <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:py-5">
+                                                  <div className="flex min-w-0 flex-1 gap-3">
                                                 {coverRaw ? (
                                                   <button
                                                     type="button"
-                                                    className={`${squareOrderLinePreviewFrameClass} ${squareListImagePreviewButtonRingClass} p-0`}
+                                                    className={`${squareOrderLinePreviewFrameClass} ${squareListImagePreviewButtonRingClass} shrink-0 p-0`}
                                                     aria-label={
                                                       it.ad_space_title
                                                         ? `Ver portada ampliada: ${it.ad_space_title}`
@@ -1043,74 +1034,27 @@ export function PedidosAdminSection() {
                                                     </div>
                                                   </div>
                                                 )}
-                                                <div className="min-w-0 flex-1 space-y-1.5 text-sm text-zinc-800">
-                                                  <p className="text-xs">
-                                                    <CatalogSpaceLink
-                                                      spaceId={it.ad_space}
-                                                      variant="mono"
-                                                      className="font-semibold tracking-tight"
-                                                    >
-                                                      {it.ad_space_code || "—"}
-                                                    </CatalogSpaceLink>
-                                                  </p>
-                                                  <p className="font-medium leading-snug">
-                                                    <CatalogSpaceLink
-                                                      spaceId={it.ad_space}
-                                                      className="text-zinc-900"
-                                                    >
-                                                      {it.ad_space_title ||
-                                                        "Espacio publicitario"}
-                                                    </CatalogSpaceLink>
-                                                  </p>
-                                                  {centerName && centerHrefQ ? (
-                                                    <p className="text-xs text-zinc-600">
-                                                      <span className="font-semibold text-zinc-700">
-                                                        Centro comercial:{" "}
-                                                      </span>
-                                                      <AdminDashboardFilterLink
-                                                        href={dashboardCentrosSearchHref(
-                                                          centerHrefQ,
-                                                        )}
-                                                      >
-                                                        {centerName}
-                                                      </AdminDashboardFilterLink>
-                                                      {centerCityLine ? (
-                                                        <>
-                                                          <span className="text-zinc-400">
-                                                            {" "}
-                                                            ·{" "}
-                                                          </span>
-                                                          <span>
-                                                            {centerCityLine}
-                                                          </span>
-                                                        </>
+                                                    <div className="min-w-0 flex-1">
+                                                      <MarketplaceLineSpaceHeading
+                                                        item={lineItem}
+                                                      />
+                                                      {periodMonths.length > 0 ? (
+                                                        <RentalMonthsByYearPills
+                                                          groups={periodMonths}
+                                                          keyPrefix={`admin-order-${o.id}-line-${it.id}`}
+                                                          className="mt-2"
+                                                        />
                                                       ) : null}
+                                                    </div>
+                                                  </div>
+                                                  <div className="shrink-0 text-right sm:pt-0.5">
+                                                    <p className={marketplaceLineFieldLabelClass}>
+                                                      Subtotal (sin IVA)
                                                     </p>
-                                                  ) : null}
-                                                  <p className="text-xs text-zinc-600">
-                                                    <span className="font-semibold text-zinc-700">
-                                                      Contrato:{" "}
-                                                    </span>
-                                                    {formatLineDate(
-                                                      it.start_date,
-                                                    )}{" "}
-                                                    →{" "}
-                                                    {formatLineDate(
-                                                      it.end_date,
-                                                    )}
-                                                  </p>
-                                                  <p className="pt-0.5 text-sm">
-                                                    <span className="font-semibold text-zinc-700">
-                                                      Subtotal:{" "}
-                                                    </span>
-                                                    <span className="font-bold tabular-nums text-zinc-900">
-                                                      $
-                                                      {formatUsdAmount(
-                                                        it.subtotal,
-                                                      )}{" "}
-                                                      USD
-                                                    </span>
-                                                  </p>
+                                                    <p className={marketplaceLinePriceClass}>
+                                                      {formatUsdMoney(Number(it.subtotal))}
+                                                    </p>
+                                                  </div>
                                                 </div>
                                               </li>
                                             );
