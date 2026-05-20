@@ -2,6 +2,14 @@
 
 import { CatalogSpaceLink } from "@/components/catalog/CatalogSpaceLink";
 
+/** Id de la línea del pedido (`OrderItem.pk`), no el id del espacio publicitario. */
+export function orderLineItemPk(item) {
+  if (!item || typeof item !== "object") return null;
+  const raw = item.id ?? item.pk;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 /** @param {Record<string, unknown> | null | undefined} item */
 export function lineSpaceId(item) {
   if (item?.ad_space != null && item.ad_space !== "") return item.ad_space;

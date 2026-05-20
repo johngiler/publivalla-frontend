@@ -2,8 +2,9 @@
  * Miniaturas cuadradas compartidas: radio **10px** en todos los marcos de esta lib.
  * - 100×100: lightbox, galería admin de toma, comprobante checkout (`squareListImagePreview*`).
  * - 60×60: columna Portada en tablas admin CC y tomas (`squareAdminTablePortada*`).
- * - 120×120: carrito y tarjetas de línea en Mis pedidos (`squareMarketplaceLinePreview*`).
- * - Líneas de pedido (panel admin Pedidos): miniatura **120×120** (`squareOrderLinePreview*`).
+ * - 120×120: carrito y líneas en Mis pedidos (`squareMarketplaceLinePreview*`).
+ * - 90×90: portada de línea en cabecera de tarjeta de artes (`squareOrderArtLineCoverPreview*`).
+ * - 120×120: artes adjuntos en tarjeta (`squareOrderArtAttachmentPreview*`) y líneas en listado de pedido (`squareOrderLinePreview*`).
  * No usar en portadas hero del catálogo ni en avatares circulares de persona.
  */
 export const squareListImagePreviewFrameClass =
@@ -16,6 +17,23 @@ export const squareMarketplaceLinePreviewFrameClass =
   "relative h-[120px] w-[120px] shrink-0 overflow-hidden rounded-[10px] border border-zinc-200/90 bg-zinc-100 shadow-sm";
 
 export const squareMarketplaceLinePreviewImgClass = "h-full w-full object-cover";
+
+/** Archivos de arte en tarjetas por toma (Mis pedidos + admin pedidos). */
+export const squareOrderArtAttachmentPreviewFrameClass =
+  "relative h-[120px] w-[120px] shrink-0 overflow-hidden rounded-[10px] border border-zinc-200/90 bg-zinc-100 shadow-sm";
+
+export const squareOrderArtAttachmentPreviewImgClass = "h-full w-full object-cover";
+
+export const ORDER_ART_ATTACHMENT_PREVIEW_PX = 120;
+
+/** Portada de la toma en cabecera de tarjeta de artes agrupados. */
+export const ORDER_ART_LINE_COVER_PREVIEW_PX = 90;
+
+export const squareOrderArtLineCoverPreviewFrameClass =
+  "relative h-[90px] w-[90px] shrink-0 overflow-hidden rounded-[10px] border border-zinc-200/90 bg-zinc-100 shadow-sm";
+
+export const squareOrderArtLineCoverPreviewImgClass =
+  "absolute inset-0 h-full w-full object-cover";
 
 /** Columna «Portada» en tablas admin (centros, tomas). */
 export const squareAdminTablePortadaFrameClass =

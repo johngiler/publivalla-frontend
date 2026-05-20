@@ -98,16 +98,16 @@ export function spaceStatusPillClassName(status) {
 }
 
 /**
- * Estados de pedido (API `status`); orden alineado al flujo comercial:
- * solicitud aprobada → facturada → pagada → arte aprobado → permiso → instalación → activa.
+ * Estados de pedido (API `status`); orden = flujo admin (`ORDER_HAPPY_PATH_ADMIN`):
+ * solicitud aprobada → arte aprobado → facturada → pagada → permiso → instalación → activa.
  */
 export const ORDER_STATUS = [
   { v: "draft", l: "Borrador" },
   { v: "submitted", l: "Enviada" },
   { v: "client_approved", l: "Solicitud aprobada" },
+  { v: "art_approved", l: "Arte aprobado" },
   { v: "invoiced", l: "Facturada" },
   { v: "paid", l: "Pagada" },
-  { v: "art_approved", l: "Arte aprobado" },
   { v: "permit_pending", l: "Permiso alcaldía" },
   { v: "installation", l: "Instalación" },
   { v: "active", l: "Activa" },

@@ -69,7 +69,8 @@ function marketplaceCreatableStyles({ compact = false } = {}) {
  *   onChange: (companyName: string) => void;
  *   providers: Array<Record<string, unknown>>;
  *   multiCenter: boolean;
- *   onCreate: (companyName: string) => Promise<void>;
+ *   onCreate?: (companyName: string) => Promise<void>;
+ *   allowCreate?: boolean;
  *   isDisabled?: boolean;
  *   isLoading?: boolean;
  *   isCreating?: boolean;
@@ -84,6 +85,7 @@ export function MountingCompanyCreatableSelect({
   providers,
   multiCenter,
   onCreate,
+  allowCreate = true,
   isDisabled = false,
   isLoading = false,
   isCreating = false,
@@ -131,7 +133,7 @@ export function MountingCompanyCreatableSelect({
   const handleCreate = useCallback(
     async (inputValue) => {
       const name = String(inputValue ?? "").trim();
-      if (!name) return;
+      if (!name || !onCreate) return;
       await onCreate(name);
     },
     [onCreate],
@@ -146,20 +148,34 @@ export function MountingCompanyCreatableSelect({
         options={options}
         value={selected}
         onChange={handleChange}
-        onCreateOption={handleCreate}
+        onCreateOption={allowCreate && onCreate ? handleCreate : undefined}
         isDisabled={isDisabled || isLoading || isCreating}
         isLoading={isLoading || isCreating}
         placeholder={
-          isLoading ? "Cargando proveedores…" : "Busca o escribe la empresa de instalación…"
+          isLoading
+            ? "Cargando proveedores…"
+            : allowCreate
+              ? "Busca o escribe la empresa de instalación…"
+              : "Selecciona la empresa de instalación…"
         }
-        formatCreateLabel={(input) => `Añadir «${input}» a la lista`}
-        isValidNewOption={(input) => String(input ?? "").trim().length >= 2}
+        formatCreateLabel={
+          allowCreate ? (input) => `Añadir «${input}» a la lista` : undefined
+        }
+        isValidNewOption={
+          allowCreate
+            ? (input) => String(input ?? "").trim().length >= 2
+            : () => false
+        }
         isClearable
         isSearchable
         menuPortalTarget={typeof document !== "undefined" ? document.body : null}
         styles={styles}
         aria-label={ariaLabel}
-        noOptionsMessage={() => "Sin coincidencias. Escribe el nombre para añadirlo."}
+        noOptionsMessage={() =>
+          allowCreate
+            ? "Sin coincidencias. Escribe el nombre para añadirlo."
+            : "Sin coincidencias en la lista."
+        }
       />
     </div>
   );

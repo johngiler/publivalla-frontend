@@ -55,12 +55,13 @@ import {
   IconAdminChevronDown,
   IconAdminClipboard,
 } from "@/components/admin/adminIcons";
-import { PedidoDocumentosNegociacionAdmin } from "@/components/admin/PedidoDocumentosNegociacionAdmin";
+import { PedidoAdminOrderLinesList } from "@/components/admin/PedidoAdminOrderLinesList";
+import {
+  OrderAttachmentAdminPreview,
+  PedidoDocumentosNegociacionAdmin,
+} from "@/components/admin/PedidoDocumentosNegociacionAdmin";
 import { PedidosSectionSkeleton } from "@/components/admin/skeletons/PedidosSectionSkeleton";
-import { MarketplaceLineSpaceHeading } from "@/components/catalog/MarketplaceLineSpaceHeading";
-import { RentalMonthsByYearPills } from "@/components/catalog/RentalMonthsByYearPills";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
-import { RasterFromApiUrl } from "@/components/media/RasterFromApiUrl";
 import { PaymentReceiptLightbox } from "@/components/orders/PaymentReceiptLightbox";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -71,15 +72,9 @@ import {
   AdminDashboardFilterLink,
   dashboardClientesSearchHref,
 } from "@/lib/adminDashboardLinks";
-import {
-  marketplaceLineFieldLabelClass,
-  marketplaceLinePriceClass,
-} from "@/lib/marketplaceLineTypography";
 import { formatUsdMoney } from "@/lib/marketplacePricing";
-import { cartLineMonthsByYear } from "@/lib/rentalMonthPills";
 import { ordersExportReportPath, ordersListPath } from "@/lib/adminListQuery";
 import { authJsonFetcher } from "@/lib/swr/fetchers";
-import { catalogRasterImgAttrs } from "@/lib/catalogImageProps";
 import { adminOrderLineCoverLightboxItems } from "@/lib/imageLightboxItems";
 import {
   buildOrderAdminStatusSelectOptions,
@@ -87,16 +82,10 @@ import {
   getOrderAdminQuickNext,
   orderAdminShowRejectPedidoActivoButton,
 } from "@/lib/orderAdminWorkflow";
-import { isPdfReceiptUrl } from "@/lib/orderPaymentMethods";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
-import {
-  squareOrderLinePreviewFrameClass,
-  squareOrderLinePreviewImgClass,
-  squareListImagePreviewButtonRingClass,
-} from "@/lib/squareImagePreview";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 import { parsePaginatedResponse } from "@/services/api";
-import { authFetch, authFetchBlob, mediaAbsoluteUrl } from "@/services/authApi";
+import { authFetch, authFetchBlob } from "@/services/authApi";
 
 function formatPedidoAlta(iso) {
   if (!iso) return "—";
@@ -312,76 +301,33 @@ function PedidoSiguienteEstadoCell({ order, orderRef, onStatusChangeRequest }) {
 
 /** Solo lectura: lo cargó el cliente en checkout. */
 function PedidoDatosPagoPortal({ order, panelId }) {
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const receiptUrl = order?.payment_receipt_url
-    ? mediaAbsoluteUrl(order.payment_receipt_url)
-    : "";
   const methodLabel =
     typeof order?.payment_method_label === "string" &&
     order.payment_method_label.trim() !== ""
       ? order.payment_method_label
       : "Sin indicar";
 
-  const isPdf = isPdfReceiptUrl(receiptUrl);
-
   return (
-    <>
-      <AdminDetailSection
-        panelId={panelId}
-        sectionId="payment"
-        title="Datos de pago"
-      >
-        <AdminDetailInset className="space-y-5">
-          <AdminDetailField label="Método de pago">
-            <span className="font-medium text-zinc-900">{methodLabel}</span>
-          </AdminDetailField>
-          <AdminDetailField label="Comprobante">
-            {receiptUrl ? (
-              <button
-                type="button"
-                onClick={() => setLightboxOpen(true)}
-                className={`group flex w-full max-w-[min(100%,26rem)] flex-col overflow-hidden ${ROUNDED_CONTROL} border border-zinc-200/90 bg-zinc-200/40 text-left shadow-sm transition hover:border-[color-mix(in_srgb,var(--mp-primary)_40%,#d4d4d8)] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--mp-primary)_42%,transparent)]`}
-                aria-label="Abrir comprobante en vista ampliada"
-              >
-                <div className="relative min-h-[11rem] w-full overflow-hidden sm:min-h-[13rem]">
-                  {isPdf ? (
-                    <div className="flex h-full min-h-[11rem] flex-col items-center justify-center gap-3 px-4 py-6 text-center sm:min-h-[13rem]">
-                      <span className="rounded-[10px] bg-zinc-800/90 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-zinc-100">
-                        PDF
-                      </span>
-                      <span className="max-w-[12rem] text-xs font-medium leading-snug text-zinc-600">
-                        Clic para abrir en el visor.
-                      </span>
-                    </div>
-                  ) : (
-                    <img
-                      src={receiptUrl}
-                      alt="Miniatura del comprobante de pago"
-                      className="absolute inset-0 h-full w-full object-cover"
-                      {...catalogRasterImgAttrs}
-                    />
-                  )}
-                </div>
-                <span className="border-t border-zinc-200/90 bg-white px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-zinc-500 group-hover:text-zinc-800">
-                  Clic para ampliar
-                </span>
-              </button>
-            ) : (
-              <p className="text-sm text-zinc-500">
-                La empresa puede subir el comprobante cuando el pedido esté
-                facturado o pagado, desde Mis pedidos.
-              </p>
-            )}
-          </AdminDetailField>
-        </AdminDetailInset>
-      </AdminDetailSection>
-      <PaymentReceiptLightbox
-        open={lightboxOpen}
-        onClose={() => setLightboxOpen(false)}
-        absoluteUrl={receiptUrl}
-        showDownload
-      />
-    </>
+    <AdminDetailSection
+      panelId={panelId}
+      sectionId="payment"
+      title="Datos de pago"
+    >
+      <AdminDetailInset className="space-y-5">
+        <AdminDetailField label="Método de pago">
+          <span className="font-medium text-zinc-900">{methodLabel}</span>
+        </AdminDetailField>
+        <div className="max-w-[min(100%,26rem)]">
+          <OrderAttachmentAdminPreview
+            order={order}
+            title="Comprobante"
+            downloadBase="comprobante"
+            fileUrl={order?.payment_receipt_url}
+            emptyHint="La empresa puede subir el comprobante cuando el pedido esté facturado o pagado, desde Mis pedidos."
+          />
+        </div>
+      </AdminDetailInset>
+    </AdminDetailSection>
   );
 }
 
@@ -978,119 +924,16 @@ export function PedidosAdminSection() {
                                     title="Líneas"
                                   >
                                     <AdminDetailInset className="space-y-2">
-                                      {(o.items || []).length === 0 ? (
-                                        <p className="text-sm text-zinc-400">
-                                          Sin líneas en este pedido.
-                                        </p>
-                                      ) : (
-                                        <ul className="list-none space-y-4 p-0">
-                                          {o.items.map((it) => {
-                                            const coverRaw =
-                                              it.ad_space_cover_image &&
-                                              String(
-                                                it.ad_space_cover_image,
-                                              ).trim()
-                                                ? String(
-                                                    it.ad_space_cover_image,
-                                                  ).trim()
-                                                : "";
-                                            const periodMonths = cartLineMonthsByYear(it);
-                                            const lineItem = {
-                                              ad_space: it.ad_space,
-                                              ad_space_title: it.ad_space_title,
-                                              ad_space_code: it.ad_space_code,
-                                              shopping_center_name:
-                                                it.shopping_center_name,
-                                              shopping_center_city:
-                                                it.shopping_center_city,
-                                              start_date: it.start_date,
-                                              end_date: it.end_date,
-                                            };
-                                            return (
-                                              <li
-                                                key={it.id}
-                                                className={`${ROUNDED_CONTROL} overflow-hidden border border-zinc-200/90 bg-white shadow-sm`}
-                                              >
-                                                <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:py-5">
-                                                  <div className="flex min-w-0 flex-1 gap-3">
-                                                {coverRaw ? (
-                                                  <button
-                                                    type="button"
-                                                    className={`${squareOrderLinePreviewFrameClass} ${squareListImagePreviewButtonRingClass} shrink-0 p-0`}
-                                                    aria-label={
-                                                      it.ad_space_title
-                                                        ? `Ver portada ampliada: ${it.ad_space_title}`
-                                                        : it.ad_space_code
-                                                          ? `Ver portada ampliada: ${it.ad_space_code}`
-                                                          : "Ver portada ampliada"
-                                                    }
-                                                    onClick={() => {
-                                                      const items =
-                                                        adminOrderLineCoverLightboxItems(
-                                                          it,
-                                                        );
-                                                      if (items.length)
-                                                        setLineCoverLightbox({
-                                                          open: true,
-                                                          items,
-                                                          initialIndex: 0,
-                                                        });
-                                                    }}
-                                                  >
-                                                    <RasterFromApiUrl
-                                                      url={coverRaw}
-                                                      alt={
-                                                        it.ad_space_title
-                                                          ? `Portada: ${it.ad_space_title}`
-                                                          : it.ad_space_code
-                                                            ? `Portada ${it.ad_space_code}`
-                                                            : "Portada del espacio publicitario"
-                                                      }
-                                                      width={120}
-                                                      height={120}
-                                                      className={
-                                                        squareOrderLinePreviewImgClass
-                                                      }
-                                                      {...catalogRasterImgAttrs}
-                                                    />
-                                                  </button>
-                                                ) : (
-                                                  <div
-                                                    className={`${squareOrderLinePreviewFrameClass} flex items-center justify-center`}
-                                                    aria-hidden
-                                                  >
-                                                    <div className="px-1 text-center text-[10px] font-medium uppercase leading-tight tracking-wide text-zinc-400">
-                                                      Sin imagen
-                                                    </div>
-                                                  </div>
-                                                )}
-                                                    <div className="min-w-0 flex-1">
-                                                      <MarketplaceLineSpaceHeading
-                                                        item={lineItem}
-                                                      />
-                                                      {periodMonths.length > 0 ? (
-                                                        <RentalMonthsByYearPills
-                                                          groups={periodMonths}
-                                                          keyPrefix={`admin-order-${o.id}-line-${it.id}`}
-                                                          className="mt-2"
-                                                        />
-                                                      ) : null}
-                                                    </div>
-                                                  </div>
-                                                  <div className="shrink-0 text-right sm:pt-0.5">
-                                                    <p className={marketplaceLineFieldLabelClass}>
-                                                      Subtotal (sin IVA)
-                                                    </p>
-                                                    <p className={marketplaceLinePriceClass}>
-                                                      {formatUsdMoney(Number(it.subtotal))}
-                                                    </p>
-                                                  </div>
-                                                </div>
-                                              </li>
-                                            );
-                                          })}
-                                        </ul>
-                                      )}
+                                      <PedidoAdminOrderLinesList
+                                        orderId={o.id}
+                                        items={o.items || []}
+                                        onOpenLineCover={(payload) =>
+                                          setLineCoverLightbox({
+                                            open: true,
+                                            ...payload,
+                                          })
+                                        }
+                                      />
                                     </AdminDetailInset>
                                   </AdminDetailSection>
                                 </div>

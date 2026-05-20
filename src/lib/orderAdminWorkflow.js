@@ -1,4 +1,5 @@
 import { ORDER_STATUS } from "@/components/admin/adminConstants";
+import { hasMunicipalInstallationDocuments } from "@/lib/orderInstallationMunicipalDocs";
 
 /**
  * Flujo que el admin avanza paso a paso. «Vencida» no entra aquí: la pone el sistema
@@ -8,9 +9,9 @@ export const ORDER_HAPPY_PATH_ADMIN = [
   "draft",
   "submitted",
   "client_approved",
+  "art_approved",
   "invoiced",
   "paid",
-  "art_approved",
   "permit_pending",
   "installation",
   "active",
@@ -145,7 +146,7 @@ export function buildOrderAdminStatusSelectOptions(order) {
 
     if (targetIdx === curIdx + 1) {
       if (
-        v === "invoiced" &&
+        v === "art_approved" &&
         current === "client_approved" &&
         !hasNegotiationSheetSigned(order)
       ) {
@@ -154,6 +155,42 @@ export function buildOrderAdminStatusSelectOptions(order) {
           disabled: true,
           disabledReason:
             "Falta la hoja de negociación firmada por la empresa (revisa el detalle del pedido).",
+        };
+      }
+      if (
+        v === "art_approved" &&
+        current === "client_approved" &&
+        !hasArtAttachments(order)
+      ) {
+        return {
+          ...opt,
+          disabled: true,
+          disabledReason:
+            "Falta al menos un archivo de arte de la empresa (Mis pedidos o detalle del pedido).",
+        };
+      }
+      if (
+        v === "invoiced" &&
+        current === "art_approved" &&
+        !hasNegotiationSheetSigned(order)
+      ) {
+        return {
+          ...opt,
+          disabled: true,
+          disabledReason:
+            "Falta la hoja de negociación firmada por la empresa (revisa el detalle del pedido).",
+        };
+      }
+      if (
+        v === "invoiced" &&
+        current === "art_approved" &&
+        !hasArtAttachments(order)
+      ) {
+        return {
+          ...opt,
+          disabled: true,
+          disabledReason:
+            "Faltan archivos de arte en el pedido.",
         };
       }
       if (
@@ -169,20 +206,8 @@ export function buildOrderAdminStatusSelectOptions(order) {
         };
       }
       if (
-        v === "art_approved" &&
-        current === "paid" &&
-        !hasArtAttachments(order)
-      ) {
-        return {
-          ...opt,
-          disabled: true,
-          disabledReason:
-            "Falta al menos un archivo de arte de la empresa (Mis pedidos o detalle del pedido).",
-        };
-      }
-      if (
         v === "permit_pending" &&
-        current === "art_approved" &&
+        current === "paid" &&
         !hasInstallationPermit(order)
       ) {
         return {
@@ -190,6 +215,18 @@ export function buildOrderAdminStatusSelectOptions(order) {
           disabled: true,
           disabledReason:
             "Falta la solicitud de permiso de instalación de la empresa (Mis pedidos o detalle del pedido).",
+        };
+      }
+      if (
+        v === "installation" &&
+        current === "permit_pending" &&
+        !hasMunicipalInstallationDocuments(order)
+      ) {
+        return {
+          ...opt,
+          disabled: true,
+          disabledReason:
+            "Faltan el permiso emitido por la alcaldía y el comprobante del impuesto municipal (Mis pedidos o detalle del pedido).",
         };
       }
       return { ...opt, disabled: false, disabledReason: "" };
@@ -224,7 +261,7 @@ export function getOrderAdminQuickNext(order) {
   const label = meta?.l ?? nextStatus;
 
   if (
-    nextStatus === "invoiced" &&
+    nextStatus === "art_approved" &&
     current === "client_approved" &&
     !hasNegotiationSheetSigned(order)
   ) {
@@ -232,7 +269,45 @@ export function getOrderAdminQuickNext(order) {
       status: nextStatus,
       label,
       blockedReason:
-        "No puedes pasar a «Facturada» sin la hoja firmada. La empresa debe subirla desde Mis pedidos.",
+        "No puedes aprobar artes sin la hoja firmada. La empresa debe subirla desde Mis pedidos.",
+    };
+  }
+
+  if (
+    nextStatus === "art_approved" &&
+    current === "client_approved" &&
+    !hasArtAttachments(order)
+  ) {
+    return {
+      status: nextStatus,
+      label,
+      blockedReason:
+        "No puedes aprobar artes sin archivos. La empresa debe subirlos desde Mis pedidos.",
+    };
+  }
+
+  if (
+    nextStatus === "invoiced" &&
+    current === "art_approved" &&
+    !hasNegotiationSheetSigned(order)
+  ) {
+    return {
+      status: nextStatus,
+      label,
+      blockedReason:
+        "No puedes facturar sin la hoja firmada. La empresa debe subirla desde Mis pedidos.",
+    };
+  }
+
+  if (
+    nextStatus === "invoiced" &&
+    current === "art_approved" &&
+    !hasArtAttachments(order)
+  ) {
+    return {
+      status: nextStatus,
+      label,
+      blockedReason: "No puedes facturar sin archivos de arte en el pedido.",
     };
   }
 
@@ -250,21 +325,8 @@ export function getOrderAdminQuickNext(order) {
   }
 
   if (
-    nextStatus === "art_approved" &&
-    current === "paid" &&
-    !hasArtAttachments(order)
-  ) {
-    return {
-      status: nextStatus,
-      label,
-      blockedReason:
-        "No puedes pasar a «Arte aprobado» sin archivos de arte. La empresa debe subirlos desde Mis pedidos.",
-    };
-  }
-
-  if (
     nextStatus === "permit_pending" &&
-    current === "art_approved" &&
+    current === "paid" &&
     !hasInstallationPermit(order)
   ) {
     return {
@@ -272,6 +334,19 @@ export function getOrderAdminQuickNext(order) {
       label,
       blockedReason:
         "No puedes pasar a «Permiso alcaldía» sin solicitud de permiso. La empresa debe enviarla desde Mis pedidos.",
+    };
+  }
+
+  if (
+    nextStatus === "installation" &&
+    current === "permit_pending" &&
+    !hasMunicipalInstallationDocuments(order)
+  ) {
+    return {
+      status: nextStatus,
+      label,
+      blockedReason:
+        "No puedes iniciar instalación sin el permiso de la alcaldía y el comprobante del impuesto municipal. La empresa debe subirlos desde Mis pedidos.",
     };
   }
 

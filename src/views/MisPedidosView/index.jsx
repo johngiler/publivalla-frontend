@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 
 import {
@@ -19,9 +19,13 @@ import {
   orderDisplayStatusLabel,
   orderDisplayStatusPillClassName,
 } from "@/lib/orderHoldDisplay";
+import { CatalogSpaceLink } from "@/components/catalog/CatalogSpaceLink";
 import {
   MarketplaceLineSpaceHeading,
   lineSpaceCode,
+  lineSpaceId,
+  lineSpaceTitle,
+  lineShoppingCenterSubtitle,
 } from "@/components/catalog/MarketplaceLineSpaceHeading";
 import { RentalMonthsByYearPills } from "@/components/catalog/RentalMonthsByYearPills";
 import { cartLineMonthsByYear } from "@/lib/rentalMonthPills";
@@ -53,7 +57,10 @@ import {
 import { ordersListPath } from "@/lib/adminListQuery";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 import { authJsonFetcher } from "@/lib/swr/fetchers";
-import { mediaUrlForUiWithWebp, primaryAdSpaceMediaRawFromOrderLike } from "@/lib/mediaUrls";
+import {
+  mediaUrlForUiWithWebp,
+  primaryAdSpaceMediaRawFromOrderLike,
+} from "@/lib/mediaUrls";
 import { parsePaginatedResponse } from "@/services/api";
 import { mediaAbsoluteUrl } from "@/services/authApi";
 
@@ -101,7 +108,9 @@ function formatContractDay(value) {
   const s = String(value).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
     const [y, mo, d] = s.split("-").map(Number);
-    return new Date(y, mo - 1, d).toLocaleDateString("es-VE", { dateStyle: "medium" });
+    return new Date(y, mo - 1, d).toLocaleDateString("es-VE", {
+      dateStyle: "medium",
+    });
   }
   try {
     return new Date(s).toLocaleDateString("es-VE", { dateStyle: "medium" });
@@ -172,7 +181,10 @@ function OrderStatusBadge({ order }) {
 
 /** Número de fotos distintas de una línea (URLs únicas tras resolver media). */
 function orderLineItemImageCount(it) {
-  if (Array.isArray(it?.ad_space_gallery_images) && it.ad_space_gallery_images.length > 0) {
+  if (
+    Array.isArray(it?.ad_space_gallery_images) &&
+    it.ad_space_gallery_images.length > 0
+  ) {
     const seen = new Set();
     for (const u of it.ad_space_gallery_images) {
       if (typeof u !== "string" || !u.trim()) continue;
@@ -181,7 +193,8 @@ function orderLineItemImageCount(it) {
     }
     if (seen.size > 0) return seen.size;
   }
-  if (it?.ad_space_cover_image && mediaAbsoluteUrl(it.ad_space_cover_image)) return 1;
+  if (it?.ad_space_cover_image && mediaAbsoluteUrl(it.ad_space_cover_image))
+    return 1;
   return 0;
 }
 
@@ -202,7 +215,10 @@ function orderLineGalleryEntries(o) {
           ? String(it.ad_space_code)
           : "Toma";
 
-    if (Array.isArray(it?.ad_space_gallery_images) && it.ad_space_gallery_images.length > 0) {
+    if (
+      Array.isArray(it?.ad_space_gallery_images) &&
+      it.ad_space_gallery_images.length > 0
+    ) {
       const seenSrc = new Set();
       let idx = 0;
       for (const u of it.ad_space_gallery_images) {
@@ -232,6 +248,188 @@ function orderLineGalleryEntries(o) {
     });
   }
   return out;
+}
+
+/** Ancho de cada columna toma en cabecera multi (debe coincidir con `w-[120px]`). */
+const MIS_PEDIDOS_LINE_TILE_WIDTH_PX = 120;
+/** `gap-3` entre columnas. */
+const MIS_PEDIDOS_LINE_TILE_GAP_PX = 12;
+
+function maxVisibleOrderLineTiles(containerWidthPx) {
+  if (
+    !Number.isFinite(containerWidthPx) ||
+    containerWidthPx < MIS_PEDIDOS_LINE_TILE_WIDTH_PX
+  ) {
+    return 1;
+  }
+  const unit = MIS_PEDIDOS_LINE_TILE_WIDTH_PX + MIS_PEDIDOS_LINE_TILE_GAP_PX;
+  return Math.max(
+    1,
+    Math.floor((containerWidthPx + MIS_PEDIDOS_LINE_TILE_GAP_PX) / unit),
+  );
+}
+
+function useOrderLinesStripVisibleCount() {
+  const containerRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  const [visibleCount, setVisibleCount] = useState(1);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const sync = () => {
+      setVisibleCount(maxVisibleOrderLineTiles(el.clientWidth));
+    };
+
+    sync();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return { containerRef, visibleCount };
+}
+
+/**
+ * Cabecera de pedido con varias tomas: solo las que caben en el ancho; el resto en Detalle.
+ *
+ * @param {{
+ *   order: Record<string, unknown>;
+ *   items: Record<string, unknown>[];
+ *   onShowDetail: () => void;
+ *   onOpenLineGallery: (lineId: unknown) => void;
+ * }} props
+ */
+function MisPedidosMultiLinesPreview({
+  order,
+  items,
+  onShowDetail,
+  onOpenLineGallery,
+}) {
+  const { containerRef, visibleCount } = useOrderLinesStripVisibleCount();
+  const visibleItems = items.slice(0, visibleCount);
+  const hiddenCount = Math.max(0, items.length - visibleItems.length);
+  const orderId = order.id;
+
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+        {items.length} tomas en este pedido{" "}
+        <span className="font-normal normal-case text-zinc-400">
+          (precio por toma sin IVA)
+        </span>
+      </p>
+      <div ref={containerRef} className="mt-2 min-w-0">
+        <ul className="flex flex-nowrap gap-3 overflow-hidden">
+          {visibleItems.map((it) => {
+            const thumbRaw = primaryAdSpaceMediaRawFromOrderLike(it);
+            const epTitle = lineSpaceTitle(it);
+            const epCode = lineSpaceCode(it);
+            const centerLine = lineShoppingCenterSubtitle(it);
+            const codeLabel = epCode.replace(/^#/, "") || "toma";
+            const lineSub = Number(it.subtotal);
+            const lineImgCount = orderLineItemImageCount(it);
+            const thumbInner = thumbRaw ? (
+              <RasterFromApiUrl
+                url={thumbRaw}
+                alt=""
+                width={120}
+                height={120}
+                className={squareMarketplaceLinePreviewImgClass}
+                {...catalogRasterImgAttrs}
+              />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-[9px] font-medium text-zinc-400">
+                —
+              </span>
+            );
+            return (
+              <li
+                key={String(it.id)}
+                className="flex w-[120px] shrink-0 flex-col list-none"
+              >
+                {thumbRaw && lineImgCount > 0 ? (
+                  <button
+                    type="button"
+                    className={`${squareMarketplaceLinePreviewFrameClass} ${squareListImagePreviewButtonRingClass} cursor-zoom-in p-0`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenLineGallery(it.id);
+                    }}
+                    aria-label={`Abrir galería de ${codeLabel}`}
+                  >
+                    {thumbInner}
+                  </button>
+                ) : (
+                  <div
+                    className={squareMarketplaceLinePreviewFrameClass}
+                    aria-hidden={!thumbRaw}
+                  >
+                    {thumbInner}
+                  </div>
+                )}
+                {epTitle ? (
+                  <CatalogSpaceLink
+                    spaceId={lineSpaceId(it)}
+                    stopPropagation
+                    className="mt-1 line-clamp-2 w-full text-left text-[10px] font-semibold leading-snug"
+                  >
+                    {epTitle}
+                  </CatalogSpaceLink>
+                ) : (
+                  <p className="mt-1 w-full text-left text-[10px] font-semibold text-zinc-500">
+                    —
+                  </p>
+                )}
+                <p
+                  className="mt-0.5 w-full truncate text-left font-mono text-[10px] font-semibold tabular-nums text-zinc-500"
+                  title={epCode}
+                >
+                  {epCode}
+                </p>
+                {centerLine ? (
+                  <p
+                    className="mt-0.5 line-clamp-2 w-full text-left text-[10px] leading-snug text-zinc-500"
+                    title={centerLine}
+                  >
+                    {centerLine}
+                  </p>
+                ) : null}
+                <RentalMonthsByYearPills
+                  groups={cartLineMonthsByYear(it)}
+                  keyPrefix={`order-${orderId}-hdr-${it.id}`}
+                  className="mt-1 w-full"
+                  maxVisibleMonths={2}
+                />
+                <p
+                  className={`mt-1 w-full text-left text-xs ${marketplaceLinePriceClass}`}
+                  aria-label={`Importe sin IVA para ${codeLabel}`}
+                >
+                  {Number.isFinite(lineSub) ? formatUsdInteger(lineSub) : "—"}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+      {hiddenCount > 0 ? (
+        <div className="mt-2 flex justify-end">
+          <button
+            type="button"
+            className="text-sm font-semibold mp-text-brand underline-offset-2 transition hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--mp-primary)_35%,transparent)]"
+            onClick={(e) => {
+              e.stopPropagation();
+              onShowDetail();
+            }}
+            aria-label={`Ver las otras ${hiddenCount} tomas en Detalle`}
+          >
+            Mostrar {hiddenCount} más
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function SectionTitle({ children, id }) {
@@ -297,7 +495,9 @@ function OrderTimeline({ events }) {
               {ev.from_status ? (
                 <p className="mt-0.5 text-xs text-zinc-500">
                   <span className="text-zinc-400">Desde</span>{" "}
-                  <span className="font-medium text-zinc-600">{ev.from_label || ev.from_status}</span>
+                  <span className="font-medium text-zinc-600">
+                    {ev.from_label || ev.from_status}
+                  </span>
                 </p>
               ) : null}
               <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-zinc-200/60 pt-2">
@@ -307,12 +507,16 @@ function OrderTimeline({ events }) {
                 >
                   {formatDate(ev.created_at)}
                 </time>
-                <span className="text-xs tabular-nums text-zinc-500">{formatTime(ev.created_at)}</span>
+                <span className="text-xs tabular-nums text-zinc-500">
+                  {formatTime(ev.created_at)}
+                </span>
               </div>
               {ev.actor_username ? (
                 <p className="mt-1.5 text-xs text-zinc-500">
                   <span className="text-zinc-400">Usuario</span>{" "}
-                  <span className="font-medium text-zinc-700">{ev.actor_username}</span>
+                  <span className="font-medium text-zinc-700">
+                    {ev.actor_username}
+                  </span>
                 </p>
               ) : null}
               {ev.note ? (
@@ -336,7 +540,13 @@ function Chevron({ expanded }) {
       }`}
       aria-hidden
     >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="translate-y-px">
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        className="translate-y-px"
+      >
         <path
           d="M6 9l6 6 6-6"
           stroke="currentColor"
@@ -356,6 +566,8 @@ export default function MisPedidosView() {
   const [openId, setOpenId] = useState(null);
   /** Pestaña del panel expandido de un pedido: documentos | detalle | historial */
   const [orderDetailTab, setOrderDetailTab] = useState("documents");
+  /** Al abrir detalle desde «Mostrar detalles», ir a la pestaña Detalle y no resetear a Documentos. */
+  const orderDetailTabIntentRef = useRef(/** @type {"detail" | null} */ (null));
   const [err, setErr] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterSearch, setFilterSearch] = useState("");
@@ -369,13 +581,16 @@ export default function MisPedidosView() {
   }, [searchFromUrl]);
   const [lineLightbox, setLineLightbox] = useState({
     open: false,
-    items: /** @type {Array<{ src: string; alt?: string; thumbnailSrc?: string }>} */ ([]),
+    items:
+      /** @type {Array<{ src: string; alt?: string; thumbnailSrc?: string }>} */ ([]),
     initialIndex: 0,
   });
 
   const openOrderLineGallery = useCallback((order, lineId) => {
     /** Solo imágenes de esta línea (igual que en panel Pedidos por toma). */
-    const entries = orderLineGalleryEntries(order).filter((x) => x.lineId === lineId);
+    const entries = orderLineGalleryEntries(order).filter(
+      (x) => x.lineId === lineId,
+    );
     if (!entries.length) return;
     const items = entries.map(({ lineId: _lid, ...rest }) => rest);
     setLineLightbox({
@@ -391,13 +606,14 @@ export default function MisPedidosView() {
   const listKey = canFetchOrders
     ? ordersListPath(page, debouncedSearch, filterStatus, excludeStatusForApi)
     : null;
-  const { data, error: ordersError, isLoading: ordersLoading, mutate: mutateOrders } = useSWR(
-    listKey,
-    authJsonFetcher,
-    {
-      keepPreviousData: true,
-    },
-  );
+  const {
+    data,
+    error: ordersError,
+    isLoading: ordersLoading,
+    mutate: mutateOrders,
+  } = useSWR(listKey, authJsonFetcher, {
+    keepPreviousData: true,
+  });
 
   const mergeOrderIntoList = useCallback(
     (updated) => {
@@ -407,7 +623,9 @@ export default function MisPedidosView() {
           const p = parsePaginatedResponse(current);
           const uid = Number(updated?.id);
           const results = p.results.map((r) =>
-            Number.isFinite(uid) && Number(r?.id) === uid ? { ...r, ...updated } : r,
+            Number.isFinite(uid) && Number(r?.id) === uid
+              ? { ...r, ...updated }
+              : r,
           );
           return { ...current, results, count: p.count };
         },
@@ -428,12 +646,17 @@ export default function MisPedidosView() {
   const closedNoActivate = orderCounts?.cancelled ?? 0;
 
   const misPedidosStatusOptions = useMemo(
-    () => [{ v: "all", l: "Todos los estados" }, ...ORDER_STATUS.filter((x) => x.v !== "draft")],
+    () => [
+      { v: "all", l: "Todos los estados" },
+      ...ORDER_STATUS.filter((x) => x.v !== "draft"),
+    ],
     [],
   );
 
   const filtersActive =
-    filterStatus !== "all" || filterSearch.trim() !== "" || excludeStatusFromUrl.trim() !== "";
+    filterStatus !== "all" ||
+    filterSearch.trim() !== "" ||
+    excludeStatusFromUrl.trim() !== "";
 
   function clearFilters() {
     setFilterStatus("all");
@@ -455,8 +678,25 @@ export default function MisPedidosView() {
   }, [listKey]);
 
   useEffect(() => {
-    setOrderDetailTab("documents");
+    if (orderDetailTabIntentRef.current === "detail") {
+      setOrderDetailTab("detail");
+      orderDetailTabIntentRef.current = null;
+      return;
+    }
+    if (openId != null) setOrderDetailTab("documents");
   }, [openId]);
+
+  const focusOrderDetailTab = useCallback(
+    (orderId) => {
+      if (openId === orderId) {
+        setOrderDetailTab("detail");
+        return;
+      }
+      orderDetailTabIntentRef.current = "detail";
+      setOpenId(orderId);
+    },
+    [openId],
+  );
 
   useEffect(() => {
     setErr(
@@ -496,19 +736,29 @@ export default function MisPedidosView() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
-      <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">Mis pedidos</h1>
+      <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
+        Mis pedidos
+      </h1>
       <p className="mt-2 max-w-xl text-sm text-zinc-600">
         Solicitudes de reserva que ya enviaste y el estado de cada pedido.
       </p>
 
       {!err && ordersLoading && data == null ? (
-        <div className="mt-8 grid gap-3 sm:grid-cols-2" aria-busy="true" aria-label="Cargando resumen">
-          <div className={`${ROUNDED_CONTROL} border border-zinc-200/90 bg-white p-4 shadow-sm`}>
+        <div
+          className="mt-8 grid gap-3 sm:grid-cols-2"
+          aria-busy="true"
+          aria-label="Cargando resumen"
+        >
+          <div
+            className={`${ROUNDED_CONTROL} border border-zinc-200/90 bg-white p-4 shadow-sm`}
+          >
             <Skeleton className="h-3 w-36" />
             <Skeleton className="mt-2 h-7 w-12" />
             <Skeleton className="mt-2 h-3 w-full max-w-[14rem]" />
           </div>
-          <div className={`${ROUNDED_CONTROL} border border-zinc-200/90 bg-zinc-50/70 p-4 shadow-sm`}>
+          <div
+            className={`${ROUNDED_CONTROL} border border-zinc-200/90 bg-zinc-50/70 p-4 shadow-sm`}
+          >
             <Skeleton className="h-3 w-36" />
             <Skeleton className="mt-2 h-7 w-10" />
             <Skeleton className="mt-2 h-3 w-40" />
@@ -517,19 +767,30 @@ export default function MisPedidosView() {
       ) : null}
       {!err && data && summary ? (
         <div className="mt-8 grid gap-3 sm:grid-cols-2">
-          <div className={`${ROUNDED_CONTROL} border border-zinc-200/90 bg-white p-4 shadow-sm`}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Pedidos</p>
+          <div
+            className={`${ROUNDED_CONTROL} border border-zinc-200/90 bg-white p-4 shadow-sm`}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              Pedidos
+            </p>
             <p className="mt-1 text-xl font-bold tabular-nums text-zinc-900">
               {orderCounts?.total ?? "—"}
             </p>
             <p className="mt-1 text-xs text-zinc-500">
-              Activos: {orderCounts?.active ?? 0} · Vencidos: {orderCounts?.expired ?? 0} · En trámite:{" "}
+              Activos: {orderCounts?.active ?? 0} · Vencidos:{" "}
+              {orderCounts?.expired ?? 0} · En trámite:{" "}
               {orderCounts?.pipeline ?? 0}
             </p>
           </div>
-          <div className={`${ROUNDED_CONTROL} border border-zinc-200/90 bg-zinc-50/70 p-4 shadow-sm`}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Rechazados</p>
-            <p className="mt-1 text-xl font-bold tabular-nums text-zinc-900">{closedNoActivate}</p>
+          <div
+            className={`${ROUNDED_CONTROL} border border-zinc-200/90 bg-zinc-50/70 p-4 shadow-sm`}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              Rechazados
+            </p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-zinc-900">
+              {closedNoActivate}
+            </p>
             <p className="mt-1 text-xs text-zinc-500">
               Pedidos que el centro dejó de tramitar en este estado.
             </p>
@@ -557,7 +818,11 @@ export default function MisPedidosView() {
       ) : null}
 
       {err ? (
-        <p className={`mt-4 ${ROUNDED_CONTROL} bg-red-50 px-3 py-2 text-sm text-red-800`}>{err}</p>
+        <p
+          className={`mt-4 ${ROUNDED_CONTROL} bg-red-50 px-3 py-2 text-sm text-red-800`}
+        >
+          {err}
+        </p>
       ) : null}
 
       {loading ? (
@@ -580,7 +845,10 @@ export default function MisPedidosView() {
               Limpiar filtros
             </button>
           ) : (
-            <Link href="/" className={`${marketplacePrimaryBtn} mt-4 inline-flex px-5 py-2.5 text-sm font-semibold`}>
+            <Link
+              href="/"
+              className={`${marketplacePrimaryBtn} mt-4 inline-flex px-5 py-2.5 text-sm font-semibold`}
+            >
               Ver centros y catálogo
             </Link>
           )}
@@ -588,369 +856,390 @@ export default function MisPedidosView() {
       ) : (
         <>
           <ul className="mt-4 space-y-4">
-          {rows.map((o) => {
-            const expanded = openId === o.id;
-            const timeline = Array.isArray(o.status_timeline) ? o.status_timeline : [];
-            const panelId = `pedido-panel-${o.id}`;
-            const items = Array.isArray(o.items) ? o.items : [];
-            const first = items[0];
-            const lineSub = first != null ? Number(first.subtotal) : NaN;
-            const singleCode = first == null ? "" : lineSpaceCode(first);
-            const singleCoverRaw = first ? primaryAdSpaceMediaRawFromOrderLike(first) : "";
-            const singleCodeLabel = singleCode.replace(/^#/, "") || "toma";
-            const lineDisplay = Number.isFinite(lineSub) ? lineSub : Number(o.total_amount);
-            const totalIva = totalWithIva(Number(o.total_amount));
-            const multi = items.length > 1;
-            const orderRef =
-              typeof o.code === "string" && o.code.trim() !== ""
-                ? o.code.trim()
-                : orderListReference(
-                    o.id,
-                    typeof o.workspace_slug === "string" ? o.workspace_slug.trim() : undefined,
-                  );
-            return (
-              <li
-                key={o.id}
-                className={`${ROUNDED_CONTROL} overflow-hidden border border-zinc-200/90 bg-white shadow-sm transition hover:shadow-md`}
-              >
-                <button
-                  type="button"
-                  className="group flex w-full items-start justify-between gap-4 px-4 py-5 text-left sm:px-6"
-                  onClick={() => setOpenId(expanded ? null : o.id)}
-                  aria-expanded={expanded}
-                  aria-controls={panelId}
+            {rows.map((o) => {
+              const expanded = openId === o.id;
+              const timeline = Array.isArray(o.status_timeline)
+                ? o.status_timeline
+                : [];
+              const panelId = `pedido-panel-${o.id}`;
+              const items = Array.isArray(o.items) ? o.items : [];
+              const first = items[0];
+              const lineSub = first != null ? Number(first.subtotal) : NaN;
+              const singleCode = first == null ? "" : lineSpaceCode(first);
+              const singleCoverRaw = first
+                ? primaryAdSpaceMediaRawFromOrderLike(first)
+                : "";
+              const singleCodeLabel = singleCode.replace(/^#/, "") || "toma";
+              const lineDisplay = Number.isFinite(lineSub)
+                ? lineSub
+                : Number(o.total_amount);
+              const totalIva = totalWithIva(Number(o.total_amount));
+              const multi = items.length > 1;
+              const orderRef =
+                typeof o.code === "string" && o.code.trim() !== ""
+                  ? o.code.trim()
+                  : orderListReference(
+                      o.id,
+                      typeof o.workspace_slug === "string"
+                        ? o.workspace_slug.trim()
+                        : undefined,
+                    );
+              return (
+                <li
+                  key={o.id}
+                  className={`${ROUNDED_CONTROL} overflow-hidden border border-zinc-200/90 bg-white shadow-sm transition hover:shadow-md`}
                 >
-                  <div className="min-w-0 flex-1 space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className={marketplaceOrderRefClass}>{orderRef}</span>
-                      <OrderStatusBadge order={o} />
-                    </div>
-                    <div className="flex flex-wrap items-start justify-between gap-3 border-t border-zinc-100 pt-3">
-                      <div className="min-w-0 flex-1">
-                        {!multi && first ? (
-                          <div className="flex items-start gap-3">
-                            <div
-                              className={squareMarketplaceLinePreviewFrameClass}
-                              aria-hidden={!singleCoverRaw}
-                            >
-                              {singleCoverRaw ? (
-                                <RasterFromApiUrl
-                                  url={singleCoverRaw}
-                                  alt=""
-                                  width={120}
-                                  height={120}
-                                  className={squareMarketplaceLinePreviewImgClass}
-                                  {...catalogRasterImgAttrs}
-                                />
-                              ) : (
-                                <span className="flex h-full w-full items-center justify-center text-[10px] font-medium text-zinc-400">
-                                  —
-                                </span>
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <MarketplaceLineSpaceHeading item={first} stopPropagation />
-                              <RentalMonthsByYearPills
-                                groups={cartLineMonthsByYear(first)}
-                                keyPrefix={`order-${o.id}-line-${first.id}`}
-                                className="mt-2"
+                  <div className="px-4 py-5 sm:px-6">
+                    <div className="group flex w-full items-start justify-between gap-4 text-left">
+                      <div
+                        className="min-w-0 flex-1 cursor-pointer space-y-4"
+                        onClick={() => setOpenId(expanded ? null : o.id)}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className={marketplaceOrderRefClass}>
+                            {orderRef}
+                          </span>
+                          <OrderStatusBadge order={o} />
+                        </div>
+                        <div className="flex flex-wrap items-start justify-between gap-3 border-t border-zinc-100 pt-3">
+                          <div className="min-w-0 flex-1">
+                            {!multi && first ? (
+                              <div className="flex items-start gap-3">
+                                <div
+                                  className={
+                                    squareMarketplaceLinePreviewFrameClass
+                                  }
+                                  aria-hidden={!singleCoverRaw}
+                                >
+                                  {singleCoverRaw ? (
+                                    <RasterFromApiUrl
+                                      url={singleCoverRaw}
+                                      alt=""
+                                      width={120}
+                                      height={120}
+                                      className={
+                                        squareMarketplaceLinePreviewImgClass
+                                      }
+                                      {...catalogRasterImgAttrs}
+                                    />
+                                  ) : (
+                                    <span className="flex h-full w-full items-center justify-center text-[10px] font-medium text-zinc-400">
+                                      —
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <MarketplaceLineSpaceHeading
+                                    item={first}
+                                    stopPropagation
+                                  />
+                                  <RentalMonthsByYearPills
+                                    groups={cartLineMonthsByYear(first)}
+                                    keyPrefix={`order-${o.id}-line-${first.id}`}
+                                    className="mt-2"
+                                  />
+                                </div>
+                              </div>
+                            ) : null}
+                            {multi ? (
+                              <MisPedidosMultiLinesPreview
+                                order={o}
+                                items={items}
+                                onShowDetail={() => focusOrderDetailTab(o.id)}
+                                onOpenLineGallery={(lineId) =>
+                                  openOrderLineGallery(o, lineId)
+                                }
                               />
-                            </div>
+                            ) : null}
+                            {!multi && !first ? (
+                              <p className="text-sm text-zinc-500">
+                                Sin líneas en este pedido.
+                              </p>
+                            ) : null}
                           </div>
-                        ) : null}
-                        {multi ? (
-                          <div>
-                            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                              {items.length}{" "}
-                              {items.length === 1 ? "toma en este pedido" : "tomas en este pedido"}{" "}
-                              <span className="font-normal normal-case text-zinc-400">
-                                (precio por toma sin IVA)
-                              </span>
+                          {!multi ? (
+                            <div className="shrink-0 text-right">
+                              <p className={marketplaceLineFieldLabelClass}>
+                                Subtotal (sin IVA)
+                              </p>
+                              <p
+                                className={marketplaceLinePriceClass}
+                                aria-label={`Importe sin IVA para ${singleCodeLabel}`}
+                              >
+                                {formatUsdInteger(lineDisplay)}
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="shrink-0 text-right">
+                              <p className={marketplaceLineFieldLabelClass}>
+                                Subtotal pedido (sin IVA)
+                              </p>
+                              <p className={marketplaceLinePriceClass}>
+                                {formatUsdInteger(Number(o.total_amount))}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-3">
+                          <div className="min-w-0">
+                            <p className={marketplaceLineFieldLabelClass}>
+                              {o.submitted_at ? "Enviado el" : "Registrado el"}
                             </p>
-                            <ul className="mt-2 space-y-2.5">
-                              {items.map((it) => {
-                                const thumbRaw = primaryAdSpaceMediaRawFromOrderLike(it);
-                                const code = lineSpaceCode(it);
-                                const sub = Number(it.subtotal);
-                                const codeLabel = code.replace(/^#/, "") || "toma";
+                            <time
+                              dateTime={o.submitted_at || o.created_at}
+                              className="text-sm font-semibold tabular-nums text-zinc-900"
+                            >
+                              {o.submitted_at || o.created_at
+                                ? formatDateTimeFull(
+                                    o.submitted_at || o.created_at,
+                                  )
+                                : "—"}
+                            </time>
+                          </div>
+                          <div className="text-right">
+                            <p className={marketplaceLineFieldLabelClass}>
+                              Total con IVA ({IVA_PERCENT_LABEL})
+                            </p>
+                            <span className={marketplaceLinePriceClass}>
+                              {formatUsdMoney(totalIva)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="mt-0.5 inline-flex shrink-0 rounded-full p-1 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--mp-primary)_35%,transparent)]"
+                        onClick={() => setOpenId(expanded ? null : o.id)}
+                        aria-expanded={expanded}
+                        aria-controls={panelId}
+                        aria-label={
+                          expanded ? "Contraer pedido" : "Expandir pedido"
+                        }
+                      >
+                        <Chevron expanded={expanded} />
+                      </button>
+                    </div>
+                  </div>
+                  {expanded ? (
+                    <div
+                      id={panelId}
+                      className="border-t border-zinc-100 bg-zinc-50/80 px-4 pb-5 pt-4 sm:px-5 sm:pb-6"
+                    >
+                      <div
+                        role="tablist"
+                        aria-label="Secciones del pedido"
+                        className="flex flex-wrap gap-x-0.5 border-b border-zinc-200/90"
+                      >
+                        <button
+                          type="button"
+                          role="tab"
+                          id={`${panelId}-tab-doc`}
+                          aria-selected={orderDetailTab === "documents"}
+                          aria-controls={`${panelId}-panel-doc`}
+                          className={orderDetailTabTriggerClass(
+                            orderDetailTab === "documents",
+                          )}
+                          onClick={() => setOrderDetailTab("documents")}
+                        >
+                          Documentos
+                        </button>
+                        <button
+                          type="button"
+                          role="tab"
+                          id={`${panelId}-tab-detail`}
+                          aria-selected={orderDetailTab === "detail"}
+                          aria-controls={`${panelId}-panel-detail`}
+                          className={orderDetailTabTriggerClass(
+                            orderDetailTab === "detail",
+                          )}
+                          onClick={() => setOrderDetailTab("detail")}
+                        >
+                          Detalle
+                        </button>
+                        <button
+                          type="button"
+                          role="tab"
+                          id={`${panelId}-tab-hist`}
+                          aria-selected={orderDetailTab === "history"}
+                          aria-controls={`${panelId}-panel-history`}
+                          className={orderDetailTabTriggerClass(
+                            orderDetailTab === "history",
+                          )}
+                          onClick={() => setOrderDetailTab("history")}
+                        >
+                          Historial
+                        </button>
+                      </div>
+
+                      <div className="mt-4 min-w-0">
+                        <div
+                          role="tabpanel"
+                          id={`${panelId}-panel-doc`}
+                          aria-labelledby={`${panelId}-doc-heading`}
+                          hidden={orderDetailTab !== "documents"}
+                        >
+                          <SectionTitle id={`${panelId}-doc-heading`}>
+                            Documentos y siguientes pasos
+                          </SectionTitle>
+                          <div className="mt-3 min-w-0">
+                            {accessToken ? (
+                              <OrderClientWorkflowPanel
+                                order={o}
+                                accessToken={accessToken}
+                                onOrderUpdated={mergeOrderIntoList}
+                                sectionTitleId={`${panelId}-doc-heading`}
+                              />
+                            ) : (
+                              <p
+                                className={`mt-3 text-sm text-zinc-600 ${ROUNDED_CONTROL} border border-zinc-200/90 bg-white px-4 py-3 shadow-sm`}
+                              >
+                                Inicia sesión de nuevo para ver y gestionar los
+                                documentos de este pedido.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div
+                          role="tabpanel"
+                          id={`${panelId}-panel-detail`}
+                          aria-labelledby={`${panelId}-lineas`}
+                          hidden={orderDetailTab !== "detail"}
+                        >
+                          <SectionTitle id={`${panelId}-lineas`}>
+                            Detalle por toma
+                          </SectionTitle>
+                          <div className="mt-3 rounded-xl border border-zinc-100 bg-white/90 p-4 shadow-sm">
+                            <p className="text-xs leading-relaxed text-zinc-500">
+                              Cada fila es una toma distinta: fechas del periodo
+                              reservado e importe de esa línea{" "}
+                              <span className="font-medium text-zinc-600">
+                                sin IVA
+                              </span>
+                              . No todas las tomas comparten las mismas fechas
+                              si reservaste periodos distintos.
+                            </p>
+                            <ul
+                              className="mt-4 list-none space-y-4 p-0"
+                              aria-labelledby={`${panelId}-lineas`}
+                            >
+                              {(o.items || []).map((it) => {
+                                const lineCoverRaw =
+                                  primaryAdSpaceMediaRawFromOrderLike(it);
+                                const lineImgCount =
+                                  orderLineItemImageCount(it);
+                                const periodMonths = cartLineMonthsByYear(it);
+                                const codeLabel =
+                                  lineSpaceCode(it).replace(/^#/, "") || "toma";
                                 return (
                                   <li
                                     key={it.id}
-                                    className="flex items-start gap-3 border-b border-zinc-100 pb-2.5 last:border-0 last:pb-0"
+                                    className={`${ROUNDED_CONTROL} overflow-hidden border border-zinc-200/90 bg-white shadow-sm`}
                                   >
-                                    <div
-                                      className={squareMarketplaceLinePreviewFrameClass}
-                                      aria-hidden={!thumbRaw}
-                                    >
-                                      {thumbRaw ? (
-                                        <RasterFromApiUrl
-                                          url={thumbRaw}
-                                          alt=""
-                                          width={120}
-                                          height={120}
-                                          className={squareMarketplaceLinePreviewImgClass}
-                                          {...catalogRasterImgAttrs}
-                                        />
-                                      ) : (
-                                        <span className="flex h-full w-full items-center justify-center text-[10px] font-medium text-zinc-400">
-                                          —
-                                        </span>
-                                      )}
+                                    <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:py-5">
+                                      <div className="flex min-w-0 flex-1 gap-3">
+                                        {lineCoverRaw ? (
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              openOrderLineGallery(o, it.id)
+                                            }
+                                            className={`${squareMarketplaceLinePreviewFrameClass} ${squareListImagePreviewButtonRingClass} shrink-0 p-0`}
+                                            aria-label={
+                                              lineImgCount > 1
+                                                ? `Abrir galería de esta toma (${lineImgCount} imágenes)`
+                                                : "Abrir imagen ampliada"
+                                            }
+                                          >
+                                            <RasterFromApiUrl
+                                              url={lineCoverRaw}
+                                              alt=""
+                                              width={120}
+                                              height={120}
+                                              className={`${squareMarketplaceLinePreviewImgClass} transition duration-200 group-hover:scale-105`}
+                                              {...catalogRasterImgAttrs}
+                                            />
+                                          </button>
+                                        ) : (
+                                          <div
+                                            className={`${squareMarketplaceLinePreviewFrameClass} shrink-0 bg-zinc-100`}
+                                            aria-hidden
+                                          >
+                                            <span className="flex h-full w-full items-center justify-center text-[10px] font-medium text-zinc-400">
+                                              Sin imagen
+                                            </span>
+                                          </div>
+                                        )}
+                                        <div className="min-w-0 flex-1">
+                                          <MarketplaceLineSpaceHeading
+                                            item={it}
+                                          />
+                                          {periodMonths.length > 0 ? (
+                                            <RentalMonthsByYearPills
+                                              groups={periodMonths}
+                                              keyPrefix={`detail-${o.id}-${it.id}`}
+                                              className="mt-2"
+                                            />
+                                          ) : (
+                                            <p className="mt-2 text-sm font-medium text-zinc-800">
+                                              {formatContractRange(
+                                                it.start_date,
+                                                it.end_date,
+                                              )}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="shrink-0 text-right sm:pt-0.5">
+                                        <p
+                                          className={
+                                            marketplaceLineFieldLabelClass
+                                          }
+                                        >
+                                          Subtotal (sin IVA)
+                                        </p>
+                                        <p
+                                          className={marketplaceLinePriceClass}
+                                          aria-label={`Importe sin IVA para ${codeLabel}`}
+                                        >
+                                          {formatUsdMoney(Number(it.subtotal))}
+                                        </p>
+                                      </div>
                                     </div>
-                                    <div className="min-w-0 flex-1">
-                                      <MarketplaceLineSpaceHeading item={it} stopPropagation />
-                                      <RentalMonthsByYearPills
-                                        groups={cartLineMonthsByYear(it)}
-                                        keyPrefix={`order-${o.id}-line-${it.id}`}
-                                        className="mt-1.5"
-                                      />
-                                    </div>
-                                    <span
-                                      className={`shrink-0 pt-0.5 ${marketplaceLinePriceClass} text-sm`}
-                                      aria-label={`Importe sin IVA para ${codeLabel}`}
-                                    >
-                                      {Number.isFinite(sub) ? formatUsdInteger(sub) : "—"}
-                                    </span>
                                   </li>
                                 );
                               })}
                             </ul>
                           </div>
-                        ) : null}
-                        {!multi && !first ? (
-                          <p className="text-sm text-zinc-500">Sin líneas en este pedido.</p>
-                        ) : null}
-                      </div>
-                      {!multi ? (
-                        <div className="shrink-0 text-right">
-                          <p className={marketplaceLineFieldLabelClass}>Subtotal (sin IVA)</p>
-                          <p
-                            className={marketplaceLinePriceClass}
-                            aria-label={`Importe sin IVA para ${singleCodeLabel}`}
-                          >
-                            {formatUsdInteger(lineDisplay)}
-                          </p>
                         </div>
-                      ) : (
-                        <div className="shrink-0 text-right">
-                          <p className={marketplaceLineFieldLabelClass}>Subtotal pedido (sin IVA)</p>
-                          <p className={marketplaceLinePriceClass}>
-                            {formatUsdInteger(Number(o.total_amount))}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-3">
-                      <div className="min-w-0">
-                        <p className={marketplaceLineFieldLabelClass}>
-                          {o.submitted_at ? "Enviado el" : "Registrado el"}
-                        </p>
-                        <time
-                          dateTime={o.submitted_at || o.created_at}
-                          className="text-sm font-semibold tabular-nums text-zinc-900"
+
+                        <div
+                          role="tabpanel"
+                          id={`${panelId}-panel-history`}
+                          aria-labelledby={`${panelId}-hist`}
+                          hidden={orderDetailTab !== "history"}
                         >
-                          {o.submitted_at || o.created_at
-                            ? formatDateTimeFull(o.submitted_at || o.created_at)
-                            : "—"}
-                        </time>
-                      </div>
-                      <div className="text-right">
-                        <p className={marketplaceLineFieldLabelClass}>
-                          Total con IVA ({IVA_PERCENT_LABEL})
-                        </p>
-                        <span className={marketplaceLinePriceClass}>
-                          {formatUsdMoney(totalIva)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <Chevron expanded={expanded} />
-                </button>
-                {expanded ? (
-                  <div
-                    id={panelId}
-                    className="border-t border-zinc-100 bg-zinc-50/80 px-4 pb-5 pt-4 sm:px-5 sm:pb-6"
-                  >
-                    <div
-                      role="tablist"
-                      aria-label="Secciones del pedido"
-                      className="flex flex-wrap gap-x-0.5 border-b border-zinc-200/90"
-                    >
-                      <button
-                        type="button"
-                        role="tab"
-                        id={`${panelId}-tab-doc`}
-                        aria-selected={orderDetailTab === "documents"}
-                        aria-controls={`${panelId}-panel-doc`}
-                        className={orderDetailTabTriggerClass(orderDetailTab === "documents")}
-                        onClick={() => setOrderDetailTab("documents")}
-                      >
-                        Documentos
-                      </button>
-                      <button
-                        type="button"
-                        role="tab"
-                        id={`${panelId}-tab-detail`}
-                        aria-selected={orderDetailTab === "detail"}
-                        aria-controls={`${panelId}-panel-detail`}
-                        className={orderDetailTabTriggerClass(orderDetailTab === "detail")}
-                        onClick={() => setOrderDetailTab("detail")}
-                      >
-                        Detalle
-                      </button>
-                      <button
-                        type="button"
-                        role="tab"
-                        id={`${panelId}-tab-hist`}
-                        aria-selected={orderDetailTab === "history"}
-                        aria-controls={`${panelId}-panel-history`}
-                        className={orderDetailTabTriggerClass(orderDetailTab === "history")}
-                        onClick={() => setOrderDetailTab("history")}
-                      >
-                        Historial
-                      </button>
-                    </div>
-
-                    <div className="mt-4 min-w-0">
-                      <div
-                        role="tabpanel"
-                        id={`${panelId}-panel-doc`}
-                        aria-labelledby={`${panelId}-doc-heading`}
-                        hidden={orderDetailTab !== "documents"}
-                      >
-                        <SectionTitle id={`${panelId}-doc-heading`}>
-                          Documentos y siguientes pasos
-                        </SectionTitle>
-                        <div className="mt-3 min-w-0">
-                          {accessToken ? (
-                            <OrderClientWorkflowPanel
-                              order={o}
-                              accessToken={accessToken}
-                              onOrderUpdated={mergeOrderIntoList}
-                              sectionTitleId={`${panelId}-doc-heading`}
-                            />
-                          ) : (
-                            <p
-                              className={`mt-3 text-sm text-zinc-600 ${ROUNDED_CONTROL} border border-zinc-200/90 bg-white px-4 py-3 shadow-sm`}
-                            >
-                              Inicia sesión de nuevo para ver y gestionar los documentos de este pedido.
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div
-                        role="tabpanel"
-                        id={`${panelId}-panel-detail`}
-                        aria-labelledby={`${panelId}-lineas`}
-                        hidden={orderDetailTab !== "detail"}
-                      >
-                        <SectionTitle id={`${panelId}-lineas`}>Detalle por toma</SectionTitle>
-                        <div className="mt-3 rounded-xl border border-zinc-100 bg-white/90 p-4 shadow-sm">
-                          <p className="text-xs leading-relaxed text-zinc-500">
-                            Cada fila es una toma distinta: fechas del periodo reservado e importe de esa
-                            línea <span className="font-medium text-zinc-600">sin IVA</span>. No todas
-                            las tomas comparten las mismas fechas si reservaste periodos distintos.
-                          </p>
-                          <ul
-                            className="mt-4 list-none space-y-4 p-0"
-                            aria-labelledby={`${panelId}-lineas`}
-                          >
-                            {(o.items || []).map((it) => {
-                              const lineCoverRaw = primaryAdSpaceMediaRawFromOrderLike(it);
-                              const lineImgCount = orderLineItemImageCount(it);
-                              const periodMonths = cartLineMonthsByYear(it);
-                              const codeLabel = lineSpaceCode(it).replace(/^#/, "") || "toma";
-                              return (
-                                <li
-                                  key={it.id}
-                                  className={`${ROUNDED_CONTROL} overflow-hidden border border-zinc-200/90 bg-white shadow-sm`}
-                                >
-                                  <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:py-5">
-                                    <div className="flex min-w-0 flex-1 gap-3">
-                                    {lineCoverRaw ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => openOrderLineGallery(o, it.id)}
-                                        className={`${squareMarketplaceLinePreviewFrameClass} ${squareListImagePreviewButtonRingClass} shrink-0 p-0`}
-                                        aria-label={
-                                          lineImgCount > 1
-                                            ? `Abrir galería de esta toma (${lineImgCount} imágenes)`
-                                            : "Abrir imagen ampliada"
-                                        }
-                                      >
-                                        <RasterFromApiUrl
-                                          url={lineCoverRaw}
-                                          alt=""
-                                          width={120}
-                                          height={120}
-                                          className={`${squareMarketplaceLinePreviewImgClass} transition duration-200 group-hover:scale-105`}
-                                          {...catalogRasterImgAttrs}
-                                        />
-                                      </button>
-                                    ) : (
-                                        <div
-                                          className={`${squareMarketplaceLinePreviewFrameClass} shrink-0 bg-zinc-100`}
-                                          aria-hidden
-                                        >
-                                          <span className="flex h-full w-full items-center justify-center text-[10px] font-medium text-zinc-400">
-                                            Sin imagen
-                                          </span>
-                                        </div>
-                                      )}
-                                    <div className="min-w-0 flex-1">
-                                      <MarketplaceLineSpaceHeading item={it} />
-                                      {periodMonths.length > 0 ? (
-                                        <RentalMonthsByYearPills
-                                          groups={periodMonths}
-                                          keyPrefix={`detail-${o.id}-${it.id}`}
-                                          className="mt-2"
-                                        />
-                                      ) : (
-                                        <p className="mt-2 text-sm font-medium text-zinc-800">
-                                          {formatContractRange(it.start_date, it.end_date)}
-                                        </p>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="shrink-0 text-right sm:pt-0.5">
-                                    <p className={marketplaceLineFieldLabelClass}>Subtotal (sin IVA)</p>
-                                    <p
-                                      className={marketplaceLinePriceClass}
-                                      aria-label={`Importe sin IVA para ${codeLabel}`}
-                                    >
-                                      {formatUsdMoney(Number(it.subtotal))}
-                                    </p>
-                                  </div>
-                                  </div>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </div>
-                      </div>
-
-                      <div
-                        role="tabpanel"
-                        id={`${panelId}-panel-history`}
-                        aria-labelledby={`${panelId}-hist`}
-                        hidden={orderDetailTab !== "history"}
-                      >
-                        <SectionTitle id={`${panelId}-hist`}>Historial de estados</SectionTitle>
-                        <div className="mt-3 rounded-xl border border-zinc-100 bg-white/90 p-4 shadow-sm">
-                          <div aria-labelledby={`${panelId}-hist`}>
-                            <OrderTimeline events={timeline} />
+                          <SectionTitle id={`${panelId}-hist`}>
+                            Historial de estados
+                          </SectionTitle>
+                          <div className="mt-3 rounded-xl border border-zinc-100 bg-white/90 p-4 shadow-sm">
+                            <div aria-labelledby={`${panelId}-hist`}>
+                              <OrderTimeline events={timeline} />
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ) : null}
-              </li>
-            );
-          })}
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
-          <AdminListPagination page={page} totalCount={totalCount} onPageChange={setPage} />
+          <AdminListPagination
+            page={page}
+            totalCount={totalCount}
+            onPageChange={setPage}
+          />
         </>
       )}
 

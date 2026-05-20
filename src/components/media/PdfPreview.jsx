@@ -50,12 +50,22 @@ export function IcDownload({ className = "h-4 w-4" }) {
  *   hideTitle?: boolean;
  *   compact?: boolean;
  *   fillParentCell?: boolean;
+ *   embedHideSidebar?: boolean;
  * }} props
  * compact: título más pequeño, iframe más bajo y acciones solo icono (rejillas admin).
  * fillParentCell: el padre define alto (p. ej. celda `aspect-square`); la vista previa crece y el iframe llena el espacio restante.
+ * embedHideSidebar: en el visor PDF del navegador oculta el panel de miniaturas (`#navpanes=0`).
  */
 export const pdfPreviewCompactIconButtonClass =
   "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-none border border-zinc-200/90 bg-white text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--mp-primary)_35%,transparent)]";
+
+/** Parámetros de fragmento para el visor PDF embebido (Chrome / Edge / Firefox). */
+function pdfIframeSrc(url, embedHideSidebar) {
+  if (!url) return "";
+  if (!embedHideSidebar) return url;
+  const hash = "navpanes=0";
+  return url.includes("#") ? `${url}&${hash}` : `${url}#${hash}`;
+}
 
 export function PdfPreview({
   title,
@@ -70,6 +80,7 @@ export function PdfPreview({
   hideTitle = false,
   compact = false,
   fillParentCell = false,
+  embedHideSidebar = false,
 }) {
   const [blobUrl, setBlobUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -269,7 +280,7 @@ export function PdfPreview({
         ) : src ? (
           <iframe
             title={title}
-            src={src}
+            src={pdfIframeSrc(src, embedHideSidebar)}
             className={`w-full ${innerPreviewRadiusClass} border border-zinc-200 bg-zinc-50 ${
               fillParentCell ? "min-h-0 flex-1" : previewMinHeightClass
             }`}

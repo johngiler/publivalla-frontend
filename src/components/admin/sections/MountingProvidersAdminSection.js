@@ -26,6 +26,7 @@ import {
   adminSectionHeaderIconWrap,
 } from "@/components/admin/adminFormStyles";
 import { IconAdminHardHat } from "@/components/admin/adminIcons";
+import { IconRowPlus, IconRowTrash } from "@/components/admin/rowActionIcons";
 import { MountingProvidersSectionSkeleton } from "@/components/admin/skeletons/MountingProvidersSectionSkeleton";
 import { useAuth } from "@/context/AuthContext";
 import { EmptyState, EmptyStateIconBuilding } from "@/components/ui/EmptyState";
@@ -93,6 +94,9 @@ export function MountingProvidersAdminSection() {
   const [notes, setNotes] = useState("");
   const [sortOrder, setSortOrder] = useState("0");
   const [isActive, setIsActive] = useState(true);
+  const [staffMembers, setStaffMembers] = useState([
+    { full_name: "", id_number: "" },
+  ]);
 
   const centersAllKey = authReady && accessToken ? ADMIN_CENTERS_ALL_SWR_KEY : null;
   const {
@@ -244,6 +248,7 @@ export function MountingProvidersAdminSection() {
     setNotes("");
     setSortOrder("0");
     setIsActive(true);
+    setStaffMembers([{ full_name: "", id_number: "" }]);
     setModal("edit");
     setModalErr("");
     setFieldErrors({});
@@ -266,6 +271,16 @@ export function MountingProvidersAdminSection() {
     setNotes(String(row.notes || ""));
     setSortOrder(String(row.sort_order ?? 0));
     setIsActive(row.is_active !== false);
+    const staff = Array.isArray(row.staff_members) ? row.staff_members : [];
+    const parsed = staff
+      .map((r) => ({
+        full_name: String(r?.full_name ?? "").trim(),
+        id_number: String(r?.id_number ?? "").trim(),
+      }))
+      .filter((r) => r.full_name && r.id_number);
+    setStaffMembers(
+      parsed.length ? parsed : [{ full_name: "", id_number: "" }],
+    );
     setModal("edit");
     setModalErr("");
     setFieldErrors({});
@@ -297,6 +312,19 @@ export function MountingProvidersAdminSection() {
         return;
       }
     }
+    const members = staffMembers
+      .map((r) => ({
+        full_name: String(r.full_name || "").trim(),
+        id_number: String(r.id_number || "").trim(),
+      }))
+      .filter((r) => r.full_name && r.id_number);
+    if (!members.length) {
+      setModalErr("Revisa los campos marcados.");
+      setFieldErrors({
+        staff_members: "Indica al menos una persona con nombre y cédula.",
+      });
+      return;
+    }
     setModalErr("");
     setMsg("");
     setFieldErrors({});
@@ -308,6 +336,7 @@ export function MountingProvidersAdminSection() {
       email: email.trim(),
       rif: rif.trim(),
       notes: notes.trim(),
+      staff_members: members,
       sort_order: Number.isFinite(so) && so >= 0 ? so : 0,
       is_active: Boolean(isActive),
     };
@@ -765,6 +794,100 @@ export function MountingProvidersAdminSection() {
                 Activo en catálogo
               </label>
             </div>
+          </div>
+          <div>
+            <p className={adminLabel}>
+              Personal en sitio <span className="text-red-600">*</span>
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Personas autorizadas que irán al centro al montar. Se precargan en la solicitud de
+              permiso del pedido.
+            </p>
+            <ul className="mt-3 space-y-3">
+              {staffMembers.map((row, idx) => {
+                const isLast = idx === staffMembers.length - 1;
+                return (
+                  <li
+                    key={idx}
+                    className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-2"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <label className={adminLabel} htmlFor={`mp-staff-name-${idx}`}>
+                        Nombre completo
+                      </label>
+                      <input
+                        id={`mp-staff-name-${idx}`}
+                        className={adminField}
+                        value={row.full_name}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setStaffMembers((rows) =>
+                            rows.map((r, i) =>
+                              i === idx ? { ...r, full_name: v } : r,
+                            ),
+                          );
+                        }}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <label className={adminLabel} htmlFor={`mp-staff-ci-${idx}`}>
+                        Cédula
+                      </label>
+                      <input
+                        id={`mp-staff-ci-${idx}`}
+                        className={adminField}
+                        value={row.id_number}
+                        placeholder="Ej. V-12345678"
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setStaffMembers((rows) =>
+                            rows.map((r, i) =>
+                              i === idx ? { ...r, id_number: v } : r,
+                            ),
+                          );
+                        }}
+                      />
+                    </div>
+                    <div className="flex shrink-0 items-end gap-2 pb-0.5 sm:pb-[2px]">
+                      {staffMembers.length > 1 ? (
+                        <button
+                          type="button"
+                          title="Quitar esta persona"
+                          aria-label="Quitar esta persona"
+                          className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-red-200/90 bg-white text-red-600 shadow-sm transition hover:border-red-300 hover:bg-red-50"
+                          onClick={() =>
+                            setStaffMembers((rows) =>
+                              rows.filter((_, i) => i !== idx),
+                            )
+                          }
+                        >
+                          <IconRowTrash className="!h-5 !w-5 text-red-600" />
+                        </button>
+                      ) : null}
+                      {isLast ? (
+                        <button
+                          type="button"
+                          title="Añadir persona"
+                          aria-label="Añadir persona"
+                          onClick={() =>
+                            setStaffMembers((rows) => [
+                              ...rows,
+                              { full_name: "", id_number: "" },
+                            ])
+                          }
+                          className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border-2 border-zinc-400 bg-zinc-100 p-0 text-zinc-900 shadow-sm transition hover:border-zinc-500 hover:bg-zinc-200"
+                        >
+                          <IconRowPlus className="text-zinc-900" />
+                        </button>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            {fieldErrors?.staff_members ? (
+              <p className="mt-1 text-xs text-rose-700">{fieldErrors.staff_members}</p>
+            ) : null}
           </div>
           <div>
             <label className={adminLabel} htmlFor="mp-notes">

@@ -1,8 +1,37 @@
 import {
   mediaUrlForUiWithWebp,
   primaryAdSpaceMediaRawFromOrderLike,
+  rasterDisplayCandidates,
   rawSpaceCoverSrc,
 } from "@/lib/mediaUrls";
+
+/**
+ * Ítems para `ImageLightbox` a partir de artes de pedido (imagen raster).
+ * Usa candidatos WebP + original como en miniaturas (`RasterFromApiUrl`).
+ *
+ * @param {Array<{ raw: string; abs?: string; label?: string; lineCaption?: string }>} imageEntries
+ */
+export function orderArtImageLightboxItems(imageEntries) {
+  return imageEntries
+    .map((e) => {
+      const candidates = rasterDisplayCandidates(e.raw);
+      const raster =
+        (candidates.find((u) => !/\.webp(\?|#|$)/i.test(u)) ??
+          candidates[0] ??
+          e.abs) ||
+        mediaUrlForUiWithWebp(e.raw);
+      if (!raster) return null;
+      const label = String(e.label ?? "").trim() || "Arte";
+      const downloadFileName = /\.[a-z0-9]+$/i.test(label) ? label : undefined;
+      const alt = e.lineCaption ? `${label} (${e.lineCaption})` : label;
+      return {
+        src: raster,
+        alt,
+        downloadFileName,
+      };
+    })
+    .filter(Boolean);
+}
 
 /**
  * Línea de carrito marketplace (tras `addItem`): URLs ya pueden venir absolutas del API.

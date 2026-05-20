@@ -153,23 +153,16 @@ function ToolbarIconButton({ label, onClick, disabled, children }) {
   );
 }
 
+/** Misma URL que la vista principal (evita WebP inexistente en artes de pedido). */
 function lightboxThumbUrl(it) {
   if (!it || typeof it.src !== "string" || !it.src) return "";
-  const raw = it.thumbnailSrc;
-  if (raw != null) {
-    const t = String(raw).trim();
-    if (t) return t;
-  }
   return it.src;
 }
 
-/** Oculta la entrada si falló la carga de la URL principal o de la miniatura. */
+/** Oculta la entrada solo si falló la imagen principal (no la miniatura del carril). */
 function lightboxItemExcluded(it, failedUrls) {
   if (!it?.src) return true;
-  if (failedUrls.has(it.src)) return true;
-  const th = lightboxThumbUrl(it);
-  if (th && failedUrls.has(th)) return true;
-  return false;
+  return failedUrls.has(it.src);
 }
 
 /**
@@ -507,9 +500,9 @@ export function ImageLightbox({
                   }`}
                 >
                   <span className="block h-full w-full overflow-hidden rounded-[10px]">
-                    <RasterImageWithWebpFallback
-                      initialSrc={lightboxThumbUrl(it)}
-                      onGiveUp={() => markUrlFailed(lightboxThumbUrl(it))}
+                    {/* Sin reintento WebP: misma URL raster que la imagen grande. */}
+                    <img
+                      src={lightboxThumbUrl(it)}
                       alt=""
                       width={100}
                       height={100}

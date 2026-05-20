@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AdminDetailInset, AdminDetailSection } from "@/components/admin/AdminAccordionDetail";
+import { PedidoAdminArtAttachmentsGrouped } from "@/components/admin/PedidoAdminArtAttachmentsGrouped";
 import { adminField, adminLabel, adminPrimaryBtn } from "@/components/admin/adminFormStyles";
 import { catalogRasterImgAttrs } from "@/lib/catalogImageProps";
 import {
@@ -14,8 +15,8 @@ import {
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { RasterFromApiUrl } from "@/components/media/RasterFromApiUrl";
 import { isPdfReceiptUrl } from "@/lib/orderPaymentMethods";
-import { apiBlobPathFromMediaField, mediaUrlForUiWithWebp } from "@/lib/mediaUrls";
-import { squareListImagePreviewButtonRingClass } from "@/lib/squareImagePreview";
+import { normalizeMediaUrlForUi } from "@/lib/mediaUrls";
+import { orderArtImageLightboxItems } from "@/lib/imageLightboxItems";
 import { ROUNDED_CONTROL, ROUNDED_PDF_GRID_CARD } from "@/lib/uiRounding";
 import { authFetch, authFetchBlob, mediaAbsoluteUrl } from "@/services/authApi";
 
@@ -40,14 +41,87 @@ function orderArtEntryLabel(a) {
   return `Arte #${a.id}`;
 }
 
-function artLineCaptionFromAttachment(a) {
-  const code = a?.order_item_code != null ? String(a.order_item_code).trim() : "";
-  const title = a?.order_item_title != null ? String(a.order_item_title).trim() : "";
-  if (code && title) return `${code} — ${title}`;
-  if (code) return code;
-  if (title) return title;
-  if (a?.order_item != null) return `Línea #${a.order_item}`;
-  return "";
+/**
+ * Vista previa admin alineada con ``PdfPreview`` de la rejilla (PDF en iframe; imagen con la misma barra de acciones).
+ */
+export function OrderAttachmentAdminPreview({ title, fileUrl, emptyHint, order, downloadBase }) {
+  const raw = fileUrl != null ? String(fileUrl).trim() : "";
+  const abs = raw ? mediaAbsoluteUrl(raw) : "";
+  const direct = raw ? normalizeMediaUrlForUi(raw) : "";
+  const kind = raw ? orderArtKindFromUrls(raw, abs) : "other";
+  const orderId = order?.id ?? "";
+  const loadKey = `${orderId}-${downloadBase}-${raw}`;
+  const downloadFileName = orderDocFilename(order, downloadBase);
+
+  if (!raw) {
+    return (
+      <PdfPreview
+        {...orderPdfGridPreviewProps}
+        title={title}
+        downloadFileName={downloadFileName}
+        disabled
+        emptyHint={emptyHint}
+        loadKey={`${orderId}-${downloadBase}-empty`}
+      />
+    );
+  }
+
+  if (kind === "image") {
+    return (
+      <div
+        className={`min-w-0 ${ROUNDED_PDF_GRID_CARD} border border-zinc-200/90 bg-white shadow-sm`}
+        aria-label={title}
+      >
+        <div className="flex flex-row items-center gap-2 border-b border-zinc-100 bg-zinc-50/90 px-2 py-2">
+          <h4 className="min-w-0 flex-1 truncate text-xs font-semibold leading-tight text-zinc-900">
+            {title}
+          </h4>
+          <div className="flex shrink-0 items-center gap-1">
+            <a
+              href={abs}
+              download={downloadFileName}
+              className={pdfPreviewCompactIconButtonClass}
+              aria-label="Descargar"
+              title="Descargar"
+            >
+              <IcDownload className="h-4 w-4" />
+            </a>
+            <a
+              href={abs}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={pdfPreviewCompactIconButtonClass}
+              aria-label="Abrir en pestaña nueva"
+              title="Abrir en pestaña nueva"
+            >
+              <IcExternal className="h-4 w-4" />
+            </a>
+          </div>
+        </div>
+        <div className="p-1.5">
+          <RasterFromApiUrl
+            url={raw}
+            alt={title}
+            className="max-h-[min(10rem,32vh)] w-auto max-w-full rounded-none border border-zinc-200 object-contain shadow-sm"
+            {...catalogRasterImgAttrs}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <PdfPreview
+      {...orderPdfGridPreviewProps}
+      title={title}
+      downloadFileName={downloadFileName}
+      disabled={false}
+      emptyHint="No se pudo cargar la vista previa del documento."
+      loadKey={loadKey}
+      directUrl={direct || abs}
+      embedHideSidebar
+    />
+  );
 }
 
 /** @param {string} raw @param {string} abs */
@@ -90,11 +164,8 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
   const [paymentConditions, setPaymentConditions] = useState("");
   const [negotiationObservations, setNegotiationObservations] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [artsLightbox, setArtsLightbox] = useState({
-    open: false,
-    items: /** @type {Array<{ src: string; alt?: string; downloadFileName?: string }>} */ ([]),
-    initialIndex: 0,
-  });
+  const [artsLightboxOpen, setArtsLightboxOpen] = useState(false);
+  const [artsLightboxIndex, setArtsLightboxIndex] = useState(0);
 
   useEffect(() => {
     setPaymentConditions(String(order?.payment_conditions ?? ""));
@@ -103,7 +174,8 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
   }, [id, order?.payment_conditions, order?.negotiation_observations, order?.invoice_number]);
 
   useEffect(() => {
-    setArtsLightbox({ open: false, items: [], initialIndex: 0 });
+    setArtsLightboxOpen(false);
+    setArtsLightboxIndex(0);
   }, [id]);
 
   const fetchNegotiationPdf = useCallback(async () => {
@@ -172,8 +244,6 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
     ? mediaAbsoluteUrl(String(order.negotiation_sheet_signed_url))
     : "";
 
-  const orderLineCount = Array.isArray(order?.items) ? order.items.length : 0;
-
   const orderArtEntries = useMemo(() => {
     const list = Array.isArray(order?.art_attachments) ? order.art_attachments : [];
     return list.map((a) => {
@@ -184,7 +254,12 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
         raw,
         abs,
         label: orderArtEntryLabel(a),
-        lineCaption: artLineCaptionFromAttachment(a),
+        spaceCode:
+          a?.order_item_code != null ? String(a.order_item_code).trim() : "",
+        orderItemPk:
+          a?.order_item != null && a.order_item !== ""
+            ? Number(a.order_item)
+            : null,
         createdAt: a?.created_at,
         kind: orderArtKindFromUrls(raw, abs),
       };
@@ -197,15 +272,7 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
   );
 
   const artsLightboxItems = useMemo(
-    () =>
-      artImageEntries
-        .map((e) => {
-          const src = mediaUrlForUiWithWebp(e.raw);
-          if (!src) return null;
-          const downloadFileName = /\.[a-z0-9]+$/i.test(e.label) ? e.label : undefined;
-          return { src, alt: e.label, downloadFileName };
-        })
-        .filter(Boolean),
+    () => orderArtImageLightboxItems(artImageEntries),
     [artImageEntries],
   );
 
@@ -213,7 +280,8 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
     (initialIndex) => {
       if (!artsLightboxItems.length) return;
       const i = Math.min(Math.max(0, initialIndex), artsLightboxItems.length - 1);
-      setArtsLightbox({ open: true, items: artsLightboxItems, initialIndex: i });
+      setArtsLightboxIndex(i);
+      setArtsLightboxOpen(true);
     },
     [artsLightboxItems],
   );
@@ -298,7 +366,11 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
         </AdminDetailInset>
       </AdminDetailSection>
 
-      <AdminDetailSection panelId={panelId} sectionId="docs-pdf" title="Documentos PDF">
+      <AdminDetailSection
+        panelId={panelId}
+        sectionId="docs-pdf"
+        title="Documentos y permisos PDF"
+      >
         <AdminDetailInset className="space-y-4">
           {err ? (
             <p className={`${ROUNDED_CONTROL} bg-red-50 px-3 py-2 text-sm text-red-800`} role="alert">
@@ -404,6 +476,20 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
               loadKey={`${id}-inst-perm-${order?.installation_permit?.id ?? ""}-${String(order?.installation_permit?.created_at ?? "")}`}
               onFetchBlob={fetchInstallationPermitRequestPdf}
             />
+            <OrderAttachmentAdminPreview
+              order={order}
+              title="Permiso emitido (alcaldía)"
+              downloadBase="permiso-emitido-alcaldia"
+              fileUrl={order?.installation_permit?.municipal_permit_issued_url}
+              emptyHint="La empresa lo sube desde Mis pedidos en «Permiso alcaldía»."
+            />
+            <OrderAttachmentAdminPreview
+              order={order}
+              title="Impuesto municipal"
+              downloadBase="impuesto-municipal"
+              fileUrl={order?.installation_permit?.municipal_tax_payment_receipt_url}
+              emptyHint="Comprobante de pago del impuesto; también desde Mis pedidos."
+            />
           </div>
         </AdminDetailInset>
       </AdminDetailSection>
@@ -416,113 +502,23 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
               (imagen o PDF).
             </p>
           ) : (
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              {orderArtEntries.map((e) => {
-                const lineMeta = e.lineCaption ? (
-                  <p className="text-[10px] font-medium leading-snug text-zinc-600">
-                    {e.lineCaption}
-                  </p>
-                ) : orderLineCount > 1 ? (
-                  <p className="text-[10px] leading-snug text-zinc-400">Espacio publicitario no indicado</p>
-                ) : null;
-                if (e.kind === "image") {
-                  const imgIdx = artImageEntries.findIndex((x) => x.id === e.id);
-                  return (
-                    <div key={e.id} className="flex min-w-0 flex-col gap-1">
-                      <div
-                        className={`relative aspect-[3/2] w-full min-w-0 overflow-hidden border border-zinc-200/90 bg-zinc-100 shadow-sm ${ROUNDED_PDF_GRID_CARD}`}
-                      >
-                        <button
-                          type="button"
-                          className={`absolute inset-0 cursor-pointer overflow-hidden rounded-none border-0 bg-transparent p-0 ${squareListImagePreviewButtonRingClass}`}
-                          aria-label={`Ver imagen ampliada (${e.label})`}
-                          onClick={() => openArtsLightbox(imgIdx >= 0 ? imgIdx : 0)}
-                        >
-                          <RasterFromApiUrl
-                            url={e.raw}
-                            alt=""
-                            fill
-                            sizes="(max-width: 768px) 33vw, 180px"
-                            className="pointer-events-none object-cover"
-                            {...catalogRasterImgAttrs}
-                          />
-                        </button>
-                      </div>
-                      {lineMeta}
-                    </div>
-                  );
-                }
-                if (e.kind === "pdf") {
-                  const blobPath = apiBlobPathFromMediaField(e.raw);
-                  const downloadName = /\.pdf$/i.test(e.label)
-                    ? e.label
-                    : `${String(e.label).replace(/\.[^/.]+$/, "") || `arte-${e.id}`}.pdf`;
-                  return (
-                    <div key={e.id} className="flex min-w-0 flex-col gap-1">
-                      <div className="relative aspect-[3/2] w-full min-h-0 min-w-0">
-                        <PdfPreview
-                          {...orderPdfGridPreviewProps}
-                          fillParentCell
-                          className="absolute inset-0 min-h-0"
-                          title="Artes"
-                          hideTitle={false}
-                          downloadFileName={downloadName}
-                          disabled={!blobPath}
-                          emptyHint="No se pudo cargar el PDF (ruta o permisos)."
-                          loadKey={`${id}-client-art-pdf-${e.id}-${blobPath}`}
-                          onFetchBlob={() => authFetchBlob(blobPath, { token: accessToken })}
-                        />
-                      </div>
-                      {lineMeta}
-                    </div>
-                  );
-                }
-                return (
-                  <div key={e.id} className="flex min-w-0 flex-col gap-1">
-                    <div
-                      className={`relative flex aspect-[3/2] w-full min-w-0 items-center justify-center border border-zinc-200/90 bg-zinc-50/90 ${ROUNDED_PDF_GRID_CARD}`}
-                    >
-                      {e.abs ? (
-                        <div className="flex gap-1">
-                          <a
-                            href={e.abs}
-                            download={e.label}
-                            className={pdfPreviewCompactIconButtonClass}
-                            aria-label={`Descargar archivo (${e.label})`}
-                            title="Descargar"
-                          >
-                            <IcDownload className="h-4 w-4" />
-                          </a>
-                          <a
-                            href={e.abs}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={pdfPreviewCompactIconButtonClass}
-                            aria-label={`Abrir archivo (${e.label})`}
-                            title="Abrir en pestaña nueva"
-                          >
-                            <IcExternal className="h-4 w-4" />
-                          </a>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-zinc-400">URL no disponible</span>
-                      )}
-                    </div>
-                    {lineMeta}
-                  </div>
-                );
-              })}
-            </div>
+            <PedidoAdminArtAttachmentsGrouped
+              order={order}
+              orderArtEntries={orderArtEntries}
+              artImageEntries={artImageEntries}
+              accessToken={accessToken}
+              onOpenImageLightbox={openArtsLightbox}
+            />
           )}
         </AdminDetailInset>
       </AdminDetailSection>
 
       <ImageLightbox
-        open={artsLightbox.open}
-        onClose={() => setArtsLightbox((s) => ({ ...s, open: false }))}
-        items={artsLightbox.items}
-        initialIndex={artsLightbox.initialIndex}
-        showThumbnails={artsLightbox.items.length > 1}
+        open={artsLightboxOpen}
+        onClose={() => setArtsLightboxOpen(false)}
+        items={artsLightboxItems}
+        initialIndex={artsLightboxIndex}
+        showThumbnails={artsLightboxItems.length > 1}
         showDownload
         ariaLabel="Artes subidos por la empresa"
       />
