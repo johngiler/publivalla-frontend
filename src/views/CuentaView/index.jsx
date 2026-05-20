@@ -145,6 +145,14 @@ export default function CuentaView() {
       setError("Indica el RIF de la empresa.");
       return;
     }
+    if (!representative_name.trim()) {
+      setError("Indica el nombre del representante legal.");
+      return;
+    }
+    if (!representative_id_number.trim()) {
+      setError("Indica la cédula del representante legal.");
+      return;
+    }
     setSaving(true);
     try {
       const hasProfile = companyData && typeof companyData === "object";
@@ -290,10 +298,11 @@ export default function CuentaView() {
               </div>
               <div>
                 <label htmlFor="cuenta-rep" className="block text-sm font-medium text-zinc-800">
-                  Representante legal
+                  Representante legal <span className="text-red-600">*</span>
                 </label>
                 <input
                   id="cuenta-rep"
+                  required
                   autoComplete="name"
                   className={fieldClass}
                   value={representative_name}
@@ -302,10 +311,11 @@ export default function CuentaView() {
               </div>
               <div className="sm:max-w-md">
                 <label htmlFor="cuenta-rep-ci" className="block text-sm font-medium text-zinc-800">
-                  Cédula del representante
+                  Cédula del representante <span className="text-red-600">*</span>
                 </label>
                 <input
                   id="cuenta-rep-ci"
+                  required
                   className={`mt-1.5 ${fieldClass}`}
                   value={representative_id_number}
                   onChange={(e) => setRepresentativeIdNumber(e.target.value)}

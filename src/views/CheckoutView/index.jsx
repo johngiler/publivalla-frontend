@@ -19,6 +19,7 @@ import {
   ivaFromSubtotal,
   totalWithIva,
 } from "@/lib/marketplacePricing";
+import { companyRepresentativeComplete } from "@/lib/clientCompanyFields";
 import {
   cartAllItemsMeetCheckoutRules,
   cartTotalUsd,
@@ -244,7 +245,11 @@ export default function CheckoutView() {
     Boolean(rif.trim()) &&
     Boolean(email.trim()) &&
     Boolean(contact_name.trim()) &&
+    Boolean(representative_name.trim()) &&
+    Boolean(representative_id_number.trim()) &&
     Boolean(phone.trim());
+
+  const loggedInCompanyRepComplete = companyRepresentativeComplete(effectiveCompany);
 
   const passwordBlockOk =
     !createAccount ||
@@ -261,9 +266,15 @@ export default function CheckoutView() {
 
   const clientNewCompanyReady = !isGuest && !hasCompanyProfile && baseFieldsOk;
 
+  const loggedInRepFieldsOk =
+    Boolean(representative_name.trim()) &&
+    Boolean(representative_id_number.trim());
+
   const datosStepCanContinue = isGuest
     ? guestDatosReady
-    : hasCompanyProfile || clientNewCompanyReady;
+    : hasCompanyProfile
+      ? loggedInCompanyRepComplete || loggedInRepFieldsOk
+      : clientNewCompanyReady;
 
   async function ensureCompanyThenSubmit() {
     setError("");
@@ -278,18 +289,26 @@ export default function CheckoutView() {
 
     setLoading(true);
     try {
-      if (!hasCompanyProfile) {
-        const payload = {
-          company_name: company_name.trim(),
-          rif: rif.trim(),
-          contact_name: contact_name.trim(),
-          representative_name: representative_name.trim(),
-          representative_id_number: representative_id_number.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
-        };
+      if (
+        !hasCompanyProfile ||
+        (hasCompanyProfile && !loggedInCompanyRepComplete)
+      ) {
+        const payload = hasCompanyProfile
+          ? {
+              representative_name: representative_name.trim(),
+              representative_id_number: representative_id_number.trim(),
+            }
+          : {
+              company_name: company_name.trim(),
+              rif: rif.trim(),
+              contact_name: contact_name.trim(),
+              representative_name: representative_name.trim(),
+              representative_id_number: representative_id_number.trim(),
+              email: email.trim(),
+              phone: phone.trim(),
+            };
         const saved = await saveMyCompany(payload, {
-          method: "POST",
+          method: hasCompanyProfile ? "PATCH" : "POST",
           token: accessToken,
         });
         setCompanyData(saved);
@@ -723,9 +742,11 @@ export default function CheckoutView() {
                   <div>
                     <label className={labelClass} htmlFor="checkout-guest-rep">
                       Representante legal
+                      <CheckoutRequiredMark />
                     </label>
                     <input
                       id="checkout-guest-rep"
+                      required
                       value={representative_name}
                       onChange={(e) => setRepresentativeName(e.target.value)}
                       className={fieldClass}
@@ -735,9 +756,11 @@ export default function CheckoutView() {
                   <div>
                     <label className={labelClass} htmlFor="checkout-guest-rep-ci">
                       Cédula del representante
+                      <CheckoutRequiredMark />
                     </label>
                     <input
                       id="checkout-guest-rep-ci"
+                      required
                       value={representative_id_number}
                       onChange={(e) => setRepresentativeIdNumber(e.target.value)}
                       className={fieldClass}
@@ -903,9 +926,11 @@ export default function CheckoutView() {
                   <div>
                     <label className={labelClass} htmlFor="checkout-client-rep">
                       Representante legal
+                      <CheckoutRequiredMark />
                     </label>
                     <input
                       id="checkout-client-rep"
+                      required
                       value={representative_name}
                       onChange={(e) => setRepresentativeName(e.target.value)}
                       className={fieldClass}
@@ -915,9 +940,11 @@ export default function CheckoutView() {
                   <div>
                     <label className={labelClass} htmlFor="checkout-client-rep-ci">
                       Cédula del representante
+                      <CheckoutRequiredMark />
                     </label>
                     <input
                       id="checkout-client-rep-ci"
+                      required
                       value={representative_id_number}
                       onChange={(e) => setRepresentativeIdNumber(e.target.value)}
                       className={fieldClass}
@@ -973,7 +1000,7 @@ export default function CheckoutView() {
                     Continuar
                   </button>
                 </form>
-              ) : (
+              ) : loggedInCompanyRepComplete ? (
                 <div className="space-y-6">
                   <div
                     className={`${ROUNDED_CONTROL} border border-zinc-200 bg-zinc-50/80 p-5`}
@@ -1003,6 +1030,64 @@ export default function CheckoutView() {
                     Continuar
                   </button>
                 </div>
+              ) : (
+                <form
+                  className="space-y-5"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (datosStepCanContinue) setStep("confirmar");
+                  }}
+                >
+                  <div
+                    className={`${ROUNDED_CONTROL} border border-amber-200/90 bg-amber-50/90 px-3 py-2.5 text-sm text-amber-950`}
+                  >
+                    Para enviar solicitudes necesitamos el representante legal de la
+                    empresa en la hoja de negociación. Complétalo aquí o en{" "}
+                    <Link
+                      href="/cuenta"
+                      className="font-semibold text-amber-950 underline underline-offset-2"
+                    >
+                      Mi empresa
+                    </Link>
+                    .
+                  </div>
+                  <div>
+                    <label className={labelClass} htmlFor="checkout-profile-rep">
+                      Representante legal
+                      <CheckoutRequiredMark />
+                    </label>
+                    <input
+                      id="checkout-profile-rep"
+                      required
+                      value={representative_name}
+                      onChange={(e) => setRepresentativeName(e.target.value)}
+                      className={fieldClass}
+                      autoComplete="name"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass} htmlFor="checkout-profile-rep-ci">
+                      Cédula del representante
+                      <CheckoutRequiredMark />
+                    </label>
+                    <input
+                      id="checkout-profile-rep-ci"
+                      required
+                      value={representative_id_number}
+                      onChange={(e) => setRepresentativeIdNumber(e.target.value)}
+                      className={fieldClass}
+                      placeholder="Ej. V-12345678"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={!datosStepCanContinue}
+                    className={`${marketplacePrimaryBtn} min-h-11 w-full py-3 text-sm font-semibold`}
+                  >
+                    Continuar
+                  </button>
+                </form>
               )}
             </div>
           ) : null}

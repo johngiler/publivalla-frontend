@@ -1132,22 +1132,6 @@ export function OrderClientWorkflowPanel({
                 </span>
               )}
             </li>
-            {hasMunicipalityPdf ? (
-              <li className="min-w-0 shrink-0">
-                <button
-                  type="button"
-                  disabled={busy === "municipality"}
-                  onClick={() => downloadMunicipality()}
-                  className={docStepBtnClass}
-                >
-                  <span>
-                    {busy === "municipality"
-                      ? "Descargando carta…"
-                      : "Carta al municipio (PDF)"}
-                  </span>
-                </button>
-              </li>
-            ) : null}
             <li className="min-w-0 shrink-0">
               {step2Complete ? (
                 <button

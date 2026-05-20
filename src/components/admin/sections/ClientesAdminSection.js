@@ -288,6 +288,10 @@ export function ClientesAdminSection() {
     const nextFe = {};
     if (!companyName.trim()) nextFe.company_name = "Campo obligatorio.";
     if (!rif.trim()) nextFe.rif = "Campo obligatorio.";
+    if (!representativeName.trim()) nextFe.representative_name = "Campo obligatorio.";
+    if (!representativeIdNumber.trim()) {
+      nextFe.representative_id_number = "Campo obligatorio.";
+    }
     if (!email.trim()) nextFe.email = "Campo obligatorio.";
     if (Object.keys(nextFe).length) {
       setFieldErrors(nextFe);
@@ -950,26 +954,38 @@ export function ClientesAdminSection() {
             </div>
             <div>
               <label className={adminLabel} htmlFor="cl-rep">
-                Representante legal
+                Representante legal <span className="text-red-600">*</span>
               </label>
               <input
                 id="cl-rep"
-                className={adminField}
+                className={fieldClass("representative_name")}
                 value={representativeName}
                 onChange={(e) => setRepresentativeName(e.target.value)}
+                required
               />
+              {fieldErrors?.representative_name ? (
+                <p className="mt-1 text-xs text-rose-700">
+                  {fieldErrors.representative_name}
+                </p>
+              ) : null}
             </div>
             <div>
               <label className={adminLabel} htmlFor="cl-rep-ci">
-                Cédula del representante
+                Cédula del representante <span className="text-red-600">*</span>
               </label>
               <input
                 id="cl-rep-ci"
-                className={adminField}
+                className={fieldClass("representative_id_number")}
                 value={representativeIdNumber}
                 onChange={(e) => setRepresentativeIdNumber(e.target.value)}
                 placeholder="Ej. V-12345678"
+                required
               />
+              {fieldErrors?.representative_id_number ? (
+                <p className="mt-1 text-xs text-rose-700">
+                  {fieldErrors.representative_id_number}
+                </p>
+              ) : null}
             </div>
             <div>
               <label className={adminLabel} htmlFor="cl-contact">
