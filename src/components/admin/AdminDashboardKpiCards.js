@@ -53,7 +53,7 @@ export function AdminDashboardKpiCards({ nCenters, nSpaces, nClients, nContracts
     {
       key: "clients",
       href: "/dashboard/clientes",
-      label: "Clientes",
+      label: "Empresas",
       value: nClients,
       Icon: IconAdminBriefcase,
       card: `bg-gradient-to-br from-amber-100/95 via-orange-50/85 to-white ring-1 ring-amber-200/60`,

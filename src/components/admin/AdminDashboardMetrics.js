@@ -347,14 +347,14 @@ export function AdminDashboardMetrics({ metrics }) {
           </ul>
         </div>
         <div className={G.rose}>
-          <p className={TITLE}>Pedidos cancelados</p>
+          <p className={TITLE}>Pedidos rechazados</p>
           <ul className="mt-3 space-y-2 text-sm">
             <li className="flex justify-between gap-2">
-              <span className="text-zinc-600">Total en estado cancelada</span>
+              <span className="text-zinc-600">Total en estado rechazada</span>
               <span className="font-semibold">{metrics.orders_cancelled_total ?? 0}</span>
             </li>
           </ul>
-          <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">Cancelación desde</p>
+          <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">Rechazo desde</p>
           <ul className="mt-1 space-y-1 text-xs text-zinc-600">
             {cancelFrom.length === 0 ? (
               <li>—</li>

@@ -25,7 +25,7 @@ export const ADMIN_NAV_GROUPS = [
     label: "Cuentas",
     items: [
       { segment: "usuarios", href: "/dashboard/usuarios", label: "Usuarios" },
-      { segment: "clientes", href: "/dashboard/clientes", label: "Clientes" },
+      { segment: "clientes", href: "/dashboard/clientes", label: "Empresas" },
     ],
   },
   {

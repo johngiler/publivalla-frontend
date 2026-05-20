@@ -130,7 +130,7 @@ function CompetingBidGroupBlock({ group, onAward }) {
           <thead>
             <tr className="border-b border-zinc-100 bg-white">
               <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 sm:px-5">
-                Cliente
+                Empresa
               </th>
               <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Pedido
@@ -157,7 +157,7 @@ function CompetingBidGroupBlock({ group, onAward }) {
               return (
                 <tr key={order.id} className="align-top bg-white">
                   <td className="px-4 py-3 align-middle sm:px-5">
-                    <p className="font-medium text-zinc-900">{order.client_name || "Cliente"}</p>
+                    <p className="font-medium text-zinc-900">{order.client_name || "Empresa"}</p>
                     <p className="mt-0.5 text-xs text-zinc-500">
                       Enviado: {formatSubmittedAt(order.submitted_at)}
                     </p>
@@ -202,7 +202,7 @@ function CompetingBidGroupBlock({ group, onAward }) {
                           adSpaceId: group.ad_space_id,
                           orderId: order.id,
                           label: orderRef,
-                          clientName: order.client_name || "Cliente",
+                          clientName: order.client_name || "Empresa",
                           spaceLabel: `${group.ad_space_code} — ${group.ad_space_title}`,
                         })
                       }
@@ -314,7 +314,7 @@ export function PujasAdminSection() {
     await globalMutate(isAdminCompetingCountSwrKey);
     await revalidateHomeCatalog(globalMutate);
     setMessage(
-      "Solicitud adjudicada. Las demás solicitudes de este espacio publicitario se cancelaron.",
+      "Solicitud adjudicada. Las demás solicitudes de este espacio publicitario se rechazaron.",
     );
     setError("");
     setAwardTarget(null);
@@ -378,7 +378,7 @@ export function PujasAdminSection() {
                   setSearch(v);
                   setPage(1);
                 }}
-                placeholder="Espacio publicitario, centro, cliente o pedido…"
+                placeholder="Espacio publicitario, centro, empresa o pedido…"
               />
               <AdminFilterSelect
                 id="pujas-filter-center"
@@ -464,7 +464,7 @@ export function PujasAdminSection() {
             ¿Adjudicas la solicitud de <strong>{awardTarget.clientName}</strong> (
             <span className="font-mono text-zinc-800">{awardTarget.label}</span>) para el espacio publicitario{" "}
             <strong>{awardTarget.spaceLabel}</strong>? Las demás solicitudes enviadas para este espacio publicitario
-            se cancelarán.
+            se rechazarán.
           </p>
         ) : null}
       </AdminConfirmDialog>

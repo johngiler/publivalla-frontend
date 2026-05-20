@@ -78,7 +78,7 @@ const ORDERING_OPTIONS = [
   { v: "end_date", l: "Fin: más próximo (por vencer)" },
   { v: "-start_date", l: "Inicio: más reciente" },
   { v: "start_date", l: "Inicio: más antiguo" },
-  { v: "client", l: "Cliente (A→Z)" },
+  { v: "client", l: "Empresa (A→Z)" },
 ];
 
 function formatContractDay(value) {
@@ -412,7 +412,7 @@ export function ContratosAdminSection() {
                   id="contratos-filter-q"
                   value={filterQ}
                   onChange={setFilterQ}
-                  placeholder="Cliente, pedido, código de espacio (ej. DEMO-T5A o DEMO - T5A)…"
+                  placeholder="Empresa, pedido, código de espacio (ej. DEMO-T5A o DEMO - T5A)…"
                 />
               </div>
               <AdminFilterSelect
@@ -486,7 +486,7 @@ export function ContratosAdminSection() {
                       <th className="w-10 px-2 py-3" aria-hidden />
                       <th className="w-14 px-2 py-2">Foto</th>
                       <th className="min-w-[11rem] max-w-[18rem] px-3 py-2">Espacio publicitario</th>
-                      <th className="min-w-[9rem] max-w-[16rem] px-3 py-2">Cliente</th>
+                      <th className="min-w-[9rem] max-w-[16rem] px-3 py-2">Empresa</th>
                       <th className="min-w-[14rem] px-3 py-2">Línea de tiempo / ocupación</th>
                       <th className="min-w-[8rem] px-3 py-2">Pedido</th>
                       <th className="min-w-[7rem] px-3 py-2 text-end">Estados</th>

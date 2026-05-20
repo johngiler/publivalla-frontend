@@ -528,7 +528,7 @@ export default function MisPedidosView() {
             </p>
           </div>
           <div className={`${ROUNDED_CONTROL} border border-zinc-200/90 bg-zinc-50/70 p-4 shadow-sm`}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Cancelados</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Rechazados</p>
             <p className="mt-1 text-xl font-bold tabular-nums text-zinc-900">{closedNoActivate}</p>
             <p className="mt-1 text-xs text-zinc-500">
               Pedidos que el centro dejó de tramitar en este estado.

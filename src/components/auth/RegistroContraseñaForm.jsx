@@ -33,6 +33,7 @@ export default function RegistroContraseñaForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = useMemo(() => (searchParams.get("token") || "").trim(), [searchParams]);
+  const emailFromUrl = useMemo(() => (searchParams.get("email") || "").trim(), [searchParams]);
 
   const [emailDisplay, setEmailDisplay] = useState("");
   const [intentLoading, setIntentLoading] = useState(true);
@@ -60,9 +61,10 @@ export default function RegistroContraseñaForm() {
       try {
         const data = await getPasswordSetupIntent(token);
         const em = typeof data?.email === "string" ? data.email.trim() : "";
+        const resolved = em || emailFromUrl;
         if (!cancelled) {
-          setEmailDisplay(em);
-          if (!em) {
+          setEmailDisplay(resolved);
+          if (!resolved) {
             setIntentError("No se pudo obtener el correo de este enlace.");
           }
         }
@@ -77,7 +79,7 @@ export default function RegistroContraseñaForm() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, emailFromUrl]);
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -131,7 +133,13 @@ export default function RegistroContraseñaForm() {
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 sm:py-14">
         <h1 className="text-balance text-2xl font-bold text-zinc-900 sm:text-3xl">Listo</h1>
         <p className="mt-4 text-sm leading-relaxed text-zinc-600">
-          Ya puedes iniciar sesión con el correo de tu cuenta y la contraseña que acabas de definir.
+          Ya puedes iniciar sesión en el marketplace con{" "}
+          {emailDisplay ? (
+            <strong className="font-medium text-zinc-800">{emailDisplay}</strong>
+          ) : (
+            "el correo de tu cuenta"
+          )}{" "}
+          y la contraseña que acabas de definir.
         </p>
         <Link
           href="/login"
@@ -148,13 +156,19 @@ export default function RegistroContraseñaForm() {
   return (
     <div className="mx-auto max-w-md px-4 py-10 sm:px-6 sm:py-14">
       <h1 className="text-balance text-2xl font-bold text-zinc-900 sm:text-3xl">Definir contraseña</h1>
-      <p className="mt-3 text-sm text-zinc-600">
-        Tu cuenta ya está creada con el correo de tu ficha de cliente. Solo necesitas elegir una contraseña para acceder al
-        marketplace.
+      <p className="mt-3 text-sm leading-relaxed text-zinc-600">
+        Tu acceso al marketplace ya está asociado a un correo. Elige una contraseña para completar el registro.
       </p>
 
       {intentLoading ? (
-        <p className={`mt-6 text-sm text-zinc-500`}>Comprobando enlace…</p>
+        <div className="mt-6 space-y-2">
+          <p className="text-sm text-zinc-500">Comprobando enlace…</p>
+          {emailFromUrl ? (
+            <p className="text-sm text-zinc-600">
+              Correo de acceso: <strong className="font-medium text-zinc-800">{emailFromUrl}</strong>
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       {intentError ? (
@@ -170,7 +184,7 @@ export default function RegistroContraseñaForm() {
         <form className="mt-8 space-y-5" onSubmit={onSubmit}>
           <div>
             <label htmlFor="registro-email" className="text-sm font-medium text-zinc-800">
-              Correo electrónico
+              Correo para iniciar sesión
             </label>
             <input
               id="registro-email"
@@ -178,10 +192,15 @@ export default function RegistroContraseñaForm() {
               readOnly
               autoComplete="username"
               value={emailDisplay}
-              className={`mp-login-field mp-form-field-accent mt-2 min-h-11 w-full ${ROUNDED_CONTROL} border border-zinc-200 bg-zinc-100 px-3.5 py-2.5 text-base text-zinc-700 shadow-inner shadow-zinc-100/50 sm:min-h-10 sm:text-sm`}
+              aria-describedby="registro-email-hint"
+              className={`mp-login-field mp-form-field-accent mt-2 min-h-11 w-full ${ROUNDED_CONTROL} border border-zinc-200 bg-zinc-100 px-3.5 py-2.5 text-base font-medium text-zinc-800 shadow-inner shadow-zinc-100/50 sm:min-h-10 sm:text-sm`}
             />
-            <p className="mt-1 text-xs text-zinc-500">
-              Este correo corresponde a tu ficha de cliente; no se puede cambiar aquí.
+            <p
+              id="registro-email-hint"
+              className={`mt-2 ${ROUNDED_CONTROL} border border-zinc-200/90 bg-zinc-50 px-3 py-2.5 text-sm leading-snug text-zinc-700`}
+            >
+              Este correo será tu usuario para iniciar sesión en el marketplace y a donde llegarán todas tus
+              solicitudes.
             </p>
           </div>
           <PasswordPairLiveValidation

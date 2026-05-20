@@ -80,7 +80,7 @@ export function AdminRecentActivityCard({ activities = [], loading = false, erro
           Actividad reciente
         </h2>
         <p className="mt-0.5 text-xs text-zinc-500">
-          Cambios de estado de pedidos, altas de clientes y usuarios. Para líneas de contrato, totales y periodos
+          Cambios de estado de pedidos, altas de empresas y usuarios. Para líneas de contrato, totales y periodos
           concretos, usa <span className="font-medium text-zinc-600">Pedidos</span> en el menú lateral.
         </p>
 

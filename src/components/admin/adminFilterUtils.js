@@ -55,7 +55,15 @@ export function filterClients(rows, { q, status }) {
       Array.isArray(c.linked_usernames) && c.linked_usernames.length > 0
         ? c.linked_usernames.join(" ")
         : "";
-    const blob = [c.company_name, c.rif, c.email, c.contact_name, linked]
+    const blob = [
+      c.company_name,
+      c.rif,
+      c.email,
+      c.contact_name,
+      c.representative_name,
+      c.representative_id_number,
+      linked,
+    ]
       .map((x) => String(x ?? ""))
       .join(" ");
     return matchesQ(blob, q);

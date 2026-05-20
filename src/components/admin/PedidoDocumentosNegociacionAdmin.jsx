@@ -351,7 +351,7 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
                   <div className="p-1.5">
                     <RasterFromApiUrl
                       url={order.negotiation_sheet_signed_url}
-                      alt="Hoja de negociación firmada por el cliente"
+                      alt="Hoja de negociación firmada por la empresa"
                       className="max-h-[min(10rem,32vh)] w-auto max-w-full rounded-none border border-zinc-200 object-contain shadow-sm"
                     />
                   </div>
@@ -373,7 +373,7 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
                 title="Hoja de negociación"
                 downloadFileName={orderDocFilename(order, "hoja-negociacion")}
                 disabled
-                emptyHint="Aún no hay PDF de negociación ni archivo firmado del cliente."
+                emptyHint="Aún no hay PDF de negociación ni archivo firmado de la empresa."
                 loadKey={`${id}-negotiation-empty`}
               />
             )}
@@ -400,7 +400,7 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
               title="Solicitud permiso instalación"
               downloadFileName={orderDocFilename(order, "solicitud-permiso-instalacion")}
               disabled={!order?.installation_permit_request_pdf_url}
-              emptyHint="Se genera cuando el cliente envía el formulario de permiso de instalación."
+              emptyHint="Se genera cuando la empresa envía el formulario de permiso de instalación."
               loadKey={`${id}-inst-perm-${order?.installation_permit?.id ?? ""}-${String(order?.installation_permit?.created_at ?? "")}`}
               onFetchBlob={fetchInstallationPermitRequestPdf}
             />
@@ -408,11 +408,11 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
         </AdminDetailInset>
       </AdminDetailSection>
 
-      <AdminDetailSection panelId={panelId} sectionId="client-arts" title="Artes adjuntos (cliente)">
+      <AdminDetailSection panelId={panelId} sectionId="client-arts" title="Artes adjuntos (empresa)">
         <AdminDetailInset className="space-y-4">
           {orderArtEntries.length === 0 ? (
             <p className="text-sm leading-relaxed text-zinc-600">
-              Aún no hay artes. El cliente puede subirlos desde «Mis pedidos» cuando el pedido esté pagado
+              Aún no hay artes. La empresa puede subirlos desde «Mis pedidos» cuando el pedido esté pagado
               (imagen o PDF).
             </p>
           ) : (
@@ -524,7 +524,7 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
         initialIndex={artsLightbox.initialIndex}
         showThumbnails={artsLightbox.items.length > 1}
         showDownload
-        ariaLabel="Artes subidos por el cliente"
+        ariaLabel="Artes subidos por la empresa"
       />
     </div>
   );

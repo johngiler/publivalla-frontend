@@ -28,7 +28,7 @@ const ORDER_ADMIN_TRANSITION_ACTION = {
   permit_pending: "Solicitar permiso",
   installation: "Iniciar instalación",
   active: "Activar",
-  cancelled: "Cancelar",
+  cancelled: "Rechazar",
 };
 
 /**
@@ -153,7 +153,7 @@ export function buildOrderAdminStatusSelectOptions(order) {
           ...opt,
           disabled: true,
           disabledReason:
-            "Falta la hoja de negociación firmada por el cliente (revisa el detalle del pedido).",
+            "Falta la hoja de negociación firmada por la empresa (revisa el detalle del pedido).",
         };
       }
       if (
@@ -165,7 +165,7 @@ export function buildOrderAdminStatusSelectOptions(order) {
           ...opt,
           disabled: true,
           disabledReason:
-            "Falta el comprobante de pago del cliente (Mis pedidos o detalle del pedido).",
+            "Falta el comprobante de pago de la empresa (Mis pedidos o detalle del pedido).",
         };
       }
       if (
@@ -177,7 +177,7 @@ export function buildOrderAdminStatusSelectOptions(order) {
           ...opt,
           disabled: true,
           disabledReason:
-            "Falta al menos un archivo de arte del cliente (Mis pedidos o detalle del pedido).",
+            "Falta al menos un archivo de arte de la empresa (Mis pedidos o detalle del pedido).",
         };
       }
       if (
@@ -189,7 +189,7 @@ export function buildOrderAdminStatusSelectOptions(order) {
           ...opt,
           disabled: true,
           disabledReason:
-            "Falta la solicitud de permiso de instalación del cliente (Mis pedidos o detalle del pedido).",
+            "Falta la solicitud de permiso de instalación de la empresa (Mis pedidos o detalle del pedido).",
         };
       }
       return { ...opt, disabled: false, disabledReason: "" };
@@ -207,8 +207,8 @@ export function buildOrderAdminStatusSelectOptions(order) {
  * Siguiente paso del flujo principal, si aplica, y bloqueo por requisitos (p. ej. firma).
  * @returns {{ status: string, label: string, blockedReason: string } | null}
  */
-/** Botón explícito de cancelación en listado admin (pedido ya en contrato activo). */
-export function orderAdminShowCancelPedidoActivoButton(order) {
+/** Botón explícito de rechazo en listado admin (pedido ya en contrato activo). */
+export function orderAdminShowRejectPedidoActivoButton(order) {
   return String(order?.status ?? "") === "active";
 }
 
@@ -232,7 +232,7 @@ export function getOrderAdminQuickNext(order) {
       status: nextStatus,
       label,
       blockedReason:
-        "No puedes pasar a «Facturada» sin la hoja firmada. El cliente debe subirla desde Mis pedidos.",
+        "No puedes pasar a «Facturada» sin la hoja firmada. La empresa debe subirla desde Mis pedidos.",
     };
   }
 
@@ -245,7 +245,7 @@ export function getOrderAdminQuickNext(order) {
       status: nextStatus,
       label,
       blockedReason:
-        "No puedes pasar a «Pagada» sin comprobante. El cliente debe adjuntarlo desde Mis pedidos.",
+        "No puedes pasar a «Pagada» sin comprobante. La empresa debe adjuntarlo desde Mis pedidos.",
     };
   }
 
@@ -258,7 +258,7 @@ export function getOrderAdminQuickNext(order) {
       status: nextStatus,
       label,
       blockedReason:
-        "No puedes pasar a «Arte aprobado» sin archivos de arte. El cliente debe subirlos desde Mis pedidos.",
+        "No puedes pasar a «Arte aprobado» sin archivos de arte. La empresa debe subirlos desde Mis pedidos.",
     };
   }
 
@@ -271,7 +271,7 @@ export function getOrderAdminQuickNext(order) {
       status: nextStatus,
       label,
       blockedReason:
-        "No puedes pasar a «Permiso alcaldía» sin solicitud de permiso. El cliente debe enviarla desde Mis pedidos.",
+        "No puedes pasar a «Permiso alcaldía» sin solicitud de permiso. La empresa debe enviarla desde Mis pedidos.",
     };
   }
 

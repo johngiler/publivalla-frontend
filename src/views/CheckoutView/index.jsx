@@ -79,7 +79,21 @@ function formatOrderErrorMessage(raw) {
 
 const fieldClass = `mp-form-field-accent mt-1.5 min-h-11 w-full ${ROUNDED_CONTROL} border border-zinc-200 bg-white px-3 py-2.5 text-base text-zinc-900 transition-[border-color,box-shadow] duration-200 ease-out focus:outline-none sm:min-h-0 sm:py-2 sm:text-sm`;
 
-const labelClass = "text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400";
+const labelClass =
+  "text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400";
+
+function CheckoutRequiredMark() {
+  return (
+    <span className="text-red-600" aria-hidden="true">
+      {" "}
+      *
+    </span>
+  );
+}
+
+/** Aviso fijo en checkout invitado: el correo del formulario es el usuario de acceso. */
+const GUEST_CHECKOUT_LOGIN_EMAIL_HINT =
+  "Este correo será tu usuario para iniciar sesión en el marketplace y a donde llegarán todas tus solicitudes.";
 
 /**
  * Interpreta la respuesta de `/api/checkout/guest/validate-datos/` (sin efectos).
@@ -87,9 +101,9 @@ const labelClass = "text-[11px] font-semibold uppercase tracking-[0.14em] text-z
  */
 function interpretGuestCheckoutValidateDatos(d) {
   const emailBlockMsg =
-    "Este correo ya está asociado a una cuenta de cliente en este sitio. Inicia sesión para completar tu reserva.";
+    "Este correo ya está asociado a una cuenta en este sitio. Inicia sesión para completar tu reserva.";
   const companyBlockMsg =
-    "Esta razón social ya está registrada con una cuenta de cliente en este sitio. Inicia sesión o corrige el nombre si es otro cliente.";
+    "Esta razón social ya está registrada con una cuenta en este sitio. Inicia sesión o corrige el nombre si es otra empresa.";
 
   if (d.email.has_marketplace_account) {
     return {
@@ -114,15 +128,15 @@ function interpretGuestCheckoutValidateDatos(d) {
   let companyNotice = "";
   if (d.same_client && d.email.client_exists) {
     emailNotice =
-      "Este correo y esta razón social ya están registrados como el mismo cliente. Al enviar se actualizarán los datos de contacto con lo que indicaste arriba.";
+      "Este correo y esta razón social ya están registrados como la misma empresa. Al enviar se actualizarán los datos de contacto con lo que indicaste arriba.";
   } else {
     if (d.email.client_exists) {
       emailNotice =
-        "Este correo ya figura como cliente registrado. Al enviar la solicitud se actualizarán los datos de contacto con lo que indiques arriba.";
+        "Este correo ya figura como empresa registrada. Al enviar la solicitud se actualizarán los datos de contacto con lo que indiques arriba.";
     }
     if (d.company.client_exists && !d.same_client) {
       companyNotice =
-        "Ya hay un cliente registrado con este nombre. Si es el mismo, usa el mismo correo con el que reservaste antes; si es otra razón social, ajusta el nombre.";
+        "Ya hay una empresa registrada con este nombre. Si es la misma, usa el mismo correo con el que reservaste antes; si es otra razón social, ajusta el nombre.";
     }
   }
 
@@ -154,7 +168,10 @@ export default function CheckoutView() {
 
   const [step, setStep] = useState("datos");
   const [company_name, setCompanyName] = useState("");
+  const [rif, setRif] = useState("");
   const [contact_name, setContactName] = useState("");
+  const [representative_name, setRepresentativeName] = useState("");
+  const [representative_id_number, setRepresentativeIdNumber] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [createAccount, setCreateAccount] = useState(false);
@@ -172,7 +189,8 @@ export default function CheckoutView() {
   const [guestClientEmailNotice, setGuestClientEmailNotice] = useState("");
   const [guestCompanyBlock, setGuestCompanyBlock] = useState("");
   const [guestCompanyNotice, setGuestCompanyNotice] = useState("");
-  const [guestDatosPasswordChecking, setGuestDatosPasswordChecking] = useState(false);
+  const [guestDatosPasswordChecking, setGuestDatosPasswordChecking] =
+    useState(false);
 
   const loggedIn = authReady && accessToken && me;
   const { data: companyFromSwr, mutate: mutateCheckoutCompany } = useSWR(
@@ -180,7 +198,8 @@ export default function CheckoutView() {
     authJsonFetcher,
     { fallbackData: company === undefined ? undefined : company },
   );
-  const effectiveCompany = companyFromSwr !== undefined ? companyFromSwr : company;
+  const effectiveCompany =
+    companyFromSwr !== undefined ? companyFromSwr : company;
 
   const meetsMin = cartAllItemsMeetCheckoutRules(items);
   const subtotal = meetsMin ? cartTotalUsd(items) : 0;
@@ -190,7 +209,10 @@ export default function CheckoutView() {
   useEffect(() => {
     if (effectiveCompany && typeof effectiveCompany === "object") {
       setCompanyName(effectiveCompany.company_name || "");
+      setRif(effectiveCompany.rif || "");
       setContactName(effectiveCompany.contact_name || "");
+      setRepresentativeName(effectiveCompany.representative_name || "");
+      setRepresentativeIdNumber(effectiveCompany.representative_id_number || "");
       setEmail(effectiveCompany.email || "");
       setPhone(effectiveCompany.phone || "");
     } else if (me?.email) {
@@ -219,6 +241,7 @@ export default function CheckoutView() {
 
   const baseFieldsOk =
     Boolean(company_name.trim()) &&
+    Boolean(rif.trim()) &&
     Boolean(email.trim()) &&
     Boolean(contact_name.trim()) &&
     Boolean(phone.trim());
@@ -230,7 +253,11 @@ export default function CheckoutView() {
       passwordConfirm.length >= PASSWORD_PAIR_MIN_LENGTH);
 
   const guestDatosReady =
-    isGuest && baseFieldsOk && passwordBlockOk && !guestClientEmailBlock && !guestCompanyBlock;
+    isGuest &&
+    baseFieldsOk &&
+    passwordBlockOk &&
+    !guestClientEmailBlock &&
+    !guestCompanyBlock;
 
   const clientNewCompanyReady = !isGuest && !hasCompanyProfile && baseFieldsOk;
 
@@ -242,7 +269,9 @@ export default function CheckoutView() {
     setError("");
     setResult(null);
     if (!items.length || !meetsMin) {
-      setError("El carrito está vacío o el período no cumple al menos un mes de calendario.");
+      setError(
+        "El carrito está vacío o el período no cumple al menos un mes de calendario.",
+      );
       return;
     }
     if (!accessToken) return;
@@ -252,7 +281,10 @@ export default function CheckoutView() {
       if (!hasCompanyProfile) {
         const payload = {
           company_name: company_name.trim(),
+          rif: rif.trim(),
           contact_name: contact_name.trim(),
+          representative_name: representative_name.trim(),
+          representative_id_number: representative_id_number.trim(),
           email: email.trim(),
           phone: phone.trim(),
         };
@@ -282,7 +314,11 @@ export default function CheckoutView() {
       setCompletedAsGuest(false);
       clear();
     } catch (err) {
-      setError(err instanceof Error ? formatOrderErrorMessage(err.message) : "Error al enviar");
+      setError(
+        err instanceof Error
+          ? formatOrderErrorMessage(err.message)
+          : "Error al enviar",
+      );
     } finally {
       setLoading(false);
     }
@@ -292,7 +328,9 @@ export default function CheckoutView() {
     setError("");
     setResult(null);
     if (!items.length || !meetsMin) {
-      setError("El carrito está vacío o el período no cumple al menos un mes de calendario.");
+      setError(
+        "El carrito está vacío o el período no cumple al menos un mes de calendario.",
+      );
       return;
     }
     if (!guestDatosReady) {
@@ -323,32 +361,39 @@ export default function CheckoutView() {
         return;
       }
     } catch {
-      setError("No se pudo verificar los datos. Revisa tu conexión e inténtalo de nuevo.");
+      setError(
+        "No se pudo verificar los datos. Revisa tu conexión e inténtalo de nuevo.",
+      );
       return;
     }
 
     setLoading(true);
     try {
-      const submitted = await postGuestCheckout(
-        {
-          company_name: company_name.trim(),
-          contact_name: contact_name.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
-          address: "",
-          city: "",
-          create_account: createAccount,
-          password: createAccount ? password : "",
-          password_confirm: createAccount ? passwordConfirm : "",
-          items: expandCartItemsToOrderPayload(items),
-        },
-      );
+      const submitted = await postGuestCheckout({
+        company_name: company_name.trim(),
+        rif: rif.trim(),
+        contact_name: contact_name.trim(),
+        representative_name: representative_name.trim(),
+        representative_id_number: representative_id_number.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        address: "",
+        city: "",
+        create_account: createAccount,
+        password: createAccount ? password : "",
+        password_confirm: createAccount ? passwordConfirm : "",
+        items: expandCartItemsToOrderPayload(items),
+      });
       setResult(submitted);
       setGuestCreatedAccount(createAccount);
       setCompletedAsGuest(true);
       clear();
     } catch (err) {
-      setError(err instanceof Error ? formatOrderErrorMessage(err.message) : "Error al enviar");
+      setError(
+        err instanceof Error
+          ? formatOrderErrorMessage(err.message)
+          : "Error al enviar",
+      );
     } finally {
       setLoading(false);
     }
@@ -357,14 +402,23 @@ export default function CheckoutView() {
   if (result) {
     return (
       <div className="mx-auto max-w-lg px-4 py-8 sm:px-6 sm:py-10">
-        <h1 className="text-balance text-2xl font-bold text-zinc-900 sm:text-3xl">Solicitud enviada</h1>
+        <h1 className="text-balance text-2xl font-bold text-zinc-900 sm:text-3xl">
+          Solicitud enviada
+        </h1>
         <p className="mt-4 break-words text-zinc-600">
-          Pedido <span className="font-mono font-medium text-zinc-900">#{result.id}</span> — estado:{" "}
-          <span>{result.status_label || "Reservado"}</span>
+          Pedido{" "}
+          <span className="font-mono font-medium text-zinc-900">
+            #{result.id}
+          </span>{" "}
+          — estado: <span>{result.status_label || "Reservado"}</span>
         </p>
         <p className="mt-4 text-sm text-zinc-600">
-          El comprobante de pago lo subirás más adelante, cuando el pedido esté facturado, desde{" "}
-          <Link href="/cuenta/pedidos" className="font-semibold text-zinc-900 no-underline underline-offset-4 hover:underline">
+          El comprobante de pago lo subirás más adelante, cuando el pedido esté
+          facturado, desde{" "}
+          <Link
+            href="/cuenta/pedidos"
+            className="font-semibold text-zinc-900 no-underline underline-offset-4 hover:underline"
+          >
             Mis pedidos
           </Link>
           .
@@ -388,24 +442,38 @@ export default function CheckoutView() {
         {guestCreatedAccount ? (
           <p className="mt-4 rounded-xl border border-emerald-200/80 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-950">
             Creaste tu cuenta con este pedido. Ya puedes{" "}
-            <Link href="/login" className="font-semibold no-underline underline-offset-4 hover:underline">
+            <Link
+              href="/login"
+              className="font-semibold no-underline underline-offset-4 hover:underline"
+            >
               iniciar sesión
             </Link>{" "}
-            con tu correo y contraseña para ver el estado en &quot;Mis pedidos&quot;.
+            con tu correo y contraseña para ver el estado en &quot;Mis
+            pedidos&quot;.
           </p>
         ) : null}
         {completedAsGuest && !guestCreatedAccount ? (
           <p className="mt-4 text-sm leading-relaxed text-zinc-600">
-            Compraste <strong className="font-medium text-zinc-800">sin crear cuenta</strong>. Cuando el equipo de{" "}
-            {displayName} apruebe la solicitud recibirás un correo en{" "}
-            <span className="font-medium text-zinc-800">{email || "tu correo"}</span> con un enlace para definir tu
-            contraseña y acceder con ese mismo correo.
+            Compraste{" "}
+            <strong className="font-medium text-zinc-800">
+              sin crear cuenta
+            </strong>
+            . Cuando el equipo de {displayName} apruebe la solicitud recibirás
+            un correo en{" "}
+            <span className="font-medium text-zinc-800">
+              {email || "tu correo"}
+            </span>{" "}
+            con un enlace para definir tu contraseña y acceder con ese mismo
+            correo.
           </p>
         ) : null}
         {!completedAsGuest ? (
           <p className="mt-4 text-sm text-zinc-600">
             Revisa el estado en{" "}
-            <Link href="/cuenta/pedidos" className="font-semibold text-zinc-900 no-underline underline-offset-4 hover:underline">
+            <Link
+              href="/cuenta/pedidos"
+              className="font-semibold text-zinc-900 no-underline underline-offset-4 hover:underline"
+            >
               Mis pedidos
             </Link>
             .
@@ -413,7 +481,8 @@ export default function CheckoutView() {
         ) : null}
         {completedAsGuest && !guestCreatedAccount ? (
           <p className="mt-2 text-xs text-zinc-500">
-            El seguimiento comercial puede continuar en tu CRM; aquí queda registrada la solicitud en el marketplace.
+            El seguimiento comercial puede continuar en tu CRM; aquí queda
+            registrada la solicitud en el marketplace.
           </p>
         ) : null}
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -454,10 +523,15 @@ export default function CheckoutView() {
   if (isAdmin) {
     return (
       <div className="mx-auto max-w-lg px-4 py-8 sm:px-6 sm:py-10">
-        <h1 className="text-balance text-2xl font-bold text-zinc-900 sm:text-3xl">Checkout</h1>
+        <h1 className="text-balance text-2xl font-bold text-zinc-900 sm:text-3xl">
+          Checkout
+        </h1>
         <p className="mt-4 text-zinc-600">
           Este proceso no está disponible para tu cuenta.{" "}
-          <Link href="/" className="font-medium text-zinc-900 no-underline underline-offset-4 hover:underline">
+          <Link
+            href="/"
+            className="font-medium text-zinc-900 no-underline underline-offset-4 hover:underline"
+          >
             Volver al inicio
           </Link>
         </p>
@@ -469,7 +543,10 @@ export default function CheckoutView() {
     return (
       <div className="mx-auto max-w-lg px-4 py-8 text-zinc-600">
         Este proceso no está disponible para tu cuenta.{" "}
-        <Link href="/" className="font-medium text-zinc-900 no-underline underline-offset-4 hover:underline">
+        <Link
+          href="/"
+          className="font-medium text-zinc-900 no-underline underline-offset-4 hover:underline"
+        >
           Inicio
         </Link>
       </div>
@@ -484,19 +561,27 @@ export default function CheckoutView() {
   return (
     <div className="mx-auto max-w-lg px-4 py-8 sm:px-6 sm:py-10">
       <p className="text-sm text-zinc-500">
-        <Link href="/cart" className="font-medium text-zinc-900 no-underline underline-offset-4 hover:underline">
+        <Link
+          href="/cart"
+          className="font-medium text-zinc-900 no-underline underline-offset-4 hover:underline"
+        >
           ← Volver al carrito
         </Link>
       </p>
       {isGuest ? (
         <p className="mt-3 text-sm text-zinc-600">
           ¿Ya tienes cuenta?{" "}
-          <Link href="/login?next=/checkout" className="font-semibold text-zinc-900 no-underline underline-offset-4 hover:underline">
+          <Link
+            href="/login?next=/checkout"
+            className="font-semibold text-zinc-900 no-underline underline-offset-4 hover:underline"
+          >
             Inicia sesión
           </Link>
         </p>
       ) : null}
-      <h1 className="mt-4 text-balance text-2xl font-bold text-zinc-900 sm:text-3xl">Checkout</h1>
+      <h1 className="mt-4 text-balance text-2xl font-bold text-zinc-900 sm:text-3xl">
+        Checkout
+      </h1>
 
       {items.length === 0 ? (
         <div className="mt-8">
@@ -545,15 +630,19 @@ export default function CheckoutView() {
                           await postValidatePassword(password);
                         } catch (err) {
                           setGuestPasswordPolicyError(
-                            err instanceof Error ? err.message : "La contraseña no cumple las reglas de seguridad.",
+                            err instanceof Error
+                              ? err.message
+                              : "La contraseña no cumple las reglas de seguridad.",
                           );
                           return;
                         }
                         try {
-                          const emailCheck = await postGuestCheckoutEmailAvailable(email.trim());
+                          const emailCheck =
+                            await postGuestCheckoutEmailAvailable(email.trim());
                           if (!emailCheck.available) {
                             setGuestEmailTakenError(
-                              typeof emailCheck.detail === "string" && emailCheck.detail.trim()
+                              typeof emailCheck.detail === "string" &&
+                                emailCheck.detail.trim()
                                 ? emailCheck.detail.trim()
                                 : "Ya existe un usuario con este correo. Inicia sesión o usa otro email.",
                             );
@@ -584,7 +673,10 @@ export default function CheckoutView() {
                   }}
                 >
                   <div>
-                    <label className={labelClass}>Cliente</label>
+                    <label className={labelClass}>
+                      Empresa
+                      <CheckoutRequiredMark />
+                    </label>
                     <input
                       required
                       value={company_name}
@@ -614,7 +706,50 @@ export default function CheckoutView() {
                     ) : null}
                   </div>
                   <div>
-                    <label className={labelClass}>Nombre de contacto</label>
+                    <label className={labelClass} htmlFor="checkout-guest-rif">
+                      RIF
+                      <CheckoutRequiredMark />
+                    </label>
+                    <input
+                      id="checkout-guest-rif"
+                      required
+                      value={rif}
+                      onChange={(e) => setRif(e.target.value)}
+                      className={fieldClass}
+                      placeholder="Ej. J-12345678-9"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass} htmlFor="checkout-guest-rep">
+                      Representante legal
+                    </label>
+                    <input
+                      id="checkout-guest-rep"
+                      value={representative_name}
+                      onChange={(e) => setRepresentativeName(e.target.value)}
+                      className={fieldClass}
+                      autoComplete="name"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass} htmlFor="checkout-guest-rep-ci">
+                      Cédula del representante
+                    </label>
+                    <input
+                      id="checkout-guest-rep-ci"
+                      value={representative_id_number}
+                      onChange={(e) => setRepresentativeIdNumber(e.target.value)}
+                      className={fieldClass}
+                      placeholder="Ej. V-12345678"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>
+                      Persona de contacto
+                      <CheckoutRequiredMark />
+                    </label>
                     <input
                       required
                       value={contact_name}
@@ -623,15 +758,26 @@ export default function CheckoutView() {
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>Email</label>
+                    <label className={labelClass} htmlFor="checkout-guest-email">
+                      Email
+                      <CheckoutRequiredMark />
+                    </label>
                     <input
+                      id="checkout-guest-email"
                       required
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className={fieldClass}
                       autoComplete="email"
+                      aria-describedby="checkout-guest-email-hint"
                     />
+                    <p
+                      id="checkout-guest-email-hint"
+                      className={`mt-2 ${ROUNDED_CONTROL} border border-zinc-200/90 bg-zinc-50 px-3 py-2.5 text-sm leading-snug text-zinc-700`}
+                    >
+                      {GUEST_CHECKOUT_LOGIN_EMAIL_HINT}
+                    </p>
                     {guestClientEmailBlock ? (
                       <p
                         role="alert"
@@ -655,7 +801,10 @@ export default function CheckoutView() {
                     ) : null}
                   </div>
                   <div>
-                    <label className={labelClass}>Teléfono</label>
+                    <label className={labelClass}>
+                      Teléfono
+                      <CheckoutRequiredMark />
+                    </label>
                     <input
                       required
                       value={phone}
@@ -673,10 +822,11 @@ export default function CheckoutView() {
                       className="mt-1 h-4 w-4 rounded border-zinc-300 accent-[color:var(--mp-primary)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--mp-primary)_30%,transparent)]"
                     />
                     <span className="text-sm leading-snug text-zinc-700">
-                      <span className="font-semibold text-zinc-900">Crear cuenta al comprar</span>
+                      <span className="font-semibold text-zinc-900">
+                        Crear cuenta al comprar
+                      </span>
                       <span className="mt-0.5 block text-xs text-zinc-500">
-                        Contraseña de al menos {PASSWORD_PAIR_MIN_LENGTH} caracteres; mismo correo que arriba para
-                        iniciar sesión después.
+                        Contraseña de al menos {PASSWORD_PAIR_MIN_LENGTH} caracteres.
                       </span>
                     </span>
                   </label>
@@ -707,7 +857,9 @@ export default function CheckoutView() {
                   ) : null}
                   <button
                     type="submit"
-                    disabled={!datosStepCanContinue || guestDatosPasswordChecking}
+                    disabled={
+                      !datosStepCanContinue || guestDatosPasswordChecking
+                    }
                     className={`${marketplacePrimaryBtn} mt-2 min-h-11 w-full px-5 py-3 text-sm font-semibold`}
                   >
                     {guestDatosPasswordChecking ? "Comprobando…" : "Continuar"}
@@ -722,7 +874,10 @@ export default function CheckoutView() {
                   }}
                 >
                   <div>
-                    <label className={labelClass}>Cliente</label>
+                    <label className={labelClass}>
+                      Empresa
+                      <CheckoutRequiredMark />
+                    </label>
                     <input
                       required
                       value={company_name}
@@ -731,7 +886,50 @@ export default function CheckoutView() {
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>Nombre de contacto</label>
+                    <label className={labelClass} htmlFor="checkout-client-rif">
+                      RIF
+                      <CheckoutRequiredMark />
+                    </label>
+                    <input
+                      id="checkout-client-rif"
+                      required
+                      value={rif}
+                      onChange={(e) => setRif(e.target.value)}
+                      className={fieldClass}
+                      placeholder="Ej. J-12345678-9"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass} htmlFor="checkout-client-rep">
+                      Representante legal
+                    </label>
+                    <input
+                      id="checkout-client-rep"
+                      value={representative_name}
+                      onChange={(e) => setRepresentativeName(e.target.value)}
+                      className={fieldClass}
+                      autoComplete="name"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass} htmlFor="checkout-client-rep-ci">
+                      Cédula del representante
+                    </label>
+                    <input
+                      id="checkout-client-rep-ci"
+                      value={representative_id_number}
+                      onChange={(e) => setRepresentativeIdNumber(e.target.value)}
+                      className={fieldClass}
+                      placeholder="Ej. V-12345678"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>
+                      Persona de contacto
+                      <CheckoutRequiredMark />
+                    </label>
                     <input
                       required
                       value={contact_name}
@@ -740,7 +938,10 @@ export default function CheckoutView() {
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>Email</label>
+                    <label className={labelClass}>
+                      Email
+                      <CheckoutRequiredMark />
+                    </label>
                     <input
                       required
                       type="email"
@@ -751,7 +952,10 @@ export default function CheckoutView() {
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>Teléfono</label>
+                    <label className={labelClass}>
+                      Teléfono
+                      <CheckoutRequiredMark />
+                    </label>
                     <input
                       required
                       value={phone}
@@ -771,11 +975,17 @@ export default function CheckoutView() {
                 </form>
               ) : (
                 <div className="space-y-6">
-                  <div className={`${ROUNDED_CONTROL} border border-zinc-200 bg-zinc-50/80 p-5`}>
-                    <p className={labelClass}>Cliente registrado</p>
-                    <p className="mt-2 text-base font-semibold text-zinc-900">{company.company_name}</p>
+                  <div
+                    className={`${ROUNDED_CONTROL} border border-zinc-200 bg-zinc-50/80 p-5`}
+                  >
+                    <p className={labelClass}>Empresa registrada</p>
+                    <p className="mt-2 text-base font-semibold text-zinc-900">
+                      {company.company_name}
+                    </p>
                     {company.rif ? (
-                      <p className="mt-1 text-sm text-zinc-600">RIF {company.rif}</p>
+                      <p className="mt-1 text-sm text-zinc-600">
+                        RIF {company.rif}
+                      </p>
                     ) : null}
                     <button
                       type="button"
@@ -799,13 +1009,20 @@ export default function CheckoutView() {
 
           {step === "confirmar" ? (
             <div className="mt-10 space-y-8">
-              <div className={`${ROUNDED_CONTROL} border border-zinc-200 bg-white p-5 shadow-sm`}>
+              <div
+                className={`${ROUNDED_CONTROL} border border-zinc-200 bg-white p-5 shadow-sm`}
+              >
                 <ul className="divide-y divide-zinc-100">
                   {items.map((i) => {
                     const line = cartTotalUsd([i]);
                     return (
-                      <li key={i.id} className="flex items-center justify-between gap-4 py-4 first:pt-0">
-                        <span className="font-medium text-zinc-900">{i.title}</span>
+                      <li
+                        key={i.id}
+                        className="flex items-center justify-between gap-4 py-4 first:pt-0"
+                      >
+                        <span className="font-medium text-zinc-900">
+                          {i.title}
+                        </span>
                         <span className="mp-text-brand shrink-0 text-lg font-bold tabular-nums">
                           {formatUsdInteger(line)}
                         </span>
@@ -821,13 +1038,16 @@ export default function CheckoutView() {
                     </span>
                   </div>
                   <p className="mt-2 text-xs text-zinc-500">
-                    Subtotal {formatUsdMoney(subtotal)} + IVA (16 %) {formatUsdMoney(iva)}
+                    Subtotal {formatUsdMoney(subtotal)} + IVA (16 %){" "}
+                    {formatUsdMoney(iva)}
                   </p>
                 </div>
               </div>
 
               {error ? (
-                <p className={`break-words ${ROUNDED_CONTROL} bg-red-50 px-3 py-2 text-sm text-red-800`}>
+                <p
+                  className={`break-words ${ROUNDED_CONTROL} bg-red-50 px-3 py-2 text-sm text-red-800`}
+                >
                   {error}
                 </p>
               ) : null}
@@ -843,7 +1063,9 @@ export default function CheckoutView() {
                 <button
                   type="button"
                   disabled={loading || !meetsMin}
-                  onClick={() => (isGuest ? guestSubmit() : ensureCompanyThenSubmit())}
+                  onClick={() =>
+                    isGuest ? guestSubmit() : ensureCompanyThenSubmit()
+                  }
                   className={`${marketplacePrimaryBtn} min-h-11 flex-1 py-2.5 text-sm font-semibold`}
                 >
                   {loading ? "Enviando…" : "Enviar solicitud"}

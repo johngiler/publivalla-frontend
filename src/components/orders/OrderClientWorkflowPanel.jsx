@@ -259,9 +259,9 @@ function getClientOrderGuidanceNotice(ctx) {
   if (s === "cancelled") {
     return {
       kind: "outcome",
-      nextStep: "Pedido cancelado",
+      nextStep: "Pedido rechazado",
       detail:
-        "Este pedido figura como cancelado (incluye solicitudes que no siguieron adelante). Si tienes dudas, escribe al centro comercial o a soporte.",
+        "Este pedido figura como rechazado (incluye solicitudes que no siguieron adelante). Si tienes dudas, escribe al centro comercial o a soporte.",
     };
   }
   if (s === "expired") {

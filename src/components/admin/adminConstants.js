@@ -112,7 +112,7 @@ export const ORDER_STATUS = [
   { v: "installation", l: "Instalación" },
   { v: "active", l: "Activa" },
   { v: "expired", l: "Vencida" },
-  { v: "cancelled", l: "Cancelada" },
+  { v: "cancelled", l: "Rechazada" },
 ];
 
 export const ORDER_STATUS_FILTER_OPTIONS = [{ v: "all", l: "Todos los estados" }, ...ORDER_STATUS];

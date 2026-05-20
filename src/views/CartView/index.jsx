@@ -118,7 +118,7 @@ export default function CartView() {
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
         <h1 className="text-balance text-2xl font-bold text-zinc-900 sm:text-3xl">Carrito</h1>
         <p className="mt-4 text-zinc-600">
-          El carrito del marketplace es para clientes o para quien envía una solicitud sin iniciar sesión. Si necesitas
+          El carrito del marketplace es para cuentas de empresa o para quien envía una solicitud sin iniciar sesión. Si necesitas
           ayuda, contacta a soporte.
         </p>
         <Link

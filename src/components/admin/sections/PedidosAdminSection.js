@@ -85,7 +85,7 @@ import {
   buildOrderAdminStatusSelectOptions,
   formatOrderAdminTransitionButtonLabel,
   getOrderAdminQuickNext,
-  orderAdminShowCancelPedidoActivoButton,
+  orderAdminShowRejectPedidoActivoButton,
 } from "@/lib/orderAdminWorkflow";
 import { isPdfReceiptUrl } from "@/lib/orderPaymentMethods";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
@@ -164,7 +164,7 @@ function PedidoSiguienteEstadoCell({ order, orderRef, onStatusChangeRequest }) {
   );
   const showNextBtn = Boolean(quick && !quick.blockedReason);
   const showBlocked = Boolean(quick?.blockedReason);
-  const showCancelActivo = orderAdminShowCancelPedidoActivoButton(order);
+  const showRejectActivo = orderAdminShowRejectPedidoActivoButton(order);
 
   useLayoutEffect(() => {
     if (!opcionesOpen) {
@@ -209,7 +209,7 @@ function PedidoSiguienteEstadoCell({ order, orderRef, onStatusChangeRequest }) {
 
   const emptyEstado =
     !showNextBtn &&
-    !showCancelActivo &&
+    !showRejectActivo &&
     !hasSelectableAlternative &&
     !showBlocked;
 
@@ -249,7 +249,7 @@ function PedidoSiguienteEstadoCell({ order, orderRef, onStatusChangeRequest }) {
             {formatOrderAdminTransitionButtonLabel(quick.status)}
           </button>
         ) : null}
-        {showCancelActivo ? (
+        {showRejectActivo ? (
           <button
             type="button"
             className={`${pedidoEstadoCompactBtnText} max-w-[8rem] shrink-0 line-clamp-2 sm:max-w-[9rem]`}
@@ -368,7 +368,7 @@ function PedidoDatosPagoPortal({ order, panelId }) {
               </button>
             ) : (
               <p className="text-sm text-zinc-500">
-                El cliente puede subir el comprobante cuando el pedido esté
+                La empresa puede subir el comprobante cuando el pedido esté
                 facturado o pagado, desde Mis pedidos.
               </p>
             )}
@@ -390,8 +390,8 @@ export function PedidosAdminSection() {
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState(null);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
-  /** Pedido cuyo pase a «cancelada» está pendiente de confirmación en modal. */
-  const [cancelTarget, setCancelTarget] = useState(null);
+  /** Pedido cuyo pase a «rechazada» está pendiente de confirmación en modal. */
+  const [rejectTarget, setRejectTarget] = useState(null);
   const [lineCoverLightbox, setLineCoverLightbox] = useState({
     open: false,
     items: [],
@@ -493,7 +493,7 @@ export function PedidosAdminSection() {
   const requestOrderStatusChange = useCallback(
     (order, status) => {
       if (String(status) === "cancelled") {
-        setCancelTarget({ order });
+        setRejectTarget({ order });
         return;
       }
       void patchOrderStatus(order.id, status);
@@ -602,7 +602,7 @@ export function PedidosAdminSection() {
                 id="pedidos-filter-q"
                 value={filterQ}
                 onChange={setFilterQ}
-                placeholder="Cliente, número o referencia (#…-ORDER-…)"
+                placeholder="Empresa, número o referencia (#…-ORDER-…)"
               />
               <AdminFilterSelect
                 id="pedidos-filter-status"
@@ -646,7 +646,7 @@ export function PedidosAdminSection() {
                       <th className="w-10 px-2 py-3" aria-hidden />
                       <th className="max-sm:whitespace-nowrap px-3 py-2">Pedido</th>
                       <th className="max-sm:whitespace-nowrap px-3 py-2">Alta</th>
-                      <th className="px-3 py-2">Cliente</th>
+                      <th className="px-3 py-2">Empresa</th>
                       <th className="px-3 py-2">Estado actual</th>
                       <th className="min-w-[12rem] max-sm:whitespace-nowrap px-3 py-2">
                         Siguiente estado
@@ -753,7 +753,7 @@ export function PedidosAdminSection() {
                                 titleLabel="Pedido"
                                 titleLine={
                                   clientDisplayName(o) ||
-                                  "Sin nombre de cliente"
+                                  "Sin nombre de empresa"
                                 }
                                 hint="Resumen y líneas del pedido"
                               />
@@ -763,12 +763,12 @@ export function PedidosAdminSection() {
                                   <AdminDetailSection
                                     panelId={panelId}
                                     sectionId="client"
-                                    title="Cliente"
+                                    title="Empresa"
                                   >
                                     <AdminDetailInset className="w-full min-w-0">
                                       {o.client_detail ? (
                                         <div className="grid w-full min-w-0 grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 sm:gap-x-5 sm:gap-y-4">
-                                          <AdminDetailField label="Cliente">
+                                          <AdminDetailField label="Empresa">
                                             {o.client_detail.company_name?.trim() ? (
                                               <AdminDashboardFilterLink
                                                 href={dashboardClientesSearchHref(
@@ -817,7 +817,37 @@ export function PedidosAdminSection() {
                                             {o.client_detail.address ||
                                               adminDetailEmpty("")}
                                           </AdminDetailField>
-                                          <AdminDetailField label="Contacto">
+                                          <AdminDetailField label="Representante legal">
+                                            {o.client_detail.representative_name?.trim() ? (
+                                              <span className="inline-flex max-w-full flex-wrap items-center gap-1.5">
+                                                <span>
+                                                  {o.client_detail.representative_name.trim()}
+                                                </span>
+                                                <AdminCopyIconButton
+                                                  value={o.client_detail.representative_name.trim()}
+                                                  ariaLabel="Copiar representante legal"
+                                                />
+                                              </span>
+                                            ) : (
+                                              adminDetailEmpty("")
+                                            )}
+                                          </AdminDetailField>
+                                          <AdminDetailField label="Cédula del representante">
+                                            {o.client_detail.representative_id_number?.trim() ? (
+                                              <span className="inline-flex max-w-full flex-wrap items-center gap-1.5 font-mono text-sm">
+                                                <span>
+                                                  {o.client_detail.representative_id_number.trim()}
+                                                </span>
+                                                <AdminCopyIconButton
+                                                  value={o.client_detail.representative_id_number.trim()}
+                                                  ariaLabel="Copiar cédula del representante"
+                                                />
+                                              </span>
+                                            ) : (
+                                              adminDetailEmpty("")
+                                            )}
+                                          </AdminDetailField>
+                                          <AdminDetailField label="Persona de contacto">
                                             {o.client_detail.contact_name?.trim() ? (
                                               <span className="inline-flex max-w-full flex-wrap items-center gap-1.5">
                                                 <span>
@@ -848,7 +878,7 @@ export function PedidosAdminSection() {
                                               adminDetailEmpty("")
                                             )}
                                           </AdminDetailField>
-                                          <AdminDetailField label="Estado de la ficha (cliente)">
+                                          <AdminDetailField label="Estado de la ficha (empresa)">
                                             {o.client_detail.status ? (
                                               <span
                                                 className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${clientStatusPillClassName(o.client_detail.status)}`}
@@ -866,7 +896,7 @@ export function PedidosAdminSection() {
                                       ) : (
                                         <div className="grid w-full grid-cols-1 sm:grid-cols-2">
                                           <div className="sm:col-span-2">
-                                            <AdminDetailField label="Cliente">
+                                            <AdminDetailField label="Empresa">
                                               {o.client_company_name?.trim() ? (
                                                 <AdminDashboardFilterLink
                                                   href={dashboardClientesSearchHref(
@@ -1118,41 +1148,41 @@ export function PedidosAdminSection() {
         </AdminConfirmDialog>
 
         <AdminConfirmDialog
-          open={cancelTarget != null}
-          onClose={() => setCancelTarget(null)}
-          title="¿Cancelar este pedido?"
-          confirmLabel="Sí, cancelar pedido"
+          open={rejectTarget != null}
+          onClose={() => setRejectTarget(null)}
+          title="¿Rechazar este pedido?"
+          confirmLabel="Sí, rechazar pedido"
           cancelLabel="No, volver"
           onConfirm={async () => {
-            if (cancelTarget == null) return;
-            await patchOrderStatus(cancelTarget.order.id, "cancelled");
+            if (rejectTarget == null) return;
+            await patchOrderStatus(rejectTarget.order.id, "cancelled");
           }}
         >
-          {cancelTarget ? (
+          {rejectTarget ? (
             <div className="space-y-2">
               <p>
-                El pedido pasará a estado <strong>Cancelada</strong>. Deja de
+                El pedido pasará a estado <strong>Rechazada</strong>. Deja de
                 contar como contrato activo en el flujo comercial; confirma solo
                 si es la decisión correcta.
               </p>
               <p className="text-xs text-zinc-600">
                 <span className="font-semibold text-zinc-800">Referencia:</span>{" "}
-                {typeof cancelTarget.order.code === "string" &&
-                cancelTarget.order.code.trim()
-                  ? cancelTarget.order.code.trim()
-                  : `#${cancelTarget.order.id}`}
+                {typeof rejectTarget.order.code === "string" &&
+                rejectTarget.order.code.trim()
+                  ? rejectTarget.order.code.trim()
+                  : `#${rejectTarget.order.id}`}
                 <br />
                 <span className="font-semibold text-zinc-800">
-                  Cliente:
+                  Empresa:
                 </span>{" "}
-                {clientDisplayName(cancelTarget.order) || "—"}
+                {clientDisplayName(rejectTarget.order) || "—"}
                 <br />
                 <span className="font-semibold text-zinc-800">
                   Estado actual:
                 </span>{" "}
                 {orderStatusLabel(
-                  cancelTarget.order.status,
-                  cancelTarget.order.status_label,
+                  rejectTarget.order.status,
+                  rejectTarget.order.status_label,
                 )}
               </p>
             </div>

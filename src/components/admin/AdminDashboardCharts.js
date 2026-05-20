@@ -211,7 +211,7 @@ export function AdminDashboardCharts({ stats }) {
         />
         <StatusDonut
           title="Pedidos por estado"
-          subtitle="Cada pedido cuenta una vez según su estado actual (incluye borrador, activo, vencido y cancelado). Para el detalle y las líneas, abre Pedidos."
+          subtitle="Cada pedido cuenta una vez según su estado actual (incluye borrador, activo, vencido y rechazado). Para el detalle y las líneas, abre Pedidos."
           rows={Array.isArray(stats?.orders_by_status) ? stats.orders_by_status : []}
           mapChoices={ORDER_STATUS}
           cardClass={CARD_ORDERS}

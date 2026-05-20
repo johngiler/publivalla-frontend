@@ -134,6 +134,8 @@ export function ClientesAdminSection() {
   const [companyName, setCompanyName] = useState("");
   const [rif, setRif] = useState("");
   const [contactName, setContactName] = useState("");
+  const [representativeName, setRepresentativeName] = useState("");
+  const [representativeIdNumber, setRepresentativeIdNumber] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [clStatus, setClStatus] = useState("active");
@@ -187,6 +189,8 @@ export function ClientesAdminSection() {
     setCompanyName("");
     setRif("");
     setContactName("");
+    setRepresentativeName("");
+    setRepresentativeIdNumber("");
     setEmail("");
     setPhone("");
     setClStatus("active");
@@ -221,6 +225,8 @@ export function ClientesAdminSection() {
     setCompanyName(c.company_name);
     setRif(c.rif);
     setContactName(c.contact_name || "");
+    setRepresentativeName(c.representative_name || "");
+    setRepresentativeIdNumber(c.representative_id_number || "");
     setEmail(c.email);
     setPhone(c.phone || "");
     setClStatus(c.status);
@@ -257,7 +263,7 @@ export function ClientesAdminSection() {
         try {
           await navigator.clipboard.writeText(fullUrl);
           setMsg(
-            `Usuario generado para ${data.email || c.email}. Enlace de registro copiado al portapapeles; compártelo con el cliente.`,
+            `Usuario generado para ${data.email || c.email}. Enlace de registro copiado al portapapeles; compártelo con la empresa.`,
           );
         } catch {
           setMsg(
@@ -281,6 +287,7 @@ export function ClientesAdminSection() {
     setFieldErrors({});
     const nextFe = {};
     if (!companyName.trim()) nextFe.company_name = "Campo obligatorio.";
+    if (!rif.trim()) nextFe.rif = "Campo obligatorio.";
     if (!email.trim()) nextFe.email = "Campo obligatorio.";
     if (Object.keys(nextFe).length) {
       setFieldErrors(nextFe);
@@ -294,6 +301,8 @@ export function ClientesAdminSection() {
           fd.append("company_name", companyName.trim());
           fd.append("rif", rif.trim());
           fd.append("contact_name", contactName.trim());
+          fd.append("representative_name", representativeName.trim());
+          fd.append("representative_id_number", representativeIdNumber.trim());
           fd.append("email", email.trim());
           fd.append("phone", phone.trim());
           fd.append("address", address.trim());
@@ -309,6 +318,8 @@ export function ClientesAdminSection() {
               company_name: companyName.trim(),
               rif: rif.trim(),
               contact_name: contactName.trim(),
+              representative_name: representativeName.trim(),
+              representative_id_number: representativeIdNumber.trim(),
               email: email.trim(),
               phone: phone.trim(),
               address: address.trim(),
@@ -318,12 +329,17 @@ export function ClientesAdminSection() {
             },
           });
         }
-        setMsg("Cliente creado.");
+        setMsg("Empresa creada.");
       } else if (modal === "edit" && selected) {
         if (coverFile) {
           const fd = new FormData();
           fd.append("company_name", companyName.trim());
+          if (!(selected.rif || "").trim()) {
+            fd.append("rif", rif.trim());
+          }
           fd.append("contact_name", contactName.trim());
+          fd.append("representative_name", representativeName.trim());
+          fd.append("representative_id_number", representativeIdNumber.trim());
           fd.append("email", email.trim());
           fd.append("phone", phone.trim());
           fd.append("address", address.trim());
@@ -336,6 +352,8 @@ export function ClientesAdminSection() {
           const body = {
             company_name: companyName.trim(),
             contact_name: contactName.trim(),
+            representative_name: representativeName.trim(),
+            representative_id_number: representativeIdNumber.trim(),
             email: email.trim(),
             phone: phone.trim(),
             address: address.trim(),
@@ -343,10 +361,13 @@ export function ClientesAdminSection() {
             notes: notes.trim(),
             status: clStatus,
           };
+          if (!(selected.rif || "").trim()) {
+            body.rif = rif.trim();
+          }
           if (pendingClearCover) body.cover_image = null;
           await authFetch(`/api/clients/${selected.id}/`, { method: "PATCH", body });
         }
-        setMsg("Cliente actualizado.");
+        setMsg("Empresa actualizada.");
       }
       closeModal();
       await reloadClientes();
@@ -371,7 +392,7 @@ export function ClientesAdminSection() {
     setPageErr("");
     try {
       await authFetch(`/api/clients/${id}/`, { method: "DELETE" });
-      setMsg("Cliente eliminado.");
+        setMsg("Empresa eliminada.");
       await reloadClientes();
     } catch (e) {
       setPageErr(e instanceof Error ? e.message : "Error");
@@ -400,15 +421,15 @@ export function ClientesAdminSection() {
             <IconAdminBriefcase className="!h-8 !w-8" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Clientes</h2>
+            <h2 className="text-xl font-bold text-slate-900">Empresas</h2>
             <p className="mt-0.5 text-sm text-zinc-500">
-              {totalCount} cliente{totalCount === 1 ? "" : "s"}
+              {totalCount} empresa{totalCount === 1 ? "" : "s"}
             </p>
           </div>
         </div>
         <button type="button" className={adminPrimaryBtn} onClick={openCreate}>
           <AdminCreatePlusIcon />
-          <span className={adminCreateBtnLabel}>Nuevo cliente</span>
+          <span className={adminCreateBtnLabel}>Nueva empresa</span>
         </button>
       </div>
 
@@ -423,8 +444,8 @@ export function ClientesAdminSection() {
         <div className="mt-6">
           <EmptyState
             icon={<EmptyStateIconBriefcase />}
-            title="No hay clientes registrados"
-            description="Todavía no hay clientes dados de alta. Puedes registrar el primero con «Nuevo cliente» o aparecerán cuando un usuario complete los datos en Mi empresa."
+            title="No hay empresas registradas"
+            description="Todavía no hay empresas dadas de alta. Puedes registrar la primera con «Nueva empresa» o aparecerán cuando un usuario complete los datos en Mi empresa."
           />
         </div>
       ) : (
@@ -434,7 +455,7 @@ export function ClientesAdminSection() {
               id="clientes-filter-q"
               value={filterQ}
               onChange={setFilterQ}
-              placeholder="Cliente, correo, contacto…"
+              placeholder="Empresa, correo, contacto…"
             />
             <AdminFilterSelect
               id="clientes-filter-status"
@@ -455,7 +476,7 @@ export function ClientesAdminSection() {
 
           {rows.length === 0 && filtersActive ? (
             <div className="mt-6 rounded-[15px] border border-zinc-200 bg-zinc-50/80 px-4 py-8 text-center text-sm text-zinc-600">
-              <p>Ningún cliente coincide con los filtros.</p>
+              <p>Ninguna empresa coincide con los filtros.</p>
               <div className="mt-5 flex justify-center">
                 <FilterClearAction
                   onClick={() => {
@@ -479,7 +500,7 @@ export function ClientesAdminSection() {
                     Foto
                   </th>
                   <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Cliente
+                    Empresa
                   </th>
                   <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                     Email
@@ -593,7 +614,7 @@ export function ClientesAdminSection() {
                       <AdminAccordionRowPanel colSpan={7} panelId={panelId}>
                         <AdminAccordionDetailHeader
                           badgeText={typeof c.rif === "string" && c.rif.trim() !== "" ? c.rif.trim() : undefined}
-                          titleLabel="Cliente en sistema"
+                          titleLabel="Empresa en sistema"
                           titleLine={c.company_name}
                           hint="Datos de contacto y ubicación"
                         />
@@ -613,6 +634,32 @@ export function ClientesAdminSection() {
                                     Ninguno · usa «Generar usuario» en la columna Usuarios vinculados o crea la cuenta
                                     en Usuarios
                                   </span>
+                                )}
+                              </AdminDetailField>
+                              <AdminDetailField label="Representante legal">
+                                {c.representative_name?.trim() ? (
+                                  <span className="inline-flex max-w-full flex-wrap items-center gap-1.5 text-sm text-zinc-800">
+                                    <span>{c.representative_name.trim()}</span>
+                                    <AdminCopyIconButton
+                                      value={c.representative_name.trim()}
+                                      ariaLabel="Copiar representante legal"
+                                    />
+                                  </span>
+                                ) : (
+                                  adminDetailEmpty("")
+                                )}
+                              </AdminDetailField>
+                              <AdminDetailField label="Cédula del representante">
+                                {c.representative_id_number?.trim() ? (
+                                  <span className="inline-flex max-w-full flex-wrap items-center gap-1.5 font-mono text-sm text-zinc-800">
+                                    <span>{c.representative_id_number.trim()}</span>
+                                    <AdminCopyIconButton
+                                      value={c.representative_id_number.trim()}
+                                      ariaLabel="Copiar cédula del representante"
+                                    />
+                                  </span>
+                                ) : (
+                                  <span className="font-mono text-sm text-zinc-800">{adminDetailEmpty("")}</span>
                                 )}
                               </AdminDetailField>
                               <AdminDetailField label="Persona de contacto">
@@ -694,10 +741,10 @@ export function ClientesAdminSection() {
         onClose={closeModal}
         title={
           modal === "create"
-            ? "Nuevo cliente"
+            ? "Nueva empresa"
             : modal === "edit"
-              ? "Editar cliente"
-              : "Detalle del cliente"
+              ? "Editar empresa"
+              : "Detalle de la empresa"
         }
         subtitle={modal === "view" ? selected?.company_name : undefined}
         wide
@@ -753,7 +800,31 @@ export function ClientesAdminSection() {
               </p>
             </div>
             <div>
-              <p className={adminLabel}>Contacto</p>
+              <p className={adminLabel}>Representante legal</p>
+              <p className="mt-1 inline-flex flex-wrap items-center gap-1.5 text-sm text-zinc-800">
+                <span>{selected.representative_name?.trim() || "—"}</span>
+                {selected.representative_name?.trim() ? (
+                  <AdminCopyIconButton
+                    value={selected.representative_name.trim()}
+                    ariaLabel="Copiar representante legal"
+                  />
+                ) : null}
+              </p>
+            </div>
+            <div>
+              <p className={adminLabel}>Cédula del representante</p>
+              <p className="mt-1 inline-flex flex-wrap items-center gap-1.5 font-mono text-sm text-zinc-800">
+                <span>{selected.representative_id_number?.trim() || "—"}</span>
+                {selected.representative_id_number?.trim() ? (
+                  <AdminCopyIconButton
+                    value={selected.representative_id_number.trim()}
+                    ariaLabel="Copiar cédula del representante"
+                  />
+                ) : null}
+              </p>
+            </div>
+            <div>
+              <p className={adminLabel}>Persona de contacto</p>
               <p className="mt-1 inline-flex flex-wrap items-center gap-1.5 text-sm text-zinc-800">
                 <span>{selected.contact_name?.trim() || "—"}</span>
                 {selected.contact_name?.trim() ? (
@@ -846,7 +917,7 @@ export function ClientesAdminSection() {
             </div>
             <div>
               <label className={adminLabel} htmlFor="cl-rif">
-                RIF
+                RIF <span className="text-red-600">*</span>
               </label>
               <input
                 id="cl-rif"
@@ -854,10 +925,14 @@ export function ClientesAdminSection() {
                 value={rif}
                 onChange={(e) => setRif(e.target.value)}
                 required
-                disabled={modal === "edit"}
+                placeholder="Ej. J-12345678-9"
+                disabled={modal === "edit" && Boolean((selected?.rif || "").trim())}
               />
-              {modal === "edit" ? (
+              {modal === "edit" && (selected?.rif || "").trim() ? (
                 <p className="mt-1 text-xs text-zinc-500">El RIF no se puede cambiar.</p>
+              ) : null}
+              {fieldErrors?.rif ? (
+                <p className="mt-1 text-xs text-rose-700">{fieldErrors.rif}</p>
               ) : null}
             </div>
             <div>
@@ -870,12 +945,35 @@ export function ClientesAdminSection() {
                 value={clStatus}
                 onChange={(v) => setClStatus(v || "active")}
                 inModal
-                aria-label="Estado del cliente"
+                aria-label="Estado de la empresa"
+              />
+            </div>
+            <div>
+              <label className={adminLabel} htmlFor="cl-rep">
+                Representante legal
+              </label>
+              <input
+                id="cl-rep"
+                className={adminField}
+                value={representativeName}
+                onChange={(e) => setRepresentativeName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className={adminLabel} htmlFor="cl-rep-ci">
+                Cédula del representante
+              </label>
+              <input
+                id="cl-rep-ci"
+                className={adminField}
+                value={representativeIdNumber}
+                onChange={(e) => setRepresentativeIdNumber(e.target.value)}
+                placeholder="Ej. V-12345678"
               />
             </div>
             <div>
               <label className={adminLabel} htmlFor="cl-contact">
-                Contacto
+                Persona de contacto
               </label>
               <input
                 id="cl-contact"
@@ -949,7 +1047,7 @@ export function ClientesAdminSection() {
       <AdminConfirmDialog
         open={deleteTargetId != null}
         onClose={() => setDeleteTargetId(null)}
-        title="Eliminar cliente"
+        title="Eliminar empresa"
         confirmLabel="Eliminar"
         onConfirm={async () => {
           if (deleteTargetId == null) return;
@@ -957,7 +1055,7 @@ export function ClientesAdminSection() {
         }}
       >
         <p>
-          ¿Eliminar este cliente del sistema? Solo aparece esta opción si no tiene pedidos vinculados. Esta acción no se
+          ¿Eliminar esta empresa del sistema? Solo aparece esta opción si no tiene pedidos vinculados. Esta acción no se
           puede deshacer.
         </p>
       </AdminConfirmDialog>

@@ -1193,7 +1193,7 @@ export function CentrosAdminSection() {
                   options={RENTAL_BILLING_OPTIONS}
                 />
                 <p className="mt-1 text-xs text-zinc-500">
-                  Por día: el cliente elige fechas concretas; el total usa canon mensual ÷ 30 por día (temporada alta
+                  Por día: la empresa elige fechas concretas; el total usa canon mensual ÷ 30 por día (temporada alta
                   por mes del día).
                 </p>
               </div>

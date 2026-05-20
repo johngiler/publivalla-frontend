@@ -45,6 +45,8 @@ export default function CuentaView() {
   const [company_name, setCompanyName] = useState("");
   const [rif, setRif] = useState("");
   const [contact_name, setContactName] = useState("");
+  const [representative_name, setRepresentativeName] = useState("");
+  const [representative_id_number, setRepresentativeIdNumber] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -89,6 +91,8 @@ export default function CuentaView() {
       setCompanyName(companyData.company_name || "");
       setRif(companyData.rif || "");
       setContactName(companyData.contact_name || "");
+      setRepresentativeName(companyData.representative_name || "");
+      setRepresentativeIdNumber(companyData.representative_id_number || "");
       setEmail(companyData.email || "");
       setPhone(companyData.phone || "");
       setAddress(companyData.address || "");
@@ -101,6 +105,8 @@ export default function CuentaView() {
       setCompanyName("");
       setRif("");
       setContactName("");
+      setRepresentativeName("");
+      setRepresentativeIdNumber("");
       setEmail("");
       setPhone("");
       setAddress("");
@@ -135,6 +141,10 @@ export default function CuentaView() {
     e.preventDefault();
     setError("");
     setOk("");
+    if (!rif.trim()) {
+      setError("Indica el RIF de la empresa.");
+      return;
+    }
     setSaving(true);
     try {
       const hasProfile = companyData && typeof companyData === "object";
@@ -145,6 +155,8 @@ export default function CuentaView() {
         fd.append("company_name", company_name.trim());
         fd.append("rif", rif.trim());
         fd.append("contact_name", contact_name.trim());
+        fd.append("representative_name", representative_name.trim());
+        fd.append("representative_id_number", representative_id_number.trim());
         fd.append("email", email.trim());
         fd.append("phone", phone.trim());
         fd.append("address", address.trim());
@@ -160,6 +172,8 @@ export default function CuentaView() {
           company_name: company_name.trim(),
           rif: rif.trim(),
           contact_name: contact_name.trim(),
+          representative_name: representative_name.trim(),
+          representative_id_number: representative_id_number.trim(),
           email: email.trim(),
           phone: phone.trim(),
           address: address.trim(),
@@ -179,7 +193,7 @@ export default function CuentaView() {
       setOk(
         hasProfile
           ? "Datos actualizados correctamente."
-          : "Cliente registrado. Ya puedes usar el checkout.",
+          : "Empresa registrada. Ya puedes usar el checkout.",
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al guardar");
@@ -206,14 +220,14 @@ export default function CuentaView() {
           ) : null}
         </div>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-zinc-600">
-          Datos de contacto y facturación de tu cliente en el marketplace.
+          Datos de contacto y facturación de tu empresa en el marketplace.
         </p>
       </div>
 
       <div
         className={`mt-8 ${ROUNDED_CONTROL} border border-amber-200/80 bg-gradient-to-r from-amber-50/90 to-orange-50/40 px-4 py-3 text-sm text-amber-950 shadow-sm ring-1 ring-amber-100/60`}
       >
-        <span className="font-semibold">Importante:</span> estos datos identifican a tu cliente en pedidos y facturación.
+        <span className="font-semibold">Importante:</span> estos datos identifican a tu empresa en pedidos y facturación.
         Revísalos antes de confirmar reservas.
       </div>
 
@@ -226,7 +240,7 @@ export default function CuentaView() {
         <div className="p-5 sm:p-6">
           <div className="space-y-8">
           <section aria-labelledby="sec-empresa">
-            <SectionTitle id="sec-empresa">Cliente</SectionTitle>
+            <SectionTitle id="sec-empresa">Empresa</SectionTitle>
             <div className="mt-4 space-y-4">
               <div className="rounded-xl border border-zinc-100 bg-zinc-50/50 p-4 sm:p-5">
                 <CoverImageField
@@ -262,17 +276,41 @@ export default function CuentaView() {
               </div>
               <div className="sm:max-w-md">
                 <label htmlFor="cuenta-rif" className="block text-sm font-medium text-zinc-800">
-                  RIF
+                  RIF <span className="text-red-600">*</span>
                 </label>
-                <p className="mt-1 text-xs text-zinc-500">
-                  Opcional si aún no lo tienes; complétalo aquí para facturación.
-                </p>
                 <input
                   id="cuenta-rif"
+                  required
                   className={`mt-1.5 ${fieldClass}`}
                   value={rif}
                   onChange={(e) => setRif(e.target.value)}
                   placeholder="Ej. J-12345678-9"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <label htmlFor="cuenta-rep" className="block text-sm font-medium text-zinc-800">
+                  Representante legal
+                </label>
+                <input
+                  id="cuenta-rep"
+                  autoComplete="name"
+                  className={fieldClass}
+                  value={representative_name}
+                  onChange={(e) => setRepresentativeName(e.target.value)}
+                />
+              </div>
+              <div className="sm:max-w-md">
+                <label htmlFor="cuenta-rep-ci" className="block text-sm font-medium text-zinc-800">
+                  Cédula del representante
+                </label>
+                <input
+                  id="cuenta-rep-ci"
+                  className={`mt-1.5 ${fieldClass}`}
+                  value={representative_id_number}
+                  onChange={(e) => setRepresentativeIdNumber(e.target.value)}
+                  placeholder="Ej. V-12345678"
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -386,7 +424,7 @@ export default function CuentaView() {
             disabled={saving}
             className={`${marketplacePrimaryBtn} min-h-11 px-6 py-2.5 text-base sm:min-h-0 sm:text-sm`}
           >
-            {saving ? "Guardando…" : hasProfile ? "Guardar cambios" : "Registrar cliente"}
+            {saving ? "Guardando…" : hasProfile ? "Guardar cambios" : "Registrar empresa"}
           </button>
           <Link
             href="/"

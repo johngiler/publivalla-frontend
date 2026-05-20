@@ -196,7 +196,7 @@ export function UsuariosAdminSection() {
       (!clientsLoading && (clientsAllData !== undefined || clientsSwrError !== undefined)));
 
   const clientSelectOptions = useMemo(() => {
-    const base = [{ v: "", l: "Sin cliente vinculado" }];
+    const base = [{ v: "", l: "Sin empresa vinculada" }];
     return base.concat(
       clientRows.map((c) => {
         const name = typeof c.company_name === "string" ? c.company_name.trim() : "";
@@ -347,7 +347,7 @@ export function UsuariosAdminSection() {
       if (modal === "create") {
         if (role === "client" && (!linkedClientId || linkedClientId === "")) {
           setModalErr(
-            "Selecciona el cliente vinculado para el rol cliente marketplace.",
+            "Selecciona la empresa vinculada para el rol cliente marketplace.",
           );
           setFieldErrors({ client_id: "Campo obligatorio." });
           return;
@@ -391,7 +391,7 @@ export function UsuariosAdminSection() {
       } else if (modal === "edit" && selected) {
         if (role === "client" && (!linkedClientId || linkedClientId === "")) {
           setModalErr(
-            "Selecciona el cliente vinculado para el rol cliente marketplace.",
+            "Selecciona la empresa vinculada para el rol cliente marketplace.",
           );
           setFieldErrors({ client_id: "Campo obligatorio." });
           return;
@@ -534,7 +534,7 @@ export function UsuariosAdminSection() {
               id="usuarios-filter-q"
               value={filterQ}
               onChange={setFilterQ}
-              placeholder="Usuario, correo, cliente…"
+              placeholder="Usuario, correo, empresa…"
             />
             <AdminFilterSelect
               id="usuarios-filter-role"
@@ -582,7 +582,7 @@ export function UsuariosAdminSection() {
                         Usuario
                       </th>
                       <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                        Cliente vinculado
+                        Empresa vinculada
                       </th>
                       <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                         Rol
@@ -729,7 +729,7 @@ export function UsuariosAdminSection() {
                                           : adminDetailEmpty("")}
                                       </AdminDetailField>
                                       {u.role === "client" ? (
-                                        <AdminDetailField label="Cliente vinculado">
+                                        <AdminDetailField label="Empresa vinculada">
                                           {u.client_company_name?.trim() ? (
                                             <EmpresaVinculadaAdminLink companyName={u.client_company_name} />
                                           ) : (
@@ -847,7 +847,7 @@ export function UsuariosAdminSection() {
             </div>
             {selected.role === "client" ? (
               <div className="sm:col-span-2">
-                <p className={adminLabel}>Cliente vinculado</p>
+                <p className={adminLabel}>Empresa vinculada</p>
                 <p className="mt-1 text-sm text-zinc-800">
                   {selected.client_company_name?.trim() ? (
                     <EmpresaVinculadaAdminLink companyName={selected.client_company_name} />
@@ -991,7 +991,7 @@ export function UsuariosAdminSection() {
             {role === "client" ? (
               <div className="sm:col-span-2">
                 <label className={adminLabel} htmlFor="u-client">
-                  Cliente vinculado
+                  Empresa vinculada
                 </label>
                 <AdminSelect
                   id="u-client"
@@ -1003,17 +1003,17 @@ export function UsuariosAdminSection() {
                   inModal
                   isSearchable
                   placeholder="Buscar por razón social o ID…"
-                  aria-label="Seleccionar cliente a vincular"
+                  aria-label="Seleccionar empresa a vincular"
                 />
                 {clientRows.length === 0 ? (
                   <p className="mt-1 text-xs text-amber-800">
-                    No hay clientes en el listado. Crea primero un cliente en la sección Clientes para poder
-                    seleccionarlo aquí.
+                    No hay empresas en el listado. Crea primero una empresa en la sección Empresas para poder
+                    seleccionarla aquí.
                   </p>
                 ) : (
                   <p className="mt-1 text-xs text-zinc-500">
-                    Obligatorio para este rol. El workspace del owner se toma del
-                    cliente. Un usuario → un cliente; el mismo cliente puede
+                    Obligatorio para este rol. El workspace del owner se toma de la
+                    empresa. Un usuario → una empresa; la misma empresa puede
                     tener varios usuarios.
                   </p>
                 )}

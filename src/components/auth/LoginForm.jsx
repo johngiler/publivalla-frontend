@@ -76,7 +76,7 @@ function LoginShell({ children }) {
             </p>
             <p className="mt-2 max-w-sm text-sm leading-relaxed text-zinc-300 lg:text-[0.9375rem]">
               Espacios publicitarios en centros comerciales. Accede para reservar, contratar y gestionar la ficha de tu
-              cliente.
+              empresa.
             </p>
           </div>
           <p className="relative mt-6 hidden text-xs text-zinc-500 lg:mt-0 lg:block">
@@ -161,7 +161,7 @@ export default function LoginForm() {
               Iniciar sesión
             </h1>
             <p className="mt-1 text-xs font-medium uppercase tracking-wider text-[#0b7aa8]">
-              Acceso clientes y equipo
+              Acceso empresas y equipo
             </p>
           </div>
           <Link
@@ -173,8 +173,8 @@ export default function LoginForm() {
         </div>
 
         <p className="mt-5 text-pretty text-sm leading-relaxed text-zinc-600">
-          Necesario para completar el checkout y gestionar la ficha de tu cliente. Las cuentas las habilita el equipo del
-          operador junto con el alta de tu cliente.
+          Necesario para completar el checkout y gestionar la ficha de tu empresa. Las cuentas las habilita el equipo del
+          operador junto con el alta de tu empresa.
         </p>
 
         <form onSubmit={onSubmit} className="mt-8 space-y-5">
@@ -234,7 +234,7 @@ export default function LoginForm() {
         </form>
 
         <p className="mt-8 border-t border-zinc-100 pt-6 text-pretty text-left text-sm leading-relaxed text-zinc-500">
-          ¿No tienes usuario? Contacta a tu ejecutivo o a soporte para que te den de alta como cliente.
+          ¿No tienes usuario? Contacta a tu ejecutivo o a soporte para que te den de alta en el marketplace.
         </p>
       </div>
     </LoginShell>
