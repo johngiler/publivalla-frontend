@@ -142,6 +142,8 @@ export function CentrosAdminSection() {
   const [rentalBillingUnit, setRentalBillingUnit] = useState("calendar_month");
   const [highSeasonMonths, setHighSeasonMonths] = useState([]);
   const [highSeasonMultiplier, setHighSeasonMultiplier] = useState("1");
+  const [municipalAuthorityLine, setMunicipalAuthorityLine] = useState("");
+  const [authorizationLetterCity, setAuthorizationLetterCity] = useState("Caracas");
   const [coverFile, setCoverFile] = useState(null);
   const [filePreview, setFilePreview] = useState("");
   const [pendingClearCover, setPendingClearCover] = useState(false);
@@ -224,6 +226,8 @@ export function CentrosAdminSection() {
     setRentalBillingUnit("calendar_month");
     setHighSeasonMonths([]);
     setHighSeasonMultiplier("1");
+    setMunicipalAuthorityLine("");
+    setAuthorizationLetterCity("Caracas");
     setCoverFile(null);
     setPendingClearCover(false);
     if (fileRef.current) fileRef.current.value = "";
@@ -258,6 +262,10 @@ export function CentrosAdminSection() {
     setRentalBillingUnit(normalizeRentalBillingUnit(c.rental_billing_unit));
     setHighSeasonMonths(normalizeHighSeasonMonths(c.high_season_months));
     setHighSeasonMultiplier(String(parseHighSeasonMultiplier(c.high_season_multiplier)));
+    setMunicipalAuthorityLine(c.municipal_authority_line?.trim() || "");
+    setAuthorizationLetterCity(
+      c.authorization_letter_city?.trim() || "Caracas",
+    );
     setCoverFile(null);
     setPendingClearCover(false);
     if (fileRef.current) fileRef.current.value = "";
@@ -354,6 +362,9 @@ export function CentrosAdminSection() {
       high_season_months: hsMonths,
       high_season_multiplier: mult,
       rental_billing_unit: normalizeRentalBillingUnit(rentalBillingUnit),
+      municipal_authority_line: municipalAuthorityLine.trim(),
+      authorization_letter_city:
+        authorizationLetterCity.trim() || "Caracas",
     };
     try {
       if (modal === "create") {
@@ -379,6 +390,11 @@ export function CentrosAdminSection() {
           fd.append("high_season_months", JSON.stringify(hsMonths));
           fd.append("high_season_multiplier", String(mult));
           fd.append("rental_billing_unit", normalizeRentalBillingUnit(rentalBillingUnit));
+          fd.append("municipal_authority_line", municipalAuthorityLine.trim());
+          fd.append(
+            "authorization_letter_city",
+            authorizationLetterCity.trim() || "Caracas",
+          );
           fd.append("cover_image", coverFile);
           await authFetchForm("/api/admin/centers/", {
             method: "POST",
@@ -425,6 +441,11 @@ export function CentrosAdminSection() {
           fd.append("high_season_months", JSON.stringify(hsMonths));
           fd.append("high_season_multiplier", String(mult));
           fd.append("rental_billing_unit", normalizeRentalBillingUnit(rentalBillingUnit));
+          fd.append("municipal_authority_line", municipalAuthorityLine.trim());
+          fd.append(
+            "authorization_letter_city",
+            authorizationLetterCity.trim() || "Caracas",
+          );
           fd.append("cover_image", coverFile);
           await authFetchForm(`/api/admin/centers/${selected.id}/`, {
             method: "PATCH",
@@ -816,6 +837,23 @@ export function CentrosAdminSection() {
                                 <div className="mt-6 border-t border-zinc-100 pt-5">
                                   <AdminDetailSection
                                     panelId={panelId}
+                                    sectionId="municipio"
+                                    title="Carta al municipio"
+                                  >
+                                    <AdminDetailInset>
+                                      <AdminDetailField label="Destinatario (Atención)">
+                                        {adminDetailEmpty(c.municipal_authority_line)}
+                                      </AdminDetailField>
+                                      <AdminDetailField label="Ciudad en encabezado de fecha">
+                                        {adminDetailEmpty(c.authorization_letter_city)}
+                                      </AdminDetailField>
+                                    </AdminDetailInset>
+                                  </AdminDetailSection>
+                                </div>
+
+                                <div className="mt-6 border-t border-zinc-100 pt-5">
+                                  <AdminDetailSection
+                                    panelId={panelId}
                                     sectionId="pricing"
                                     title="Precios y reserva"
                                   >
@@ -1000,6 +1038,18 @@ export function CentrosAdminSection() {
                         .map((m) => MONTH_LABELS_ES[m - 1])
                         .join(", ")} · ×${parseHighSeasonMultiplier(selected.high_season_multiplier)}`
                     : "Sin meses configurados (canon base todo el año)"}
+                </p>
+              </div>
+              <div>
+                <p className={adminLabel}>Carta al municipio — destinatario</p>
+                <p className="mt-1 text-zinc-800">
+                  {selected.municipal_authority_line?.trim() || "—"}
+                </p>
+              </div>
+              <div>
+                <p className={adminLabel}>Carta al municipio — ciudad en fecha</p>
+                <p className="mt-1 text-zinc-800">
+                  {selected.authorization_letter_city?.trim() || "Caracas"}
                 </p>
               </div>
               <div>
@@ -1203,6 +1253,47 @@ export function CentrosAdminSection() {
                 multiplier={highSeasonMultiplier}
                 onMultiplierChange={setHighSeasonMultiplier}
               />
+              <div className="border-t border-zinc-100 pt-4">
+                <p className="text-sm font-semibold text-zinc-900">Carta al municipio</p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Texto del bloque «Atención» en el PDF de autorización municipal. Si lo dejas vacío,
+                  el sistema intenta inferirlo por el nombre del centro.
+                </p>
+              </div>
+              <div>
+                <label className={adminLabel} htmlFor="c-municipal-auth">
+                  Destinatario (Atención)
+                </label>
+                <input
+                  id="c-municipal-auth"
+                  className={fieldClass("municipal_authority_line")}
+                  value={municipalAuthorityLine}
+                  onChange={(e) => setMunicipalAuthorityLine(e.target.value)}
+                  placeholder="Ej. Sres. Alcaldía Municipio Chacao"
+                />
+                {fieldErrors?.municipal_authority_line ? (
+                  <p className="mt-1 text-xs text-rose-700">
+                    {fieldErrors.municipal_authority_line}
+                  </p>
+                ) : null}
+              </div>
+              <div>
+                <label className={adminLabel} htmlFor="c-auth-letter-city">
+                  Ciudad en encabezado de fecha
+                </label>
+                <input
+                  id="c-auth-letter-city"
+                  className={fieldClass("authorization_letter_city")}
+                  value={authorizationLetterCity}
+                  onChange={(e) => setAuthorizationLetterCity(e.target.value)}
+                  placeholder="Caracas"
+                />
+                {fieldErrors?.authorization_letter_city ? (
+                  <p className="mt-1 text-xs text-rose-700">
+                    {fieldErrors.authorization_letter_city}
+                  </p>
+                ) : null}
+              </div>
               <div className="space-y-1">
                 <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-zinc-800">
                   <input

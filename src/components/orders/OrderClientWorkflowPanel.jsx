@@ -361,6 +361,7 @@ export function OrderClientWorkflowPanel({
   const negotiationUploadAutoOpenedRef = useRef(false);
 
   const hasNegotiationPdf = Boolean(order?.negotiation_sheet_pdf_url);
+  const hasMunicipalityPdf = Boolean(order?.municipality_authorization_pdf_url);
   const hasInvoicePdf = Boolean(order?.invoice_pdf_url);
   const signedRawForUi = order?.negotiation_sheet_signed_url
     ? String(order.negotiation_sheet_signed_url)
@@ -780,6 +781,27 @@ export function OrderClientWorkflowPanel({
     }
   }, [accessToken, id, order]);
 
+  const downloadMunicipality = useCallback(async () => {
+    if (!id) return;
+    setLocalErr("");
+    setBusy("municipality");
+    try {
+      const blob = await authFetchBlob(
+        `/api/orders/${id}/download-municipality-letter/`,
+        {
+          token: accessToken,
+        },
+      );
+      triggerBlobDownload(blob, orderDocFilename(order, "carta-municipio"));
+    } catch (e) {
+      setLocalErr(
+        e instanceof Error ? e.message : "No se pudo descargar el PDF.",
+      );
+    } finally {
+      setBusy("");
+    }
+  }, [accessToken, id, order]);
+
   const uploadSigned = useCallback(async () => {
     if (!id || !signedFile) {
       setLocalErr(
@@ -1110,6 +1132,22 @@ export function OrderClientWorkflowPanel({
                 </span>
               )}
             </li>
+            {hasMunicipalityPdf ? (
+              <li className="min-w-0 shrink-0">
+                <button
+                  type="button"
+                  disabled={busy === "municipality"}
+                  onClick={() => downloadMunicipality()}
+                  className={docStepBtnClass}
+                >
+                  <span>
+                    {busy === "municipality"
+                      ? "Descargando carta…"
+                      : "Carta al municipio (PDF)"}
+                  </span>
+                </button>
+              </li>
+            ) : null}
             <li className="min-w-0 shrink-0">
               {step2Complete ? (
                 <button
@@ -1235,7 +1273,7 @@ export function OrderClientWorkflowPanel({
               <p className="mt-1 text-sm text-zinc-600">
                 Descarga la hoja de negociación para firmarla después y subirla.
               </p>
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
                   disabled={busy === "negotiation"}
@@ -1244,6 +1282,18 @@ export function OrderClientWorkflowPanel({
                 >
                   {busy === "negotiation" ? "Descargando…" : "Descargar hoja de negociación"}
                 </button>
+                {hasMunicipalityPdf ? (
+                  <button
+                    type="button"
+                    disabled={busy === "municipality"}
+                    onClick={() => downloadMunicipality()}
+                    className={`${marketplaceSecondaryBtn} min-h-10 px-4 py-2 text-sm font-semibold`}
+                  >
+                    {busy === "municipality"
+                      ? "Descargando…"
+                      : "Descargar carta al municipio"}
+                  </button>
+                ) : null}
               </div>
               <FileDropZoneField
                 className="mt-4"
