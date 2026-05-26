@@ -63,44 +63,10 @@ import {
 } from "@/lib/mediaUrls";
 import { parsePaginatedResponse } from "@/services/api";
 import { mediaAbsoluteUrl } from "@/services/authApi";
-
-function formatDate(iso) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleDateString("es-VE", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return String(iso);
-  }
-}
-
-function formatTime(iso) {
-  if (!iso) return "";
-  try {
-    return new Date(iso).toLocaleTimeString("es-VE", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return "";
-  }
-}
-
-function formatDateTimeFull(iso) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString("es-VE", {
-      dateStyle: "short",
-      timeStyle: "medium",
-    });
-  } catch {
-    return String(iso);
-  }
-}
+import {
+  formatDateTimeFull,
+  formatHumanDateTime,
+} from "@/lib/humanDateTime";
 
 /** Fecha de contrato en formato corto (evita desfase UTC con `YYYY-MM-DD`). */
 function formatContractDay(value) {
@@ -503,13 +469,11 @@ function OrderTimeline({ events }) {
               <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-zinc-200/60 pt-2">
                 <time
                   dateTime={ev.created_at}
+                  title={formatDateTimeFull(ev.created_at)}
                   className="text-xs font-medium tabular-nums text-zinc-700"
                 >
-                  {formatDate(ev.created_at)}
+                  {formatHumanDateTime(ev.created_at)}
                 </time>
-                <span className="text-xs tabular-nums text-zinc-500">
-                  {formatTime(ev.created_at)}
-                </span>
               </div>
               {ev.actor_username ? (
                 <p className="mt-1.5 text-xs text-zinc-500">
@@ -987,10 +951,13 @@ export default function MisPedidosView() {
                             </p>
                             <time
                               dateTime={o.submitted_at || o.created_at}
+                              title={formatDateTimeFull(
+                                o.submitted_at || o.created_at,
+                              )}
                               className="text-sm font-semibold tabular-nums text-zinc-900"
                             >
                               {o.submitted_at || o.created_at
-                                ? formatDateTimeFull(
+                                ? formatHumanDateTime(
                                     o.submitted_at || o.created_at,
                                   )
                                 : "—"}

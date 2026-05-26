@@ -34,21 +34,15 @@ import { EmptyState, EmptyStateIconBuilding } from "@/components/ui/EmptyState";
 import { authJsonFetcher } from "@/lib/swr/fetchers";
 import { revalidateHomeCatalog } from "@/lib/swr/homeCatalogSwr";
 import { authFetch } from "@/services/authApi";
+import {
+  formatHumanDateTime,
+} from "@/lib/humanDateTime";
 
 /** Disputas (tomas) por página; cada bloque agrupa todas las solicitudes de esa toma. */
 const PUJAS_GROUPS_PAGE_SIZE = 10;
 
 function formatSubmittedAt(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("es-VE", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatHumanDateTime(iso);
 }
 
 /** @param {Record<string, unknown>} order */

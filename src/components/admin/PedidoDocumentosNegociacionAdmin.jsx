@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { AdminDetailInset, AdminDetailSection } from "@/components/admin/AdminAccordionDetail";
-import { PedidoAdminArtAttachmentsGrouped } from "@/components/admin/PedidoAdminArtAttachmentsGrouped";
-import { adminField, adminLabel, adminPrimaryBtn } from "@/components/admin/adminFormStyles";
+import { PedidoInformacionAdicionalAdmin } from "@/components/admin/PedidoInformacionAdicionalAdmin";
+import { adminPrimaryBtn } from "@/components/admin/adminFormStyles";
 import { catalogRasterImgAttrs } from "@/lib/catalogImageProps";
 import {
   IcDownload,
@@ -12,13 +12,12 @@ import {
   PdfPreview,
   pdfPreviewCompactIconButtonClass,
 } from "@/components/media/PdfPreview";
-import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { RasterFromApiUrl } from "@/components/media/RasterFromApiUrl";
+import { FileDropZoneField } from "@/components/ui/FileDropZoneField";
 import { isPdfReceiptUrl } from "@/lib/orderPaymentMethods";
-import { normalizeMediaUrlForUi } from "@/lib/mediaUrls";
-import { orderArtImageLightboxItems } from "@/lib/imageLightboxItems";
 import { ROUNDED_CONTROL, ROUNDED_PDF_GRID_CARD } from "@/lib/uiRounding";
-import { authFetch, authFetchBlob, mediaAbsoluteUrl } from "@/services/authApi";
+import { normalizeMediaUrlForUi } from "@/lib/mediaUrls";
+import { authFetchBlob, authFetchForm, mediaAbsoluteUrl } from "@/services/authApi";
 
 function orderDocFilename(order, base) {
   const ref = String(order?.code || order?.id || "pedido")
@@ -33,18 +32,17 @@ const orderPdfGridPreviewProps = {
   previewMinHeightClass: "min-h-[112px] h-[min(18vh,168px)]",
 };
 
-function orderArtEntryLabel(a) {
-  const fileField = a?.file != null ? String(a.file) : "";
-  if (fileField && fileField.includes("/")) {
-    return fileField.split("/").filter(Boolean).pop() || `arte-${a.id}`;
-  }
-  return `Arte #${a.id}`;
-}
-
 /**
  * Vista previa admin alineada con ``PdfPreview`` de la rejilla (PDF en iframe; imagen con la misma barra de acciones).
  */
-export function OrderAttachmentAdminPreview({ title, fileUrl, emptyHint, order, downloadBase }) {
+export function OrderAttachmentAdminPreview({
+  title,
+  fileUrl,
+  emptyHint,
+  order,
+  downloadBase,
+  imageFit = "contain",
+}) {
   const raw = fileUrl != null ? String(fileUrl).trim() : "";
   const abs = raw ? mediaAbsoluteUrl(raw) : "";
   const direct = raw ? normalizeMediaUrlForUi(raw) : "";
@@ -99,12 +97,24 @@ export function OrderAttachmentAdminPreview({ title, fileUrl, emptyHint, order, 
           </div>
         </div>
         <div className="p-1.5">
-          <RasterFromApiUrl
-            url={raw}
-            alt={title}
-            className="max-h-[min(10rem,32vh)] w-auto max-w-full rounded-none border border-zinc-200 object-contain shadow-sm"
-            {...catalogRasterImgAttrs}
-          />
+          <div
+            className={
+              imageFit === "cover"
+                ? "relative min-h-[112px] h-[min(18vh,168px)] w-full overflow-hidden border border-zinc-200 bg-zinc-100 shadow-sm"
+                : ""
+            }
+          >
+            <RasterFromApiUrl
+              url={raw}
+              alt={title}
+              className={
+                imageFit === "cover"
+                  ? "absolute inset-0 h-full w-full object-cover"
+                  : "max-h-[min(10rem,32vh)] w-auto max-w-full rounded-none border border-zinc-200 object-contain shadow-sm"
+              }
+              {...catalogRasterImgAttrs}
+            />
+          </div>
         </div>
       </div>
     );
@@ -136,20 +146,6 @@ function orderArtKindFromUrls(raw, abs) {
 }
 
 /**
- * Huella corta para invalidar la vista previa del PDF cuando cambian los textos de la hoja en el API.
- * (Mismo criterio que ``invoice_number`` en el loadKey de factura.)
- */
-function orderNegotiationTextsFingerprint(paymentConditions, negotiationObservations) {
-  const s = `${String(paymentConditions ?? "")}\u0000${String(negotiationObservations ?? "")}`;
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i += 1) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return `${(h >>> 0).toString(36)}-${s.length}`;
-}
-
-/**
  * @param {{
  *   order: Record<string, unknown>;
  *   panelId: string;
@@ -161,22 +157,7 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
   const id = order?.id;
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
-  const [paymentConditions, setPaymentConditions] = useState("");
-  const [negotiationObservations, setNegotiationObservations] = useState("");
-  const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [artsLightboxOpen, setArtsLightboxOpen] = useState(false);
-  const [artsLightboxIndex, setArtsLightboxIndex] = useState(0);
-
-  useEffect(() => {
-    setPaymentConditions(String(order?.payment_conditions ?? ""));
-    setNegotiationObservations(String(order?.negotiation_observations ?? ""));
-    setInvoiceNumber(String(order?.invoice_number ?? ""));
-  }, [id, order?.payment_conditions, order?.negotiation_observations, order?.invoice_number]);
-
-  useEffect(() => {
-    setArtsLightboxOpen(false);
-    setArtsLightboxIndex(0);
-  }, [id]);
+  const [invoiceDigitalFile, setInvoiceDigitalFile] = useState(null);
 
   const fetchNegotiationPdf = useCallback(async () => {
     return authFetchBlob(`/api/orders/${id}/download-negotiation-sheet/`, { token: accessToken });
@@ -201,182 +182,99 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
   }, [accessToken, id]);
 
   const negotiationPdfPreviewLoadKey = useMemo(
-    () =>
-      id != null
-        ? `negotiation-${id}-${orderNegotiationTextsFingerprint(
-            order?.payment_conditions,
-            order?.negotiation_observations,
-          )}`
-        : "negotiation",
-    [id, order?.payment_conditions, order?.negotiation_observations],
+    () => (id != null ? `negotiation-${id}` : "negotiation"),
+    [id],
   );
 
-  const saveTexts = useCallback(async () => {
-    if (!id || !accessToken) return;
-    setErr("");
-    setBusy("save");
-    try {
-      await authFetch(`/api/orders/${id}/`, {
-        method: "PATCH",
-        token: accessToken,
-        body: {
-          payment_conditions: paymentConditions,
-          negotiation_observations: negotiationObservations,
-          invoice_number: invoiceNumber.trim(),
-        },
-      });
-      await onSaved();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "No se pudo guardar.");
-    } finally {
-      setBusy("");
-    }
-  }, [
-    accessToken,
-    id,
-    invoiceNumber,
-    negotiationObservations,
-    onSaved,
-    paymentConditions,
-  ]);
+  const uploadInvoiceDigital = useCallback(
+    async (file) => {
+      if (!id || !accessToken || !file) return;
+      setErr("");
+      setBusy("invoice-digital");
+      try {
+        const fd = new FormData();
+        fd.append("invoice_digital", file);
+        await authFetchForm(`/api/orders/${id}/`, {
+          method: "PATCH",
+          formData: fd,
+          token: accessToken,
+        });
+        setInvoiceDigitalFile(null);
+        await onSaved();
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : "No se pudo adjuntar la factura.");
+      } finally {
+        setBusy("");
+      }
+    },
+    [accessToken, id, onSaved],
+  );
+
+  const handleInvoiceDigitalChange = useCallback((file) => {
+    setInvoiceDigitalFile(file);
+  }, []);
+
+  const saveInvoiceDigital = useCallback(() => {
+    if (!invoiceDigitalFile) return;
+    void uploadInvoiceDigital(invoiceDigitalFile);
+  }, [invoiceDigitalFile, uploadInvoiceDigital]);
 
   const signedUrl = order?.negotiation_sheet_signed_url
     ? mediaAbsoluteUrl(String(order.negotiation_sheet_signed_url))
     : "";
 
-  const orderArtEntries = useMemo(() => {
-    const list = Array.isArray(order?.art_attachments) ? order.art_attachments : [];
-    return list.map((a) => {
-      const raw = a?.file_url != null ? String(a.file_url) : "";
-      const abs = raw ? mediaAbsoluteUrl(raw) : "";
-      return {
-        id: a.id,
-        raw,
-        abs,
-        label: orderArtEntryLabel(a),
-        spaceCode:
-          a?.order_item_code != null ? String(a.order_item_code).trim() : "",
-        orderItemPk:
-          a?.order_item != null && a.order_item !== ""
-            ? Number(a.order_item)
-            : null,
-        createdAt: a?.created_at,
-        kind: orderArtKindFromUrls(raw, abs),
-      };
-    });
-  }, [order?.art_attachments]);
-
-  const artImageEntries = useMemo(
-    () => orderArtEntries.filter((e) => e.kind === "image"),
-    [orderArtEntries],
-  );
-
-  const artsLightboxItems = useMemo(
-    () => orderArtImageLightboxItems(artImageEntries),
-    [artImageEntries],
-  );
-
-  const openArtsLightbox = useCallback(
-    (initialIndex) => {
-      if (!artsLightboxItems.length) return;
-      const i = Math.min(Math.max(0, initialIndex), artsLightboxItems.length - 1);
-      setArtsLightboxIndex(i);
-      setArtsLightboxOpen(true);
-    },
-    [artsLightboxItems],
-  );
-
-  const textsDirty = useMemo(() => {
-    const oc = String(order?.payment_conditions ?? "");
-    const oo = String(order?.negotiation_observations ?? "");
-    const oi = String(order?.invoice_number ?? "").trim();
-    return (
-      paymentConditions !== oc ||
-      negotiationObservations !== oo ||
-      invoiceNumber.trim() !== oi
-    );
-  }, [
-    order?.payment_conditions,
-    order?.negotiation_observations,
-    order?.invoice_number,
-    paymentConditions,
-    negotiationObservations,
-    invoiceNumber,
-  ]);
+  const hasExternalInvoice = Boolean(order?.has_external_invoice);
+  const invoiceDigitalUrl = order?.invoice_digital_url
+    ? String(order.invoice_digital_url)
+    : "";
+  const hasGeneratedInvoicePdf = Boolean(order?.invoice_pdf_url);
+  const orderCodeKey = String(order?.code ?? id ?? "").trim();
 
   return (
     <div className="space-y-4">
-      <AdminDetailSection panelId={panelId} sectionId="nego-texts" title="Textos de negociación y factura">
-        <AdminDetailInset className="space-y-4">
-          <div>
-            <label className={adminLabel} htmlFor={`pc-${id}`}>
-              Condiciones de pago
-            </label>
-            <textarea
-              id={`pc-${id}`}
-              rows={3}
-              className={adminField}
-              value={paymentConditions}
-              onChange={(e) => setPaymentConditions(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className={adminLabel} htmlFor={`no-${id}`}>
-              Observaciones de negociación
-            </label>
-            <textarea
-              id={`no-${id}`}
-              rows={4}
-              className={adminField}
-              value={negotiationObservations}
-              onChange={(e) => setNegotiationObservations(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className={adminLabel} htmlFor={`invn-${id}`}>
-              Número de factura
-            </label>
-            <input
-              id={`invn-${id}`}
-              type="text"
-              className={adminField}
-              value={invoiceNumber}
-              onChange={(e) => setInvoiceNumber(e.target.value)}
-            />
-            <p className="mt-1 text-xs text-zinc-500">
-              Al pasar el pedido a «Facturada», si este campo está vacío se genera una referencia (por ejemplo{" "}
-              <span className="font-mono text-zinc-600">FAC-</span> más el código del pedido). Puedes cambiarla aquí y
-              guardar.
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={!textsDirty || busy === "save" || !id || !accessToken}
-            onClick={() => saveTexts()}
-            className={`${adminPrimaryBtn} px-4 py-2.5 text-sm font-semibold`}
-          >
-            {busy === "save" ? "Guardando…" : "Guardar textos"}
-          </button>
-          <p className="text-xs leading-relaxed text-zinc-500">
-            Al guardar, si el pedido ya tenía PDF de negociación y cambias condiciones u observaciones, ese archivo se
-            vuelve a generar en el servidor (sustituye al anterior) y se quita la hoja firmada subida, porque ya no
-            corresponde al nuevo PDF. Si ya existía PDF de factura y cambias el número de factura, el PDF de factura
-            también se regenera.
-          </p>
-        </AdminDetailInset>
-      </AdminDetailSection>
+      <PedidoInformacionAdicionalAdmin order={order} panelId={panelId} />
 
-      <AdminDetailSection
-        panelId={panelId}
-        sectionId="docs-pdf"
-        title="Documentos y permisos PDF"
-      >
+      <AdminDetailSection panelId={panelId} sectionId="digital-files" title="Archivos digitales">
         <AdminDetailInset className="space-y-4">
           {err ? (
             <p className={`${ROUNDED_CONTROL} bg-red-50 px-3 py-2 text-sm text-red-800`} role="alert">
               {err}
             </p>
           ) : null}
+          <FileDropZoneField
+            id={`invd-${id}`}
+            label="Adjuntar factura digital"
+            value={invoiceDigitalFile}
+            onChange={handleInvoiceDigitalChange}
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            helperText={
+              hasExternalInvoice
+                ? "El cliente verá este archivo en lugar de la nota de cobro del sistema. Selecciona un archivo y pulsa Guardar; puedes reemplazar el actual."
+                : "Si la adjuntas antes o después de facturar, el cliente verá este archivo en lugar de la nota de cobro generada por el sistema. Selecciona el archivo y pulsa Guardar."
+            }
+            formatsHint="JPG, PNG, WebP o PDF · máximo 5 MB"
+            formatErrorMessage="Formato no permitido. Usa JPG, PNG, WebP o PDF."
+            dropZoneAriaLabel="Zona para adjuntar factura digital"
+          />
+          <button
+            type="button"
+            disabled={
+              !invoiceDigitalFile || busy === "invoice-digital" || !id || !accessToken
+            }
+            onClick={() => saveInvoiceDigital()}
+            className={`${adminPrimaryBtn} px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50`}
+          >
+            {busy === "invoice-digital" ? "Guardando…" : "Guardar"}
+          </button>
+        </AdminDetailInset>
+      </AdminDetailSection>
+
+      <AdminDetailSection
+        panelId={panelId}
+        sectionId="docs-pdf"
+        title="Documentos, comprobantes y permisos"
+      >
+        <AdminDetailInset className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 lg:gap-3">
             {signedUrl ? (
               isPdfReceiptUrl(signedUrl) ? (
@@ -458,14 +356,32 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
               loadKey={`${id}-municipality`}
               onFetchBlob={fetchMunicipalityPdf}
             />
-            <PdfPreview
-              {...orderPdfGridPreviewProps}
-              title="Factura"
-              downloadFileName={orderDocFilename(order, "factura")}
-              disabled={!order?.invoice_pdf_url}
-              emptyHint="Se genera cuando el pedido pasa a «Facturada»."
-              loadKey={`${id}-invoice-${String(order?.invoice_number ?? "").trim()}`}
-              onFetchBlob={fetchInvoicePdf}
+            {invoiceDigitalUrl ? (
+              <OrderAttachmentAdminPreview
+                order={order}
+                title="Factura/Nota de cobro"
+                downloadBase="factura"
+                fileUrl={invoiceDigitalUrl}
+                emptyHint="Factura digital no disponible."
+              />
+            ) : (
+              <PdfPreview
+                {...orderPdfGridPreviewProps}
+                title="Factura/Nota de cobro"
+                downloadFileName={orderDocFilename(order, "factura")}
+                disabled={!hasGeneratedInvoicePdf}
+                emptyHint="Se genera al facturar, salvo que adjuntes una factura digital arriba."
+                loadKey={`${id}-invoice-${orderCodeKey}`}
+                onFetchBlob={fetchInvoicePdf}
+              />
+            )}
+            <OrderAttachmentAdminPreview
+              order={order}
+              title="Comprobante de pago"
+              downloadBase="comprobante"
+              fileUrl={order?.payment_receipt_url}
+              emptyHint="La empresa puede subir el comprobante cuando el pedido esté facturado o pagado, desde Mis pedidos."
+              imageFit="cover"
             />
             <PdfPreview
               {...orderPdfGridPreviewProps}
@@ -493,35 +409,6 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
           </div>
         </AdminDetailInset>
       </AdminDetailSection>
-
-      <AdminDetailSection panelId={panelId} sectionId="client-arts" title="Artes adjuntos (empresa)">
-        <AdminDetailInset className="space-y-4">
-          {orderArtEntries.length === 0 ? (
-            <p className="text-sm leading-relaxed text-zinc-600">
-              Aún no hay artes. La empresa puede subirlos desde «Mis pedidos» cuando el pedido esté pagado
-              (imagen o PDF).
-            </p>
-          ) : (
-            <PedidoAdminArtAttachmentsGrouped
-              order={order}
-              orderArtEntries={orderArtEntries}
-              artImageEntries={artImageEntries}
-              accessToken={accessToken}
-              onOpenImageLightbox={openArtsLightbox}
-            />
-          )}
-        </AdminDetailInset>
-      </AdminDetailSection>
-
-      <ImageLightbox
-        open={artsLightboxOpen}
-        onClose={() => setArtsLightboxOpen(false)}
-        items={artsLightboxItems}
-        initialIndex={artsLightboxIndex}
-        showThumbnails={artsLightboxItems.length > 1}
-        showDownload
-        ariaLabel="Artes subidos por la empresa"
-      />
     </div>
   );
 }

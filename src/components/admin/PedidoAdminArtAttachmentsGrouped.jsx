@@ -9,14 +9,8 @@ import {
   pdfPreviewCompactIconButtonClass,
 } from "@/components/media/PdfPreview";
 import { RasterFromApiUrl } from "@/components/media/RasterFromApiUrl";
-import { ArtLineGroupCardHeader } from "@/components/orders/ArtLineGroupCardHeader";
 import { catalogRasterImgAttrs } from "@/lib/catalogImageProps";
 import { apiBlobPathFromMediaField } from "@/lib/mediaUrls";
-import {
-  groupArtEntriesByOrderLine,
-  groupArtEntriesBySpaceCode,
-  orderNeedsPerCodeArtUpload,
-} from "@/lib/orderArtLineGroups";
 import {
   ORDER_ART_ATTACHMENT_PREVIEW_PX,
   squareListImagePreviewButtonRingClass,
@@ -151,45 +145,31 @@ function AdminOrderArtEntryTile({
 }
 
 /**
- * Listado de artes de la empresa en admin, agrupado por código de toma si hay varios.
+ * Rejilla de miniaturas de artes (imagen, PDF u otro).
  *
  * @param {{
- *   order: Record<string, unknown>;
- *   orderArtEntries: Array<{
+ *   entries: Array<{
  *     id: unknown;
  *     raw: string;
  *     abs: string;
  *     label: string;
  *     kind: string;
- *     spaceCode: string;
- *     orderItemPk?: number | null;
  *   }>;
- *   artImageEntries: Array<{ id: unknown }>;
+ *   orderId: string | number;
  *   accessToken: string | null | undefined;
+ *   artImageEntries: Array<{ id: unknown }>;
  *   onOpenImageLightbox: (index: number) => void;
+ *   className?: string;
  * }} props
  */
-export function PedidoAdminArtAttachmentsGrouped({
-  order,
-  orderArtEntries,
-  artImageEntries,
+export function PedidoAdminArtEntryTiles({
+  entries,
+  orderId,
   accessToken,
+  artImageEntries,
   onOpenImageLightbox,
+  className = "flex flex-wrap gap-2 sm:gap-3",
 }) {
-  const orderId = order?.id ?? "";
-  const lineItems = Array.isArray(order?.items) ? order.items : [];
-  const usesArtModalFlow = orderNeedsPerCodeArtUpload(lineItems);
-
-  const artGroups = useMemo(
-    () =>
-      usesArtModalFlow
-        ? groupArtEntriesByOrderLine(orderArtEntries, lineItems)
-        : groupArtEntriesBySpaceCode(orderArtEntries, lineItems),
-    [orderArtEntries, lineItems, usesArtModalFlow],
-  );
-
-  const showGroupHeaders = usesArtModalFlow;
-
   const imageIndexByArtId = useMemo(() => {
     const m = new Map();
     artImageEntries.forEach((e, idx) => {
@@ -198,40 +178,20 @@ export function PedidoAdminArtAttachmentsGrouped({
     return m;
   }, [artImageEntries]);
 
-  const tiles = (entries) =>
-    entries.map((e) => (
-      <AdminOrderArtEntryTile
-        key={String(e.id)}
-        entry={e}
-        orderId={orderId}
-        accessToken={accessToken}
-        imageIndex={imageIndexByArtId.get(e.id) ?? -1}
-        onOpenImageLightbox={onOpenImageLightbox}
-      />
-    ));
-
-  if (!showGroupHeaders) {
-    return <div className="flex flex-wrap gap-3">{tiles(orderArtEntries)}</div>;
-  }
+  const list = Array.isArray(entries) ? entries : [];
+  if (!list.length) return null;
 
   return (
-    <div className="grid grid-cols-3 gap-3">
-      {artGroups.map((g) => (
-        <div
-          key={`${g.orderItemPk ?? g.code}-${g.title}`}
-          className="flex w-full min-w-0 flex-col overflow-hidden rounded-[10px] border border-zinc-200/90 bg-white"
-        >
-          <ArtLineGroupCardHeader
-            group={g}
-            fileCountLabel={
-              g.entries.length === 1 ? "1 archivo" : `${g.entries.length} archivos`
-            }
-            pillsKeyPrefix={`admin-art-grp-${orderId}-${g.orderItemPk ?? g.code}`}
-          />
-          <div className="flex flex-wrap gap-2 bg-white px-3 py-3 sm:gap-3">
-            {tiles(g.entries)}
-          </div>
-        </div>
+    <div className={className}>
+      {list.map((e) => (
+        <AdminOrderArtEntryTile
+          key={String(e.id)}
+          entry={e}
+          orderId={orderId}
+          accessToken={accessToken}
+          imageIndex={imageIndexByArtId.get(e.id) ?? -1}
+          onOpenImageLightbox={onOpenImageLightbox}
+        />
       ))}
     </div>
   );

@@ -60,6 +60,10 @@ import {
   squareListImagePreviewButtonRingClass,
 } from "@/lib/squareImagePreview";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
+import {
+  formatDateTimeFull,
+  formatHumanDateTime,
+} from "@/lib/humanDateTime";
 import { parsePaginatedResponse } from "@/services/api";
 import {
   AdminAccordionDetailHeader,
@@ -1055,23 +1059,31 @@ export function CentrosAdminSection() {
               <div>
                 <p className={adminLabel}>Creado</p>
                 <p className="mt-1 tabular-nums text-zinc-800">
-                  {selected.created_at
-                    ? new Date(selected.created_at).toLocaleString("es-VE", {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })
-                    : "—"}
+                  {selected.created_at ? (
+                    <time
+                      dateTime={selected.created_at}
+                      title={formatDateTimeFull(selected.created_at)}
+                    >
+                      {formatHumanDateTime(selected.created_at)}
+                    </time>
+                  ) : (
+                    "—"
+                  )}
                 </p>
               </div>
               <div>
                 <p className={adminLabel}>Última actualización</p>
                 <p className="mt-1 tabular-nums text-zinc-800">
-                  {selected.updated_at
-                    ? new Date(selected.updated_at).toLocaleString("es-VE", {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })
-                    : "—"}
+                  {selected.updated_at ? (
+                    <time
+                      dateTime={selected.updated_at}
+                      title={formatDateTimeFull(selected.updated_at)}
+                    >
+                      {formatHumanDateTime(selected.updated_at)}
+                    </time>
+                  ) : (
+                    "—"
+                  )}
                 </p>
               </div>
               <div>

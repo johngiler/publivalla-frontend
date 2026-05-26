@@ -51,6 +51,10 @@ import {
 } from "@/components/admin/AdminListFilters";
 import { AdminListPagination } from "@/components/admin/AdminListPagination";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import {
+  formatDateTimeFull,
+  formatHumanDateTime,
+} from "@/lib/humanDateTime";
 
 const ACTIVE_FILTER_OPTIONS = [
   { v: "all", l: "Activos e inactivos" },
@@ -629,9 +633,16 @@ export function MountingProvidersAdminSection() {
                                   {row.sort_order != null ? String(row.sort_order) : "0"}
                                 </AdminDetailField>
                                 <AdminDetailField label="Alta">
-                                  {row.created_at
-                                    ? new Date(row.created_at).toLocaleString("es-VE")
-                                    : adminDetailEmpty("")}
+                                  {row.created_at ? (
+                                    <time
+                                      dateTime={row.created_at}
+                                      title={formatDateTimeFull(row.created_at)}
+                                    >
+                                      {formatHumanDateTime(row.created_at)}
+                                    </time>
+                                  ) : (
+                                    adminDetailEmpty("")
+                                  )}
                                 </AdminDetailField>
                                 <div className="sm:col-span-2">
                                   <AdminDetailField label="Notas">

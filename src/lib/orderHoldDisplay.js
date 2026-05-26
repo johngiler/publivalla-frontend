@@ -2,6 +2,7 @@ import {
   orderStatusLabel,
   orderStatusPillClassName,
 } from "@/components/admin/adminConstants";
+import { formatHumanDateTime } from "@/lib/humanDateTime";
 
 /** Pedido enviado dentro de la ventana de hold (72 h). */
 export function orderHoldIsActive(order) {
@@ -28,12 +29,5 @@ export function orderDisplayStatusPillClassName(order) {
 
 export function formatOrderHoldExpiresAt(iso) {
   if (!iso) return "";
-  try {
-    return new Date(iso).toLocaleString("es-VE", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  } catch {
-    return String(iso);
-  }
+  return formatHumanDateTime(iso, { empty: "" });
 }

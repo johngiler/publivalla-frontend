@@ -9,22 +9,7 @@ import {
 } from "@/components/admin/adminIcons";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
-
-function formatRelativeEs(iso) {
-  const d = new Date(iso);
-  const t = d.getTime();
-  if (Number.isNaN(t)) return "";
-  const diffMs = Date.now() - t;
-  const sec = Math.floor(diffMs / 1000);
-  if (sec < 45) return "Hace un momento";
-  const min = Math.floor(sec / 60);
-  if (min < 60) return min === 1 ? "Hace 1 minuto" : `Hace ${min} minutos`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return hr === 1 ? "Hace 1 hora" : `Hace ${hr} horas`;
-  const day = Math.floor(hr / 24);
-  if (day < 7) return day === 1 ? "Hace 1 día" : `Hace ${day} días`;
-  return d.toLocaleString("es-VE", { dateStyle: "medium", timeStyle: "short" });
-}
+import { formatHumanDateTime } from "@/lib/humanDateTime";
 
 const kindStyles = {
   order_status_changed: {
@@ -133,7 +118,7 @@ export function AdminRecentActivityCard({ activities = [], loading = false, erro
                           className="shrink-0 text-[11px] font-medium tabular-nums text-zinc-400"
                           dateTime={a.at}
                         >
-                          {formatRelativeEs(a.at)}
+                          {formatHumanDateTime(a.at)}
                         </time>
                       </div>
                       <p className="mt-1 text-sm leading-snug text-zinc-700">{a.primary_line}</p>

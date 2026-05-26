@@ -7,6 +7,11 @@ import useSWR from "swr";
 
 import { CheckoutStepper } from "@/components/checkout/CheckoutStepper";
 import {
+  buildCheckoutReservationInfoPayload,
+  checkoutReservationInfoReady,
+  CheckoutReservationInfoFields,
+} from "@/components/checkout/CheckoutReservationInfoFields";
+import {
   PasswordPairLiveValidation,
   PASSWORD_PAIR_MIN_LENGTH,
 } from "@/components/checkout/PasswordPairLiveValidation";
@@ -25,6 +30,7 @@ import {
   cartTotalUsd,
   expandCartItemsToOrderPayload,
 } from "@/lib/rentalDates";
+import { formatHumanDateTime } from "@/lib/humanDateTime";
 import { EmptyState, EmptyStateIconInbox } from "@/components/ui/EmptyState";
 import {
   marketplacePrimaryBtn,
@@ -192,6 +198,11 @@ export default function CheckoutView() {
   const [guestCompanyNotice, setGuestCompanyNotice] = useState("");
   const [guestDatosPasswordChecking, setGuestDatosPasswordChecking] =
     useState(false);
+  const [promotionBrand, setPromotionBrand] = useState("");
+  const [campaignConcept, setCampaignConcept] = useState("");
+  const [activityDescription, setActivityDescription] = useState("");
+  const [complementaryInfo, setComplementaryInfo] = useState("");
+  const [instagramHandle, setInstagramHandle] = useState("");
 
   const loggedIn = authReady && accessToken && me;
   const { data: companyFromSwr, mutate: mutateCheckoutCompany } = useSWR(
@@ -276,6 +287,20 @@ export default function CheckoutView() {
       ? loggedInCompanyRepComplete || loggedInRepFieldsOk
       : clientNewCompanyReady;
 
+  const reservationInfoPayload = buildCheckoutReservationInfoPayload({
+    promotionBrand,
+    campaignConcept,
+    activityDescription,
+    complementaryInfo,
+    instagramHandle,
+  });
+
+  const additionalInfoStepCanContinue = checkoutReservationInfoReady({
+    promotionBrand,
+    campaignConcept,
+    activityDescription,
+  });
+
   async function ensureCompanyThenSubmit() {
     setError("");
     setResult(null);
@@ -317,6 +342,7 @@ export default function CheckoutView() {
 
       const orderPayload = {
         items: expandCartItemsToOrderPayload(items),
+        ...reservationInfoPayload,
       };
       const draft = await authFetch("/api/orders/", {
         method: "POST",
@@ -402,6 +428,7 @@ export default function CheckoutView() {
         password: createAccount ? password : "",
         password_confirm: createAccount ? passwordConfirm : "",
         items: expandCartItemsToOrderPayload(items),
+        ...reservationInfoPayload,
       });
       setResult(submitted);
       setGuestCreatedAccount(createAccount);
@@ -445,10 +472,7 @@ export default function CheckoutView() {
         {result.hold_expires_at ? (
           <p className="mt-2 break-words text-sm text-zinc-600">
             Reserva en revisión hasta{" "}
-            {new Date(result.hold_expires_at).toLocaleString("es-VE", {
-              dateStyle: "medium",
-              timeStyle: "short",
-            })}{" "}
+            {formatHumanDateTime(result.hold_expires_at)}{" "}
             (72 h).
           </p>
         ) : null}
@@ -676,7 +700,7 @@ export default function CheckoutView() {
                           return;
                         }
                       }
-                      setStep("confirmar");
+                      setStep("informacion-adicional");
                     } catch (err) {
                       setGuestClientEmailBlock(
                         err instanceof Error
@@ -893,7 +917,7 @@ export default function CheckoutView() {
                   className="space-y-5"
                   onSubmit={(e) => {
                     e.preventDefault();
-                    if (datosStepCanContinue) setStep("confirmar");
+                    if (datosStepCanContinue) setStep("informacion-adicional");
                   }}
                 >
                   <div>
@@ -1024,7 +1048,7 @@ export default function CheckoutView() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setStep("confirmar")}
+                    onClick={() => setStep("informacion-adicional")}
                     className={`${marketplacePrimaryBtn} min-h-11 w-full py-3 text-sm font-semibold`}
                   >
                     Continuar
@@ -1035,7 +1059,7 @@ export default function CheckoutView() {
                   className="space-y-5"
                   onSubmit={(e) => {
                     e.preventDefault();
-                    if (datosStepCanContinue) setStep("confirmar");
+                    if (datosStepCanContinue) setStep("informacion-adicional");
                   }}
                 >
                   <div
@@ -1092,6 +1116,47 @@ export default function CheckoutView() {
             </div>
           ) : null}
 
+          {step === "informacion-adicional" ? (
+            <div className="mt-10 space-y-6">
+              <form
+                className="space-y-5"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (additionalInfoStepCanContinue) setStep("confirmar");
+                }}
+              >
+                <CheckoutReservationInfoFields
+                  promotionBrand={promotionBrand}
+                  campaignConcept={campaignConcept}
+                  activityDescription={activityDescription}
+                  complementaryInfo={complementaryInfo}
+                  instagramHandle={instagramHandle}
+                  onPromotionBrandChange={setPromotionBrand}
+                  onCampaignConceptChange={setCampaignConcept}
+                  onActivityDescriptionChange={setActivityDescription}
+                  onComplementaryInfoChange={setComplementaryInfo}
+                  onInstagramHandleChange={setInstagramHandle}
+                />
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setStep("datos")}
+                    className={`${marketplaceSecondaryBtn} min-h-11 flex-1 py-2.5 text-sm font-semibold`}
+                  >
+                    Atrás
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!additionalInfoStepCanContinue}
+                    className={`${marketplacePrimaryBtn} min-h-11 flex-1 py-2.5 text-sm font-semibold`}
+                  >
+                    Continuar
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : null}
+
           {step === "confirmar" ? (
             <div className="mt-10 space-y-8">
               <div
@@ -1140,7 +1205,7 @@ export default function CheckoutView() {
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => setStep("datos")}
+                  onClick={() => setStep("informacion-adicional")}
                   className={`${marketplaceSecondaryBtn} min-h-11 flex-1 py-2.5 text-sm font-semibold`}
                 >
                   Atrás

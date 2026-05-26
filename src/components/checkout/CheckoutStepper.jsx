@@ -2,6 +2,7 @@
 
 const STEPS = [
   { id: "datos", label: "Datos" },
+  { id: "informacion-adicional", label: "Información adicional" },
   { id: "confirmar", label: "Confirmar" },
 ];
 

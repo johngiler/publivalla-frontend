@@ -39,7 +39,7 @@ import {
 } from "@/lib/mediaUrls";
 import { squareListImagePreviewButtonRingClass } from "@/lib/squareImagePreview";
 import { ROUNDED_CONTROL, ROUNDED_PDF_GRID_CARD } from "@/lib/uiRounding";
-import { orderHoldIsActive } from "@/lib/orderHoldDisplay";
+import { orderHoldIsActive, formatOrderHoldExpiresAt } from "@/lib/orderHoldDisplay";
 import { hasMunicipalInstallationDocuments } from "@/lib/orderInstallationMunicipalDocs";
 import {
   defaultArtUploadOrderItemPk,
@@ -254,12 +254,7 @@ function getClientOrderGuidanceNotice(ctx) {
   if (s === "submitted") {
     const holdLine =
       ctx.holdActive && ctx.holdExpiresAt
-        ? ` Las tomas quedan reservadas a tu nombre hasta el ${new Date(
-            ctx.holdExpiresAt,
-          ).toLocaleString("es-VE", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          })} (72 horas).`
+        ? ` Las tomas quedan reservadas a tu nombre hasta el ${formatOrderHoldExpiresAt(ctx.holdExpiresAt)} (72 horas).`
         : ctx.holdActive
           ? " Las tomas quedan reservadas a tu nombre durante 72 horas mientras revisamos."
           : "";
@@ -469,7 +464,16 @@ export function OrderClientWorkflowPanel({
 
   const hasNegotiationPdf = Boolean(order?.negotiation_sheet_pdf_url);
   const hasMunicipalityPdf = Boolean(order?.municipality_authorization_pdf_url);
-  const hasInvoicePdf = Boolean(order?.invoice_pdf_url);
+  const hasInvoicePdf = Boolean(order?.invoice_file_url);
+  const invoiceOrderCodeKey = String(order?.code ?? id ?? "").trim();
+  const invoiceRawForUi = order?.invoice_file_url
+    ? String(order.invoice_file_url)
+    : "";
+  const invoiceUrl = invoiceRawForUi ? mediaAbsoluteUrl(invoiceRawForUi) : "";
+  const isExternalInvoice = Boolean(order?.has_external_invoice);
+  const invoiceKindInPanel = invoiceRawForUi
+    ? orderAttachmentKindFromUrls(invoiceRawForUi, invoiceUrl)
+    : "other";
   const signedRawForUi = order?.negotiation_sheet_signed_url
     ? String(order.negotiation_sheet_signed_url)
     : "";
@@ -1964,16 +1968,34 @@ export function OrderClientWorkflowPanel({
                     }
                   >
                     <p className={`${labelClass} mb-2`}>Factura</p>
-                    <PdfPreview
-                      {...orderClientPdfPreviewProps}
-                      hideTitle
-                      title="Factura"
-                      downloadFileName={orderDocFilename(order, "factura")}
-                      disabled={false}
-                      emptyHint="No se pudo cargar la factura."
-                      loadKey={`${id}-invoice-resumen-${String(order?.invoice_number ?? "").trim()}`}
-                      onFetchBlob={fetchInvoiceBlob}
-                    />
+                    {invoiceKindInPanel === "pdf" ? (
+                      <PdfPreview
+                        {...orderClientPdfPreviewProps}
+                        hideTitle
+                        title="Factura"
+                        downloadFileName={orderDocFilename(order, "factura")}
+                        disabled={false}
+                        emptyHint="No se pudo cargar la factura."
+                        loadKey={`${id}-invoice-resumen-${isExternalInvoice ? "ext" : "gen"}-${invoiceOrderCodeKey}`}
+                        directUrl={
+                          isExternalInvoice
+                            ? normalizeMediaUrlForUi(invoiceRawForUi)
+                            : undefined
+                        }
+                        onFetchBlob={
+                          isExternalInvoice ? undefined : fetchInvoiceBlob
+                        }
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center sm:items-start">
+                        <RasterFromApiUrl
+                          url={invoiceRawForUi}
+                          alt="Factura"
+                          className="max-h-[min(14rem,40vh)] w-auto max-w-full rounded-[10px] border border-zinc-200/90 object-contain shadow-sm"
+                          {...catalogRasterImgAttrs}
+                        />
+                      </div>
+                    )}
                   </div>
                 ) : null}
                 {hasReceiptSaved ? (
@@ -2304,16 +2326,30 @@ export function OrderClientWorkflowPanel({
           </p>
           {hasInvoicePdf && !hasReceiptSaved ? (
             <div className="mt-3 min-h-0 max-w-lg">
-              <PdfPreview
-                {...orderClientPdfPreviewProps}
-                hideTitle
-                title="Factura"
-                downloadFileName={orderDocFilename(order, "factura")}
-                disabled={false}
-                emptyHint="No se pudo cargar la factura."
-                loadKey={`${id}-invoice-paso-actual-${String(order?.invoice_number ?? "").trim()}`}
-                onFetchBlob={fetchInvoiceBlob}
-              />
+              {invoiceKindInPanel === "pdf" ? (
+                <PdfPreview
+                  {...orderClientPdfPreviewProps}
+                  hideTitle
+                  title="Factura"
+                  downloadFileName={orderDocFilename(order, "factura")}
+                  disabled={false}
+                  emptyHint="No se pudo cargar la factura."
+                  loadKey={`${id}-invoice-paso-actual-${isExternalInvoice ? "ext" : "gen"}-${invoiceOrderCodeKey}`}
+                  directUrl={
+                    isExternalInvoice
+                      ? normalizeMediaUrlForUi(invoiceRawForUi)
+                      : undefined
+                  }
+                  onFetchBlob={isExternalInvoice ? undefined : fetchInvoiceBlob}
+                />
+              ) : (
+                <RasterFromApiUrl
+                  url={invoiceRawForUi}
+                  alt="Factura"
+                  className="max-h-[min(14rem,40vh)] w-auto max-w-full rounded-[10px] border border-zinc-200/90 object-contain shadow-sm"
+                  {...catalogRasterImgAttrs}
+                />
+              )}
             </div>
           ) : null}
           <p className={`mt-4 ${labelClass}`}>Método de pago</p>

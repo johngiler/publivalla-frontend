@@ -56,13 +56,9 @@ import {
   IconAdminClipboard,
 } from "@/components/admin/adminIcons";
 import { PedidoAdminOrderLinesList } from "@/components/admin/PedidoAdminOrderLinesList";
-import {
-  OrderAttachmentAdminPreview,
-  PedidoDocumentosNegociacionAdmin,
-} from "@/components/admin/PedidoDocumentosNegociacionAdmin";
+import { PedidoDocumentosNegociacionAdmin } from "@/components/admin/PedidoDocumentosNegociacionAdmin";
 import { PedidosSectionSkeleton } from "@/components/admin/skeletons/PedidosSectionSkeleton";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
-import { PaymentReceiptLightbox } from "@/components/orders/PaymentReceiptLightbox";
 import { useAuth } from "@/context/AuthContext";
 import {
   EmptyState,
@@ -86,14 +82,10 @@ import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 import { parsePaginatedResponse } from "@/services/api";
 import { authFetch, authFetchBlob } from "@/services/authApi";
-
-function formatPedidoAlta(iso) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("es-VE", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
-}
+import {
+  formatDateTimeFull,
+  formatHumanDateTime,
+} from "@/lib/humanDateTime";
 
 /** Monto en USD con dos decimales (sin símbolo). */
 function formatUsdAmount(value) {
@@ -296,38 +288,6 @@ function PedidoSiguienteEstadoCell({ order, orderRef, onStatusChangeRequest }) {
         ) : null}
       </div>
     </div>
-  );
-}
-
-/** Solo lectura: lo cargó el cliente en checkout. */
-function PedidoDatosPagoPortal({ order, panelId }) {
-  const methodLabel =
-    typeof order?.payment_method_label === "string" &&
-    order.payment_method_label.trim() !== ""
-      ? order.payment_method_label
-      : "Sin indicar";
-
-  return (
-    <AdminDetailSection
-      panelId={panelId}
-      sectionId="payment"
-      title="Datos de pago"
-    >
-      <AdminDetailInset className="space-y-5">
-        <AdminDetailField label="Método de pago">
-          <span className="font-medium text-zinc-900">{methodLabel}</span>
-        </AdminDetailField>
-        <div className="max-w-[min(100%,26rem)]">
-          <OrderAttachmentAdminPreview
-            order={order}
-            title="Comprobante"
-            downloadBase="comprobante"
-            fileUrl={order?.payment_receipt_url}
-            emptyHint="La empresa puede subir el comprobante cuando el pedido esté facturado o pagado, desde Mis pedidos."
-          />
-        </div>
-      </AdminDetailInset>
-    </AdminDetailSection>
   );
 }
 
@@ -640,7 +600,13 @@ export function PedidosAdminSection() {
                               </div>
                             </td>
                             <td className="max-sm:whitespace-nowrap px-3 py-2 text-xs text-zinc-600">
-                              {formatPedidoAlta(o.created_at)}
+                              <time
+                                dateTime={o.created_at}
+                                title={formatDateTimeFull(o.created_at)}
+                                className="whitespace-nowrap text-sm tabular-nums text-zinc-700"
+                              >
+                                {formatHumanDateTime(o.created_at)}
+                              </time>
                             </td>
                             <td className="max-w-[12rem] px-3 py-2 align-middle sm:max-w-[14rem]">
                               {clientQ ? (
@@ -695,13 +661,16 @@ export function PedidosAdminSection() {
                               fullWidthContent
                             >
                               <AdminAccordionDetailHeader
-                                badgeText={formatPedidoAlta(o.created_at)}
+                                badgeText={
+                                  o.created_at
+                                    ? formatHumanDateTime(o.created_at)
+                                    : ""
+                                }
                                 titleLabel="Pedido"
                                 titleLine={
                                   clientDisplayName(o) ||
                                   "Sin nombre de empresa"
                                 }
-                                hint="Resumen y líneas del pedido"
                               />
 
                               <div className="mt-4 grid w-full min-w-0 grid-cols-1 gap-4 lg:mt-5 lg:grid-cols-2 lg:items-start lg:gap-6 xl:gap-7">
@@ -874,66 +843,53 @@ export function PedidosAdminSection() {
                                           ${formatUsdAmount(o.total_amount)}
                                         </span>
                                       </AdminDetailField>
-                                      <AdminDetailField label="Referencia">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                          <span className="font-mono text-sm font-semibold tracking-tight text-zinc-800">
-                                            {orderRef || "—"}
-                                          </span>
-                                          <AdminCopyIconButton
-                                            value={orderRef}
-                                            ariaLabel="Copiar referencia del pedido"
-                                          />
-                                        </div>
-                                      </AdminDetailField>
                                       <AdminDetailField label="Creada">
-                                        {o.created_at
-                                          ? new Date(
-                                              o.created_at,
-                                            ).toLocaleString("es-VE")
-                                          : adminDetailEmpty("")}
+                                        {o.created_at ? (
+                                          <time
+                                            dateTime={o.created_at}
+                                            title={formatDateTimeFull(o.created_at)}
+                                          >
+                                            {formatHumanDateTime(o.created_at)}
+                                          </time>
+                                        ) : (
+                                          adminDetailEmpty("")
+                                        )}
                                       </AdminDetailField>
                                       <AdminDetailField label="Enviada">
-                                        {o.submitted_at
-                                          ? new Date(
-                                              o.submitted_at,
-                                            ).toLocaleString("es-VE")
-                                          : adminDetailEmpty("")}
+                                        {o.submitted_at ? (
+                                          <time
+                                            dateTime={o.submitted_at}
+                                            title={formatDateTimeFull(o.submitted_at)}
+                                          >
+                                            {formatHumanDateTime(o.submitted_at)}
+                                          </time>
+                                        ) : (
+                                          adminDetailEmpty("")
+                                        )}
                                       </AdminDetailField>
                                       <AdminDetailField label="Reserva hasta">
-                                        {o.hold_expires_at
-                                          ? new Date(
-                                              o.hold_expires_at,
-                                            ).toLocaleString("es-VE")
-                                          : adminDetailEmpty("")}
+                                        {o.hold_expires_at ? (
+                                          <time
+                                            dateTime={o.hold_expires_at}
+                                            title={formatDateTimeFull(o.hold_expires_at)}
+                                          >
+                                            {formatHumanDateTime(o.hold_expires_at)}
+                                          </time>
+                                        ) : (
+                                          adminDetailEmpty("")
+                                        )}
                                       </AdminDetailField>
-                                    </AdminDetailInset>
-                                  </AdminDetailSection>
-                                </div>
-
-                                <div className="min-w-0">
-                                  <PedidoDatosPagoPortal
-                                    order={o}
-                                    panelId={panelId}
-                                  />
-                                </div>
-
-                                <div className="min-w-0">
-                                  <AdminDetailSection
-                                    panelId={panelId}
-                                    sectionId="lines"
-                                    title="Líneas"
-                                  >
-                                    <AdminDetailInset className="space-y-2">
-                                      <PedidoAdminOrderLinesList
-                                        orderId={o.id}
-                                        items={o.items || []}
-                                        onOpenLineCover={(payload) =>
-                                          setLineCoverLightbox({
-                                            open: true,
-                                            ...payload,
-                                          })
-                                        }
-                                      />
+                                      <AdminDetailField label="Método de pago">
+                                        {typeof o.payment_method_label ===
+                                          "string" &&
+                                        o.payment_method_label.trim() !== "" ? (
+                                          <span className="font-medium text-zinc-900">
+                                            {o.payment_method_label}
+                                          </span>
+                                        ) : (
+                                          adminDetailEmpty("Sin indicar")
+                                        )}
+                                      </AdminDetailField>
                                     </AdminDetailInset>
                                   </AdminDetailSection>
                                 </div>
@@ -945,6 +901,27 @@ export function PedidosAdminSection() {
                                     accessToken={accessToken}
                                     onSaved={reloadOrders}
                                   />
+                                </div>
+
+                                <div className="min-w-0 lg:col-span-2">
+                                  <AdminDetailSection
+                                    panelId={panelId}
+                                    sectionId="lines"
+                                    title="Líneas reservadas y artes adjuntos"
+                                  >
+                                    <AdminDetailInset className="space-y-2">
+                                      <PedidoAdminOrderLinesList
+                                        order={o}
+                                        accessToken={accessToken}
+                                        onOpenLineCover={(payload) =>
+                                          setLineCoverLightbox({
+                                            open: true,
+                                            ...payload,
+                                          })
+                                        }
+                                      />
+                                    </AdminDetailInset>
+                                  </AdminDetailSection>
                                 </div>
                               </div>
                             </AdminAccordionRowPanel>

@@ -52,6 +52,10 @@ import {
 } from "@/lib/swr/fetchers";
 import { catalogRasterImgAttrs } from "@/lib/catalogImageProps";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import {
+  formatDateTimeFull,
+  formatHumanDateTime,
+} from "@/lib/humanDateTime";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 import { parsePaginatedResponse } from "@/services/api";
 import { authFetch, authFetchForm } from "@/services/authApi";
@@ -722,11 +726,16 @@ export function UsuariosAdminSection() {
                                         )}
                                       </AdminDetailField>
                                       <AdminDetailField label="Fecha de alta">
-                                        {u.date_joined
-                                          ? new Date(
-                                              u.date_joined,
-                                            ).toLocaleString("es-VE")
-                                          : adminDetailEmpty("")}
+                                        {u.date_joined ? (
+                                          <time
+                                            dateTime={u.date_joined}
+                                            title={formatDateTimeFull(u.date_joined)}
+                                          >
+                                            {formatHumanDateTime(u.date_joined)}
+                                          </time>
+                                        ) : (
+                                          adminDetailEmpty("")
+                                        )}
                                       </AdminDetailField>
                                       {u.role === "client" ? (
                                         <AdminDetailField label="Empresa vinculada">
@@ -840,9 +849,16 @@ export function UsuariosAdminSection() {
             <div className="sm:col-span-2">
               <p className={adminLabel}>Alta</p>
               <p className="mt-1 text-sm text-zinc-800">
-                {selected.date_joined
-                  ? new Date(selected.date_joined).toLocaleString("es-VE")
-                  : "—"}
+                {selected.date_joined ? (
+                  <time
+                    dateTime={selected.date_joined}
+                    title={formatDateTimeFull(selected.date_joined)}
+                  >
+                    {formatHumanDateTime(selected.date_joined)}
+                  </time>
+                ) : (
+                  "—"
+                )}
               </p>
             </div>
             {selected.role === "client" ? (

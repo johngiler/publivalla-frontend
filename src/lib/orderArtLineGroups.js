@@ -267,3 +267,50 @@ export function groupArtEntriesByOrderLine(artEntries, lineItems) {
 
   return ordered;
 }
+
+/**
+ * Artes visibles en el acordeón de una línea concreta del pedido (admin).
+ *
+ * @param {Record<string, unknown>} lineItem
+ * @param {Array<{ id: unknown; orderItemPk?: number | null }>} artEntries
+ * @param {Array<Record<string, unknown>>} lineItems
+ */
+export function artEntriesForOrderLineItem(lineItem, artEntries, lineItems) {
+  const list = Array.isArray(lineItems) ? lineItems : [];
+  const entries = Array.isArray(artEntries) ? artEntries : [];
+  if (!entries.length) return [];
+
+  if (orderNeedsPerCodeArtUpload(list)) {
+    const pk = orderLineItemPk(lineItem);
+    if (pk == null) return [];
+    return entries.filter(
+      (e) => e.orderItemPk != null && Number(e.orderItemPk) === pk,
+    );
+  }
+
+  if (list.length <= 1) return entries;
+
+  const firstPk = list[0] != null ? orderLineItemPk(list[0]) : null;
+  const linePk = orderLineItemPk(lineItem);
+  return firstPk != null && linePk === firstPk ? entries : [];
+}
+
+/**
+ * Artes sin línea asociada (solo cuando el pedido usa tarjetas por línea).
+ *
+ * @param {Array<{ id: unknown; orderItemPk?: number | null }>} artEntries
+ * @param {Array<Record<string, unknown>>} lineItems
+ */
+export function orphanArtEntries(artEntries, lineItems) {
+  const list = Array.isArray(lineItems) ? lineItems : [];
+  const entries = Array.isArray(artEntries) ? artEntries : [];
+  if (!orderNeedsPerCodeArtUpload(list) || !entries.length) return [];
+
+  const assigned = new Set();
+  for (const it of list) {
+    for (const e of artEntriesForOrderLineItem(it, entries, list)) {
+      assigned.add(e.id);
+    }
+  }
+  return entries.filter((e) => !assigned.has(e.id));
+}
