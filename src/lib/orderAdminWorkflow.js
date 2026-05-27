@@ -34,6 +34,7 @@ export function orderAdminIsBeforeInvoice(order) {
 
 /** Verbo de la acción (infinitivo) para el botón «acción?» en el listado admin. */
 const ORDER_ADMIN_TRANSITION_ACTION = {
+  draft: "Borrador",
   submitted: "Enviar",
   client_approved: "Aprobar solicitud",
   invoiced: "Facturar",
@@ -264,6 +265,16 @@ export function orderAdminShowRejectPedidoActivoButton(order) {
 
 export function getOrderAdminQuickNext(order) {
   const current = String(order?.status ?? "");
+
+  if (current === "cancelled") {
+    const meta = ORDER_STATUS.find((x) => String(x.v) === "draft");
+    return {
+      status: "draft",
+      label: meta?.l ?? "Borrador",
+      blockedReason: "",
+    };
+  }
+
   if (TERMINAL.has(current)) return null;
 
   const curIdx = happyIndex(current);
