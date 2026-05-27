@@ -938,10 +938,14 @@ export function OrderClientWorkflowPanel({
     status === "active" ||
     status === "art_approved" ||
     status === "invoiced";
+  /** Tras facturar/pagar (o estados posteriores): el cliente puede revisar factura y comprobante. */
+  const step3Complete =
+    hasReceiptSaved ||
+    ["paid", "permit_pending", "installation", "active"].includes(status);
   const step3CanExpandResumen =
     step3Unlocked &&
-    canPayFields &&
-    (hasInvoicePdf || hasReceiptSaved);
+    (hasInvoicePdf || hasReceiptSaved) &&
+    (canPayFields || step3Complete);
   const step4Complete = Boolean(permit);
   /** 1 hoja · 2 artes · 3 pago (factura + comprobante) · 4 permiso (solo uno con formulario «Paso actual»). */
   const activeDocUploadStep =
