@@ -23,6 +23,11 @@ import {
   marketplaceLinePriceClass,
 } from "@/lib/marketplaceLineTypography";
 import { formatUsdMoney } from "@/lib/marketplacePricing";
+import {
+  orderLineDiscountAmount,
+  orderLineHasDiscount,
+  orderLineOriginalSubtotal,
+} from "@/lib/orderLinePricing";
 import { cartLineMonthsByYear } from "@/lib/rentalMonthPills";
 import {
   squareListImagePreviewButtonRingClass,
@@ -255,9 +260,23 @@ export function PedidoAdminOrderLinesList({ order, accessToken, onOpenLineCover 
             </div>
             <div className="shrink-0 text-right sm:pt-0.5">
               <p className={marketplaceLineFieldLabelClass}>Subtotal (sin IVA)</p>
-              <p className={marketplaceLinePriceClass}>
-                {formatUsdMoney(Number(it.subtotal))}
-              </p>
+              {orderLineHasDiscount(it) ? (
+                <>
+                  <p className="text-xs text-zinc-400 line-through tabular-nums">
+                    {formatUsdMoney(orderLineOriginalSubtotal(it))}
+                  </p>
+                  <p className={marketplaceLinePriceClass}>
+                    {formatUsdMoney(Number(it.subtotal))}
+                  </p>
+                  <p className="mt-0.5 text-xs font-medium text-emerald-800">
+                    −{formatUsdMoney(orderLineDiscountAmount(it))}
+                  </p>
+                </>
+              ) : (
+                <p className={marketplaceLinePriceClass}>
+                  {formatUsdMoney(Number(it.subtotal))}
+                </p>
+              )}
             </div>
           </div>
         )}

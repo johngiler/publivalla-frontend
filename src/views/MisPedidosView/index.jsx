@@ -45,6 +45,14 @@ import {
 } from "@/lib/marketplacePricing";
 import { orderListReference } from "@/lib/orderDisplay";
 import {
+  orderCatalogSubtotal,
+  orderDiscountTotal,
+  orderHasDiscount,
+  orderLineDiscountAmount,
+  orderLineHasDiscount,
+  orderLineOriginalSubtotal,
+} from "@/lib/orderLinePricing";
+import {
   marketplaceLineFieldLabelClass,
   marketplaceLinePriceClass,
   marketplaceOrderRefClass,
@@ -368,12 +376,28 @@ function MisPedidosMultiLinesPreview({
                   className="mt-1 w-full"
                   maxVisibleMonths={2}
                 />
-                <p
-                  className={`mt-1 w-full text-left text-xs ${marketplaceLinePriceClass}`}
-                  aria-label={`Importe sin IVA para ${codeLabel}`}
-                >
-                  {Number.isFinite(lineSub) ? formatUsdInteger(lineSub) : "—"}
-                </p>
+                <div className="mt-1 w-full text-left">
+                  {orderLineHasDiscount(it) ? (
+                    <>
+                      <p className="text-[10px] text-zinc-400 line-through tabular-nums">
+                        {formatUsdInteger(orderLineOriginalSubtotal(it))}
+                      </p>
+                      <p
+                        className={`text-xs ${marketplaceLinePriceClass}`}
+                        aria-label={`Importe acordado sin IVA para ${codeLabel}`}
+                      >
+                        {Number.isFinite(lineSub) ? formatUsdInteger(lineSub) : "—"}
+                      </p>
+                    </>
+                  ) : (
+                    <p
+                      className={`text-xs ${marketplaceLinePriceClass}`}
+                      aria-label={`Importe sin IVA para ${codeLabel}`}
+                    >
+                      {Number.isFinite(lineSub) ? formatUsdInteger(lineSub) : "—"}
+                    </p>
+                  )}
+                </div>
               </li>
             );
           })}
@@ -581,19 +605,24 @@ export default function MisPedidosView() {
 
   const mergeOrderIntoList = useCallback(
     (updated) => {
+      if (!updated || updated.id == null) return;
       mutateOrders(
         (current) => {
           if (!current || typeof current !== "object") return current;
           const p = parsePaginatedResponse(current);
-          const uid = Number(updated?.id);
-          const results = p.results.map((r) =>
-            Number.isFinite(uid) && Number(r?.id) === uid
-              ? { ...r, ...updated }
-              : r,
-          );
-          return { ...current, results, count: p.count };
+          const uid = Number(updated.id);
+          let found = false;
+          const results = p.results.map((r) => {
+            if (Number.isFinite(uid) && Number(r?.id) === uid) {
+              found = true;
+              return { ...r, ...updated };
+            }
+            return r;
+          });
+          if (!found) return current;
+          return { ...current, results: [...results], count: p.count };
         },
-        { revalidate: false },
+        { revalidate: true },
       );
     },
     [mutateOrders],
@@ -921,7 +950,25 @@ export default function MisPedidosView() {
                               </p>
                             ) : null}
                           </div>
-                          {!multi ? (
+                          {!multi && first && orderLineHasDiscount(first) ? (
+                            <div className="shrink-0 text-right">
+                              <p className={marketplaceLineFieldLabelClass}>
+                                Subtotal catálogo (sin IVA)
+                              </p>
+                              <p className="text-sm text-zinc-400 line-through tabular-nums">
+                                {formatUsdInteger(orderLineOriginalSubtotal(first))}
+                              </p>
+                              <p className={`mt-1 ${marketplaceLineFieldLabelClass}`}>
+                                Subtotal acordado (sin IVA)
+                              </p>
+                              <p
+                                className={marketplaceLinePriceClass}
+                                aria-label={`Importe acordado sin IVA para ${singleCodeLabel}`}
+                              >
+                                {formatUsdInteger(lineDisplay)}
+                              </p>
+                            </div>
+                          ) : !multi ? (
                             <div className="shrink-0 text-right">
                               <p className={marketplaceLineFieldLabelClass}>
                                 Subtotal (sin IVA)
@@ -931,6 +978,27 @@ export default function MisPedidosView() {
                                 aria-label={`Importe sin IVA para ${singleCodeLabel}`}
                               >
                                 {formatUsdInteger(lineDisplay)}
+                              </p>
+                            </div>
+                          ) : orderHasDiscount(o) ? (
+                            <div className="shrink-0 text-right">
+                              <p className={marketplaceLineFieldLabelClass}>
+                                Subtotal catálogo (sin IVA)
+                              </p>
+                              <p className="text-sm tabular-nums text-zinc-600">
+                                {formatUsdMoney(orderCatalogSubtotal(o))}
+                              </p>
+                              <p className={`mt-1 ${marketplaceLineFieldLabelClass}`}>
+                                Descuento
+                              </p>
+                              <p className="text-sm font-semibold text-emerald-800">
+                                −{formatUsdMoney(orderDiscountTotal(o))}
+                              </p>
+                              <p className={`mt-1 ${marketplaceLineFieldLabelClass}`}>
+                                Subtotal acordado (sin IVA)
+                              </p>
+                              <p className={marketplaceLinePriceClass}>
+                                {formatUsdInteger(Number(o.total_amount))}
                               </p>
                             </div>
                           ) : (
@@ -944,7 +1012,7 @@ export default function MisPedidosView() {
                             </div>
                           )}
                         </div>
-                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-3">
+                        <div className="flex flex-wrap items-start justify-between gap-3 border-t border-zinc-100 pt-3">
                           <div className="min-w-0">
                             <p className={marketplaceLineFieldLabelClass}>
                               {o.submitted_at ? "Enviado el" : "Registrado el"}
@@ -1165,12 +1233,34 @@ export default function MisPedidosView() {
                                         >
                                           Subtotal (sin IVA)
                                         </p>
-                                        <p
-                                          className={marketplaceLinePriceClass}
-                                          aria-label={`Importe sin IVA para ${codeLabel}`}
-                                        >
-                                          {formatUsdMoney(Number(it.subtotal))}
-                                        </p>
+                                        {orderLineHasDiscount(it) ? (
+                                          <>
+                                            <p className="text-xs text-zinc-400 line-through tabular-nums">
+                                              {formatUsdMoney(
+                                                orderLineOriginalSubtotal(it),
+                                              )}
+                                            </p>
+                                            <p
+                                              className={marketplaceLinePriceClass}
+                                              aria-label={`Importe acordado sin IVA para ${codeLabel}`}
+                                            >
+                                              {formatUsdMoney(Number(it.subtotal))}
+                                            </p>
+                                            <p className="mt-0.5 text-xs font-medium text-emerald-800">
+                                              −
+                                              {formatUsdMoney(
+                                                orderLineDiscountAmount(it),
+                                              )}
+                                            </p>
+                                          </>
+                                        ) : (
+                                          <p
+                                            className={marketplaceLinePriceClass}
+                                            aria-label={`Importe sin IVA para ${codeLabel}`}
+                                          >
+                                            {formatUsdMoney(Number(it.subtotal))}
+                                          </p>
+                                        )}
                                       </div>
                                     </div>
                                   </li>

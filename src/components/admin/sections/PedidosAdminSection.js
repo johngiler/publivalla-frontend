@@ -56,6 +56,7 @@ import {
   IconAdminChevronDown,
   IconAdminClipboard,
 } from "@/components/admin/adminIcons";
+import { PedidoAdminLinePricing } from "@/components/admin/PedidoAdminLinePricing";
 import { PedidoAdminOrderLinesList } from "@/components/admin/PedidoAdminOrderLinesList";
 import { PedidoDocumentosNegociacionAdmin } from "@/components/admin/PedidoDocumentosNegociacionAdmin";
 import { PedidosSectionSkeleton } from "@/components/admin/skeletons/PedidosSectionSkeleton";
@@ -79,6 +80,11 @@ import {
   getOrderAdminQuickNext,
   orderAdminShowRejectPedidoActivoButton,
 } from "@/lib/orderAdminWorkflow";
+import {
+  orderCatalogSubtotal,
+  orderDiscountTotal,
+  orderHasDiscount,
+} from "@/lib/orderLinePricing";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 import { parsePaginatedResponse } from "@/services/api";
@@ -830,7 +836,19 @@ export function PedidosAdminSection() {
                                     title="Datos del pedido"
                                   >
                                     <AdminDetailInset>
-                                      <AdminDetailField label="Total (USD)">
+                                      {orderHasDiscount(o) ? (
+                                        <>
+                                          <AdminDetailField label="Subtotal catálogo (sin IVA)">
+                                            {formatUsdMoney(orderCatalogSubtotal(o))}
+                                          </AdminDetailField>
+                                          <AdminDetailField label="Descuento">
+                                            <span className="font-semibold text-emerald-800">
+                                              −{formatUsdMoney(orderDiscountTotal(o))}
+                                            </span>
+                                          </AdminDetailField>
+                                        </>
+                                      ) : null}
+                                      <AdminDetailField label="Total (sin IVA)">
                                         <span className="text-lg font-bold tabular-nums text-zinc-900">
                                           ${formatUsdAmount(o.total_amount)}
                                         </span>
@@ -914,6 +932,14 @@ export function PedidosAdminSection() {
                                       />
                                     </AdminDetailInset>
                                   </AdminDetailSection>
+                                </div>
+
+                                <div className="min-w-0 lg:col-span-2">
+                                  <PedidoAdminLinePricing
+                                    order={o}
+                                    panelId={panelId}
+                                    onSaved={reloadOrders}
+                                  />
                                 </div>
                               </div>
                             </AdminAccordionRowPanel>

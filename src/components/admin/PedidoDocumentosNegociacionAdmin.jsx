@@ -160,12 +160,18 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
   const [invoiceDigitalFile, setInvoiceDigitalFile] = useState(null);
 
   const fetchNegotiationPdf = useCallback(async () => {
-    return authFetchBlob(`/api/orders/${id}/download-negotiation-sheet/`, { token: accessToken });
-  }, [accessToken, id]);
+    const v = encodeURIComponent(String(order?.updated_at ?? Date.now()));
+    return authFetchBlob(`/api/orders/${id}/download-negotiation-sheet/?v=${v}`, {
+      token: accessToken,
+    });
+  }, [accessToken, id, order?.updated_at]);
 
   const fetchMunicipalityPdf = useCallback(async () => {
-    return authFetchBlob(`/api/orders/${id}/download-municipality-letter/`, { token: accessToken });
-  }, [accessToken, id]);
+    const v = encodeURIComponent(String(order?.updated_at ?? Date.now()));
+    return authFetchBlob(`/api/orders/${id}/download-municipality-letter/?v=${v}`, {
+      token: accessToken,
+    });
+  }, [accessToken, id, order?.updated_at]);
 
   const fetchInvoicePdf = useCallback(async () => {
     return authFetchBlob(`/api/orders/${id}/download-invoice/`, { token: accessToken });
@@ -178,12 +184,24 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
   }, [accessToken, id]);
 
   const fetchNegotiationSignedBlob = useCallback(async () => {
-    return authFetchBlob(`/api/orders/${id}/download-negotiation-sheet-signed/`, { token: accessToken });
-  }, [accessToken, id]);
+    const v = encodeURIComponent(String(order?.updated_at ?? Date.now()));
+    return authFetchBlob(`/api/orders/${id}/download-negotiation-sheet-signed/?v=${v}`, { token: accessToken });
+  }, [accessToken, id, order?.updated_at]);
+
+  const negotiationSignedPdfPreviewLoadKey = useMemo(
+    () =>
+      id != null
+        ? `negotiation-signed-${id}-${String(order?.updated_at ?? "")}-${String(order?.negotiation_sheet_signed_url ?? "")}`
+        : "negotiation-signed",
+    [id, order?.updated_at, order?.negotiation_sheet_signed_url],
+  );
 
   const negotiationPdfPreviewLoadKey = useMemo(
-    () => (id != null ? `negotiation-${id}` : "negotiation"),
-    [id],
+    () =>
+      id != null
+        ? `negotiation-${id}-${String(order?.updated_at ?? "")}-${String(order?.negotiation_sheet_pdf_url ?? "")}`
+        : "negotiation",
+    [id, order?.updated_at, order?.negotiation_sheet_pdf_url],
   );
 
   const uploadInvoiceDigital = useCallback(
@@ -284,7 +302,7 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
                   downloadFileName={orderDocFilename(order, "hoja-negociacion-firmada")}
                   disabled={false}
                   emptyHint="Documento no disponible."
-                  loadKey={`${id}-negotiation-signed-blob`}
+                  loadKey={negotiationSignedPdfPreviewLoadKey}
                   onFetchBlob={fetchNegotiationSignedBlob}
                 />
               ) : (
@@ -353,7 +371,7 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
               downloadFileName={orderDocFilename(order, "carta-municipio")}
               disabled={!order?.municipality_authorization_pdf_url}
               emptyHint="Se genera al aprobar la solicitud; úsala para trámites ante el municipio."
-              loadKey={`${id}-municipality`}
+              loadKey={`${id}-municipality-${String(order?.updated_at ?? "")}`}
               onFetchBlob={fetchMunicipalityPdf}
             />
             {invoiceDigitalUrl ? (

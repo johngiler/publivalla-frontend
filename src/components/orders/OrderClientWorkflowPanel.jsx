@@ -10,6 +10,7 @@ import {
 import { orderLineItemPk } from "@/components/catalog/MarketplaceLineSpaceHeading";
 import { OrderArtUploadFields } from "@/components/orders/OrderArtUploadFields";
 import { OrderArtUploadModal } from "@/components/orders/OrderArtUploadModal";
+import { NegotiationSheetSignedUpload } from "@/components/orders/NegotiationSheetSignedUpload";
 import { OrderClientArtAttachmentsGrouped } from "@/components/orders/OrderClientArtAttachmentsGrouped";
 import { OrderPendingArtStaging } from "@/components/orders/OrderPendingArtStaging";
 import { MountingCompanyCreatableSelect } from "@/components/orders/MountingCompanyCreatableSelect";
@@ -420,6 +421,10 @@ export function OrderClientWorkflowPanel({
   const [mountProvidersLoading, setMountProvidersLoading] = useState(false);
   const [wantReplaceReceipt, setWantReplaceReceipt] = useState(false);
   const [wantReplaceSignedSheet, setWantReplaceSignedSheet] = useState(false);
+  const [signNegotiationOnWeb, setSignNegotiationOnWeb] = useState(false);
+  const [negotiationSignatureEmpty, setNegotiationSignatureEmpty] = useState(true);
+  /** @type {import("react").RefObject<import("@/components/ui/SignatureCanvasField").SignatureCanvasHandle | null>} */
+  const negotiationSignatureRef = useRef(null);
   /** Panel «Ver hoja de negociación»: un chip en el resumen despliega descarga + subida de la hoja firmada. */
   const [signedInitialUploadOpen, setSignedInitialUploadOpen] = useState(false);
   /** Facturada con comprobante: «Paso actual» pago solo al pulsar «Cambiar comprobante» en el resumen. */
@@ -458,6 +463,12 @@ export function OrderClientWorkflowPanel({
       /** @type {Array<{ src: string; alt?: string; downloadFileName?: string }>} */ ([]),
     initialIndex: 0,
   });
+  /** Tras subir/firmar hoja: reflejar de inmediato la URL devuelta por el API (sin esperar al merge SWR). */
+  const [signedSheetUrlOverride, setSignedSheetUrlOverride] = useState(
+    /** @type {string | null} */ (null),
+  );
+  /** Paso 1 completado (persiste aunque el merge de la lista tarde o no traiga la URL). */
+  const [signedSheetMarkedComplete, setSignedSheetMarkedComplete] = useState(false);
 
   /** Solo paso 1 sin firma: abrir una vez el panel de subida por pedido (factura/comprobante/artes no se autoabren si ya hay archivo). */
   const negotiationUploadAutoOpenedRef = useRef(false);
@@ -474,9 +485,13 @@ export function OrderClientWorkflowPanel({
   const invoiceKindInPanel = invoiceRawForUi
     ? orderAttachmentKindFromUrls(invoiceRawForUi, invoiceUrl)
     : "other";
-  const signedRawForUi = order?.negotiation_sheet_signed_url
-    ? String(order.negotiation_sheet_signed_url)
-    : "";
+  const signedRawForUi = signedSheetUrlOverride
+    ? signedSheetUrlOverride
+    : order?.negotiation_sheet_signed_url
+      ? String(order.negotiation_sheet_signed_url)
+      : "";
+  const hasSignedSheet =
+    signedSheetMarkedComplete || Boolean(signedRawForUi.trim());
   const signedUrl = signedRawForUi ? mediaAbsoluteUrl(signedRawForUi) : "";
   const signedKindInPanel = signedUrl
     ? orderAttachmentKindFromUrls(signedRawForUi, signedUrl)
@@ -594,6 +609,10 @@ export function OrderClientWorkflowPanel({
     setArtsLightboxIndex(0);
     setReceiptLightbox({ open: false, items: [], initialIndex: 0 });
     setSignedNegotiationLightbox({ open: false, items: [], initialIndex: 0 });
+    setSignedSheetUrlOverride(null);
+    setSignedSheetMarkedComplete(
+      Boolean(String(order?.negotiation_sheet_signed_url ?? "").trim()),
+    );
     setPendingArtDeleteId(null);
     setArtFiles([]);
     negotiationUploadAutoOpenedRef.current = false;
@@ -618,7 +637,7 @@ export function OrderClientWorkflowPanel({
     (status === "client_approved" ||
       status === "invoiced" ||
       status === "paid") &&
-    !signedUrl &&
+    !hasSignedSheet &&
     hasNegotiationPdf;
   const canPayFields = status === "invoiced" || status === "paid";
   const canUploadArt = status === "client_approved";
@@ -752,14 +771,21 @@ export function OrderClientWorkflowPanel({
     });
   }, [signedRawForUi]);
 
+  const signedSignedPreviewKey = useMemo(
+    () =>
+      `${id}-signed-resumen-${signedRawForUi}-${String(order?.updated_at ?? "")}`,
+    [id, signedRawForUi, order?.updated_at],
+  );
+
   const fetchNegotiationSignedBlob = useCallback(async () => {
+    const v = encodeURIComponent(String(order?.updated_at ?? Date.now()));
     return authFetchBlob(
-      `/api/orders/${id}/download-negotiation-sheet-signed/`,
+      `/api/orders/${id}/download-negotiation-sheet-signed/?v=${v}`,
       {
         token: accessToken,
       },
     );
-  }, [accessToken, id]);
+  }, [accessToken, id, order?.updated_at]);
 
   const fetchInvoiceBlob = useCallback(async () => {
     return authFetchBlob(`/api/orders/${id}/download-invoice/`, {
@@ -791,7 +817,7 @@ export function OrderClientWorkflowPanel({
         status,
         holdActive,
         holdExpiresAt,
-        hasSignedNegotiation: Boolean(signedUrl),
+        hasSignedNegotiation: hasSignedSheet,
         hasInvoicePdf,
         hasReceiptSaved,
         hasArtAttachments,
@@ -802,7 +828,7 @@ export function OrderClientWorkflowPanel({
       status,
       holdActive,
       holdExpiresAt,
-      signedUrl,
+      hasSignedSheet,
       hasInvoicePdf,
       hasReceiptSaved,
       hasArtAttachments,
@@ -826,13 +852,13 @@ export function OrderClientWorkflowPanel({
     const n = clientGuidanceNotice;
     if (n.kind === "outcome" || n.kind === "done") return true;
     if (n.kind === "waiting" && status === "submitted") return true;
-    if (n.kind === "action" && status === "client_approved" && !signedUrl) {
+    if (n.kind === "action" && status === "client_approved" && !hasSignedSheet) {
       return !signedInitialUploadOpen;
     }
     if (
       n.kind === "action" &&
       status === "client_approved" &&
-      signedUrl &&
+      hasSignedSheet &&
       !hasArtAttachments &&
       canUploadArt
     ) {
@@ -841,7 +867,7 @@ export function OrderClientWorkflowPanel({
     if (
       n.kind === "waiting" &&
       status === "client_approved" &&
-      signedUrl &&
+      hasSignedSheet &&
       hasArtAttachments
     ) {
       return !artsResumenExpanded;
@@ -886,14 +912,14 @@ export function OrderClientWorkflowPanel({
     hasMunicipalDocsComplete,
     showInvoicedPaymentPasoActual,
     signedInitialUploadOpen,
-    signedUrl,
+    hasSignedSheet,
     status,
   ]);
 
   const showArtsInStepper = canUploadArt || hasArtAttachments;
   const showDocStepper =
     canUploadSigned ||
-    signedUrl ||
+    hasSignedSheet ||
     hasInvoicePdf ||
     canPayFields ||
     showArtsInStepper ||
@@ -904,7 +930,7 @@ export function OrderClientWorkflowPanel({
     status === "active" ||
     status === "art_approved" ||
     status === "invoiced";
-  const step1Complete = Boolean(signedUrl);
+  const step1Complete = hasSignedSheet;
   const step2Complete = hasArtAttachments;
   const step3CanExpandResumen = hasInvoicePdf || hasReceiptSaved;
   const step4Complete = Boolean(permit);
@@ -1082,14 +1108,81 @@ export function OrderClientWorkflowPanel({
     }
   }, [accessToken, id, order]);
 
+  const resetNegotiationSignedForm = useCallback(() => {
+    setSignNegotiationOnWeb(false);
+    setNegotiationSignatureEmpty(true);
+    negotiationSignatureRef.current?.clear();
+    setSignedFile(null);
+  }, []);
+
+  useEffect(() => {
+    if (String(order?.negotiation_sheet_signed_url ?? "").trim()) {
+      setSignedSheetMarkedComplete(true);
+    }
+  }, [order?.negotiation_sheet_signed_url]);
+
+  const applyNegotiationSignedResponse = useCallback(
+    (data) => {
+      onOrderUpdated(data);
+      setSignedSheetMarkedComplete(true);
+      const nextUrl =
+        data?.negotiation_sheet_signed_url != null
+          ? String(data.negotiation_sheet_signed_url).trim()
+          : "";
+      if (nextUrl) {
+        setSignedSheetUrlOverride(nextUrl);
+      }
+      setSignedInitialUploadOpen(false);
+      setWantReplaceSignedSheet(false);
+      negotiationUploadAutoOpenedRef.current = true;
+      resetNegotiationSignedForm();
+    },
+    [onOrderUpdated, resetNegotiationSignedForm],
+  );
+
   const uploadSigned = useCallback(async () => {
-    if (!id || !signedFile) {
+    if (!id) return;
+    setLocalErr("");
+
+    if (signNegotiationOnWeb) {
+      if (negotiationSignatureRef.current?.isEmpty()) {
+        setLocalErr("Dibuja tu firma en el recuadro antes de continuar.");
+        return;
+      }
+      setBusy("signed");
+      try {
+        const blob = await negotiationSignatureRef.current.toBlob();
+        if (!blob) {
+          setLocalErr("No se pudo capturar la firma. Intenta de nuevo.");
+          return;
+        }
+        const fd = new FormData();
+        fd.append("signature_png", blob, "firma.png");
+        const data = await authFetchForm(
+          `/api/orders/${id}/sign-negotiation-sheet/`,
+          {
+            method: "POST",
+            formData: fd,
+            token: accessToken,
+          },
+        );
+        applyNegotiationSignedResponse(data);
+      } catch (e) {
+        setLocalErr(
+          e instanceof Error ? e.message : "No se pudo registrar la firma.",
+        );
+      } finally {
+        setBusy("");
+      }
+      return;
+    }
+
+    if (!signedFile) {
       setLocalErr(
         "Selecciona el archivo de la hoja firmada (JPG, PNG, WebP o PDF, máx. 5 MB).",
       );
       return;
     }
-    setLocalErr("");
     setBusy("signed");
     try {
       const fd = new FormData();
@@ -1102,10 +1195,7 @@ export function OrderClientWorkflowPanel({
           token: accessToken,
         },
       );
-      onOrderUpdated(data);
-      setSignedFile(null);
-      setWantReplaceSignedSheet(false);
-      setSignedInitialUploadOpen(false);
+      applyNegotiationSignedResponse(data);
     } catch (e) {
       setLocalErr(
         e instanceof Error ? e.message : "No se pudo subir la hoja firmada.",
@@ -1113,7 +1203,14 @@ export function OrderClientWorkflowPanel({
     } finally {
       setBusy("");
     }
-  }, [accessToken, id, onOrderUpdated, signedFile]);
+  }, [
+    accessToken,
+    applyNegotiationSignedResponse,
+    id,
+    negotiationSignatureRef,
+    signNegotiationOnWeb,
+    signedFile,
+  ]);
 
   const savePayment = useCallback(async () => {
     if (!id) return;
@@ -1447,7 +1544,7 @@ export function OrderClientWorkflowPanel({
       clientGuidanceNotice != null ||
       hasNegotiationPdf ||
       hasInvoicePdf ||
-      signedUrl ||
+      hasSignedSheet ||
       canUploadSigned ||
       canPayFields ||
       canUploadArt ||
@@ -1467,7 +1564,7 @@ export function OrderClientWorkflowPanel({
     hasInvoicePdf,
     hasNegotiationPdf,
     permit,
-    signedUrl,
+    hasSignedSheet,
   ]);
 
   if (!showSection) {
@@ -1770,11 +1867,14 @@ export function OrderClientWorkflowPanel({
                         )}
                         disabled={false}
                         emptyHint="No se pudo cargar la vista previa."
-                        loadKey={`${id}-signed-resumen-${signedRawForUi}`}
+                        loadKey={signedSignedPreviewKey}
                         onFetchBlob={fetchNegotiationSignedBlob}
                       />
                     ) : signedKindInPanel === "image" ? (
-                      <div className="flex flex-col items-center sm:items-start">
+                      <div
+                        key={signedSignedPreviewKey}
+                        className="flex flex-col items-center sm:items-start"
+                      >
                         <button
                           type="button"
                           className={`relative block aspect-[4/3] w-full max-w-sm overflow-hidden rounded-[10px] border border-zinc-200/90 bg-zinc-100 shadow-sm ${squareListImagePreviewButtonRingClass} p-0`}
@@ -1820,40 +1920,32 @@ export function OrderClientWorkflowPanel({
                       </button>
                     ) : (
                       <div className="space-y-3">
-                        <FileDropZoneField
-                          id={`signed-resumen-replace-${id}`}
-                          label="Nueva hoja firmada"
-                          value={signedFile}
-                          onChange={setSignedFile}
-                          accept="image/jpeg,image/png,image/webp,application/pdf"
-                          helperText="JPG, PNG, WebP o PDF · máximo 5 MB. Luego pulsa «Guardar hoja firmada»."
-                          formatsHint="JPG, PNG, WebP o PDF · máximo 5 MB"
-                          formatErrorMessage="Formato no permitido. Usa JPG, PNG, WebP o PDF."
-                          dropZoneAriaLabel="Zona para reemplazar la hoja de negociación firmada"
+                        <NegotiationSheetSignedUpload
+                          idPrefix={`signed-resumen-replace-${id}`}
+                          signedFile={signedFile}
+                          onSignedFileChange={setSignedFile}
+                          signOnWeb={signNegotiationOnWeb}
+                          onSignOnWebChange={setSignNegotiationOnWeb}
+                          signatureEmpty={negotiationSignatureEmpty}
+                          onSignatureEmptyChange={setNegotiationSignatureEmpty}
+                          signatureRef={negotiationSignatureRef}
+                          fileDropLabel="Nueva hoja firmada"
+                          busy={busy === "signed"}
+                          onSubmit={() => uploadSigned()}
+                          submitLabel="Guardar hoja firmada"
+                          busySubmitLabel="Guardando…"
                         />
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            disabled={!signedFile || busy === "signed"}
-                            onClick={() => uploadSigned()}
-                            className={`${marketplacePrimaryBtn} min-h-10 px-4 py-2 text-sm font-semibold`}
-                          >
-                            {busy === "signed"
-                              ? "Guardando…"
-                              : "Guardar hoja firmada"}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={busy === "signed"}
-                            onClick={() => {
-                              setWantReplaceSignedSheet(false);
-                              setSignedFile(null);
-                            }}
-                            className={`${marketplaceSecondaryBtn} min-h-10 px-4 py-2 text-sm font-semibold`}
-                          >
-                            Cancelar
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          disabled={busy === "signed"}
+                          onClick={() => {
+                            setWantReplaceSignedSheet(false);
+                            resetNegotiationSignedForm();
+                          }}
+                          className={`${marketplaceSecondaryBtn} min-h-10 px-4 py-2 text-sm font-semibold`}
+                        >
+                          Cancelar
+                        </button>
                       </div>
                     )}
                   </div>
@@ -2257,28 +2349,21 @@ export function OrderClientWorkflowPanel({
               </button>
             ) : null}
           </div>
-          <FileDropZoneField
+          <NegotiationSheetSignedUpload
+            idPrefix={`signed-${id}`}
+            signedFile={signedFile}
+            onSignedFileChange={setSignedFile}
+            signOnWeb={signNegotiationOnWeb}
+            onSignOnWebChange={setSignNegotiationOnWeb}
+            signatureEmpty={negotiationSignatureEmpty}
+            onSignatureEmptyChange={setNegotiationSignatureEmpty}
+            signatureRef={negotiationSignatureRef}
+            busy={busy === "signed"}
+            onSubmit={() => uploadSigned()}
+            submitLabel="Subir hoja de negociación firmada"
+            busySubmitLabel="Subiendo…"
             className="mt-4"
-            id={`signed-${id}`}
-            label="Subir hoja de negociación firmada"
-            value={signedFile}
-            onChange={setSignedFile}
-            accept="image/jpeg,image/png,image/webp,application/pdf"
-            helperText="JPG, PNG, WebP o PDF · máximo 5 MB. Luego pulsa el botón de abajo."
-            formatsHint="JPG, PNG, WebP o PDF · máximo 5 MB"
-            formatErrorMessage="Formato no permitido. Usa JPG, PNG, WebP o PDF."
-            dropZoneAriaLabel="Zona para adjuntar la hoja de negociación firmada"
           />
-          <button
-            type="button"
-            disabled={!signedFile || busy === "signed"}
-            onClick={() => uploadSigned()}
-            className={`${marketplacePrimaryBtn} mt-3 min-h-10 px-4 py-2 text-sm font-semibold`}
-          >
-            {busy === "signed"
-              ? "Subiendo…"
-              : "Subir hoja de negociación firmada"}
-          </button>
         </div>
       ) : null}
 
