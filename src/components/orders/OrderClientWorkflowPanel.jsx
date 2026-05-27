@@ -299,12 +299,13 @@ function getClientOrderGuidanceNotice(ctx) {
         "Ya recibimos tus artes y la hoja firmada. El equipo validará las piezas antes de facturar; te avisaremos cuando haya novedades.",
     };
   }
-  if (s === "art_approved" && !ctx.hasInvoicePdf) {
+  if (s === "art_approved") {
     return {
       kind: "waiting",
       nextStep: "Facturación",
-      detail:
-        "Los artes ya están aprobados. El equipo preparará la factura; pronto podrás verla y adjuntar el comprobante de pago.",
+      detail: ctx.hasInvoicePdf
+        ? "Los artes ya están aprobados. El equipo está finalizando la facturación; te avisaremos cuando puedas consultar la factura y adjuntar el comprobante de pago."
+        : "Los artes ya están aprobados. El equipo preparará la factura; pronto podrás verla y adjuntar el comprobante de pago.",
     };
   }
   if (s === "invoiced" && !ctx.hasReceiptSaved) {
@@ -880,7 +881,7 @@ export function OrderClientWorkflowPanel({
     ) {
       return !artsResumenExpanded;
     }
-    if (n.kind === "waiting" && status === "art_approved" && !hasInvoicePdf) {
+    if (n.kind === "waiting" && status === "art_approved") {
       return !paymentResumenExpanded;
     }
     if (n.kind === "action" && status === "invoiced" && !hasReceiptSaved) {
@@ -938,7 +939,9 @@ export function OrderClientWorkflowPanel({
     status === "art_approved" ||
     status === "invoiced";
   const step3CanExpandResumen =
-    step3Unlocked && (hasInvoicePdf || hasReceiptSaved);
+    step3Unlocked &&
+    canPayFields &&
+    (hasInvoicePdf || hasReceiptSaved);
   const step4Complete = Boolean(permit);
   /** 1 hoja · 2 artes · 3 pago (factura + comprobante) · 4 permiso (solo uno con formulario «Paso actual»). */
   const activeDocUploadStep =
@@ -956,7 +959,7 @@ export function OrderClientWorkflowPanel({
   /** Paso del resumen que corresponde al estado API (espera del equipo o documento pendiente). */
   const activeDocFlowStep =
     activeDocUploadStep ??
-    (step3Unlocked && status === "art_approved" && !hasInvoicePdf
+    (step3Unlocked && status === "art_approved"
       ? 3
       : step3Unlocked && status === "invoiced" && !hasReceiptSaved
         ? 3
@@ -1772,7 +1775,7 @@ export function OrderClientWorkflowPanel({
                         : "Ver factura y comprobante"}
                     </span>
                   </button>
-                ) : step3Unlocked && status === "art_approved" && !hasInvoicePdf ? (
+                ) : step3Unlocked && status === "art_approved" ? (
                   <span className={docStepChipClass(3)}>
                     <span className="tabular-nums">3.</span>
                     <span>Factura y comprobante (en preparación)</span>
