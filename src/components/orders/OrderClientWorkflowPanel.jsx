@@ -1071,8 +1071,9 @@ export function OrderClientWorkflowPanel({
     setLocalErr("");
     setBusy("negotiation");
     try {
+      const v = encodeURIComponent(String(order?.updated_at ?? Date.now()));
       const blob = await authFetchBlob(
-        `/api/orders/${id}/download-negotiation-sheet/`,
+        `/api/orders/${id}/download-negotiation-sheet/?v=${v}`,
         {
           token: accessToken,
         },
@@ -1085,7 +1086,7 @@ export function OrderClientWorkflowPanel({
     } finally {
       setBusy("");
     }
-  }, [accessToken, id, order]);
+  }, [accessToken, id, order?.updated_at, order]);
 
   const downloadMunicipality = useCallback(async () => {
     if (!id) return;
@@ -1116,10 +1117,14 @@ export function OrderClientWorkflowPanel({
   }, []);
 
   useEffect(() => {
-    if (String(order?.negotiation_sheet_signed_url ?? "").trim()) {
+    const url = String(order?.negotiation_sheet_signed_url ?? "").trim();
+    if (url) {
       setSignedSheetMarkedComplete(true);
+    } else {
+      setSignedSheetMarkedComplete(false);
+      setSignedSheetUrlOverride(null);
     }
-  }, [order?.negotiation_sheet_signed_url]);
+  }, [order?.negotiation_sheet_signed_url, order?.updated_at]);
 
   const applyNegotiationSignedResponse = useCallback(
     (data) => {

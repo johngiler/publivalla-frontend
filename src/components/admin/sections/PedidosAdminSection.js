@@ -353,6 +353,42 @@ export function PedidosAdminSection() {
 
   const reloadOrders = useCallback(() => mutateOrders(), [mutateOrders]);
 
+  const mergeOrderInList = useCallback(
+    (updated) => {
+      if (!updated || updated.id == null) return;
+      mutateOrders(
+        (current) => {
+          if (!current || typeof current !== "object") return current;
+          const p = parsePaginatedResponse(current);
+          const uid = Number(updated.id);
+          let found = false;
+          const results = p.results.map((r) => {
+            if (Number.isFinite(uid) && Number(r?.id) === uid) {
+              found = true;
+              return { ...r, ...updated };
+            }
+            return r;
+          });
+          if (!found) return current;
+          return { ...current, results: [...results], count: p.count };
+        },
+        { revalidate: true },
+      );
+    },
+    [mutateOrders],
+  );
+
+  const refreshOrderAfterSave = useCallback(
+    async (updated) => {
+      if (updated?.id != null) {
+        mergeOrderInList(updated);
+      } else {
+        await mutateOrders();
+      }
+    },
+    [mergeOrderInList, mutateOrders],
+  );
+
   const downloadOrdersReport = useCallback(async () => {
     setErr("");
     setMsg("");
@@ -909,7 +945,7 @@ export function PedidosAdminSection() {
                                     order={o}
                                     panelId={panelId}
                                     accessToken={accessToken}
-                                    onSaved={reloadOrders}
+                                    onSaved={refreshOrderAfterSave}
                                   />
                                 </div>
 
@@ -938,7 +974,7 @@ export function PedidosAdminSection() {
                                   <PedidoAdminLinePricing
                                     order={o}
                                     panelId={panelId}
-                                    onSaved={reloadOrders}
+                                    onSaved={refreshOrderAfterSave}
                                   />
                                 </div>
                               </div>

@@ -30,7 +30,7 @@ import { authFetch } from "@/services/authApi";
  * @param {{
  *   order: Record<string, unknown>;
  *   panelId: string;
- *   onSaved?: () => void | Promise<void>;
+ *   onSaved?: (updated?: Record<string, unknown>) => void | Promise<void>;
  * }} props
  */
 export function PedidoAdminLinePricing({ order, panelId, onSaved }) {
@@ -104,22 +104,25 @@ export function PedidoAdminLinePricing({ order, panelId, onSaved }) {
     }
     setSaving(true);
     try {
-      await authFetch(`/api/orders/${orderId}/line-pricing/`, {
+      const updated = await authFetch(`/api/orders/${orderId}/line-pricing/`, {
         method: "PATCH",
         body: { items: payloadItems },
       });
-      const regenSheet = ["client_approved", "art_approved"].includes(
-        String(order?.status ?? ""),
+      const regenSheet = Boolean(
+        updated?.negotiation_sheet_pdf_url ??
+          order?.negotiation_sheet_pdf_url ??
+          ["client_approved", "art_approved"].includes(String(order?.status ?? "")),
       );
       const hadSignedSheet = Boolean(order?.negotiation_sheet_signed_url);
+      const signedCleared = hadSignedSheet && !updated?.negotiation_sheet_signed_url;
       setMsg(
         regenSheet
-          ? hadSignedSheet
-            ? "Precios guardados. La hoja de negociación se regeneró; el cliente debe descargarla y firmarla de nuevo."
-            : "Precios guardados. La hoja de negociación se regeneró; revisa la vista previa en Documentos."
+          ? signedCleared || hadSignedSheet
+            ? "Precios guardados. La hoja de negociación se actualizó; el cliente debe descargarla y firmarla de nuevo."
+            : "Precios guardados. La hoja de negociación se actualizó; revisa la vista previa en Documentos."
           : "Precios acordados guardados.",
       );
-      await onSaved?.();
+      await onSaved?.(updated);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "No se pudieron guardar los precios.");
     } finally {
