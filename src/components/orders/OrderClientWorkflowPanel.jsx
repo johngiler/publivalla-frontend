@@ -667,6 +667,12 @@ export function OrderClientWorkflowPanel({
     ? order.art_attachments
     : [];
   const hasArtAttachments = artAttachments.length > 0;
+  const showArtsInStepper = canUploadArt || hasArtAttachments;
+  const step1Complete = hasSignedSheet;
+  const step2Complete = hasArtAttachments;
+  /** Factura/comprobante: solo tras hoja firmada y artes (si el paso 2 aplica). */
+  const step3Unlocked =
+    step1Complete && (!showArtsInStepper || step2Complete);
   /** Bloque de listado / subida de artes (visible con pedido «Pagada» o cuando ya hay adjuntos). */
   const showArtAttachmentsSection = canUploadArt || hasArtAttachments;
 
@@ -841,7 +847,9 @@ export function OrderClientWorkflowPanel({
   const showPaymentForm = status === "invoiced";
   /** Sin comprobante: siempre visible; con comprobante: solo al pulsar «Cambiar comprobante». */
   const showInvoicedPaymentPasoActual =
-    showPaymentForm && (!hasReceiptSaved || invoicedPaymentPasoVisible);
+    showPaymentForm &&
+    step3Unlocked &&
+    (!hasReceiptSaved || invoicedPaymentPasoVisible);
 
   /**
    * «Siguiente paso»: solo si el paso no es interactuable ahora (p. ej. ocultar el aviso de subir documentos
@@ -916,7 +924,6 @@ export function OrderClientWorkflowPanel({
     status,
   ]);
 
-  const showArtsInStepper = canUploadArt || hasArtAttachments;
   const showDocStepper =
     canUploadSigned ||
     hasSignedSheet ||
@@ -930,9 +937,8 @@ export function OrderClientWorkflowPanel({
     status === "active" ||
     status === "art_approved" ||
     status === "invoiced";
-  const step1Complete = hasSignedSheet;
-  const step2Complete = hasArtAttachments;
-  const step3CanExpandResumen = hasInvoicePdf || hasReceiptSaved;
+  const step3CanExpandResumen =
+    step3Unlocked && (hasInvoicePdf || hasReceiptSaved);
   const step4Complete = Boolean(permit);
   /** 1 hoja · 2 artes · 3 pago (factura + comprobante) · 4 permiso (solo uno con formulario «Paso actual»). */
   const activeDocUploadStep =
@@ -950,11 +956,17 @@ export function OrderClientWorkflowPanel({
   /** Paso del resumen que corresponde al estado API (espera del equipo o documento pendiente). */
   const activeDocFlowStep =
     activeDocUploadStep ??
-    (status === "art_approved" && !hasInvoicePdf
+    (step3Unlocked && status === "art_approved" && !hasInvoicePdf
       ? 3
-      : status === "invoiced" && !hasReceiptSaved
+      : step3Unlocked && status === "invoiced" && !hasReceiptSaved
         ? 3
         : null);
+
+  useEffect(() => {
+    if (!step3Unlocked && paymentResumenExpanded) {
+      setPaymentResumenExpanded(false);
+    }
+  }, [step3Unlocked, paymentResumenExpanded]);
 
   /** Primera vez con hoja pendiente de firma: abrir panel de subida (no autoabrir factura/comprobante/artes ya guardados). */
   useEffect(() => {
@@ -1760,12 +1772,12 @@ export function OrderClientWorkflowPanel({
                         : "Ver factura y comprobante"}
                     </span>
                   </button>
-                ) : status === "art_approved" && !hasInvoicePdf ? (
+                ) : step3Unlocked && status === "art_approved" && !hasInvoicePdf ? (
                   <span className={docStepChipClass(3)}>
                     <span className="tabular-nums">3.</span>
                     <span>Factura y comprobante (en preparación)</span>
                   </span>
-                ) : canPayFields && status === "invoiced" ? (
+                ) : step3Unlocked && canPayFields && status === "invoiced" ? (
                   <span
                     className={docStepChipClass(3)}
                     aria-current={activeDocFlowStep === 3 ? "step" : undefined}
@@ -1773,7 +1785,7 @@ export function OrderClientWorkflowPanel({
                     <span className="tabular-nums">3.</span>
                     <span>Factura y comprobante</span>
                   </span>
-                ) : canPayFields && status === "paid" ? (
+                ) : step3Unlocked && canPayFields && status === "paid" ? (
                   <span className={docStepPendingClass}>
                     <span className="tabular-nums">3.</span>
                     <span>Factura y comprobante (comprobante opcional)</span>
