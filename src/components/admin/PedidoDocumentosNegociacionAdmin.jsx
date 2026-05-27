@@ -15,6 +15,7 @@ import {
 import { RasterFromApiUrl } from "@/components/media/RasterFromApiUrl";
 import { FileDropZoneField } from "@/components/ui/FileDropZoneField";
 import { isPdfReceiptUrl } from "@/lib/orderPaymentMethods";
+import { orderAdminIsBeforeInvoice } from "@/lib/orderAdminWorkflow";
 import { ROUNDED_CONTROL, ROUNDED_PDF_GRID_CARD } from "@/lib/uiRounding";
 import { normalizeMediaUrlForUi } from "@/lib/mediaUrls";
 import { authFetchBlob, authFetchForm, mediaAbsoluteUrl } from "@/services/authApi";
@@ -247,11 +248,13 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
     : "";
   const hasGeneratedInvoicePdf = Boolean(order?.invoice_pdf_url);
   const orderCodeKey = String(order?.code ?? id ?? "").trim();
+  const showDigitalFilesSection = orderAdminIsBeforeInvoice(order);
 
   return (
     <div className="space-y-4">
       <PedidoInformacionAdicionalAdmin order={order} panelId={panelId} />
 
+      {showDigitalFilesSection ? (
       <AdminDetailSection panelId={panelId} sectionId="digital-files" title="Archivos digitales">
         <AdminDetailInset className="space-y-4">
           {err ? (
@@ -286,6 +289,7 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
           </button>
         </AdminDetailInset>
       </AdminDetailSection>
+      ) : null}
 
       <AdminDetailSection
         panelId={panelId}

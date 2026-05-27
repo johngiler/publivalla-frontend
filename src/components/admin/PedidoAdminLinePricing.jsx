@@ -23,6 +23,7 @@ import {
   orderLinePricingEditable,
   parseUsdInput,
 } from "@/lib/orderLinePricing";
+import { orderAdminIsBeforeInvoice } from "@/lib/orderAdminWorkflow";
 import { authFetch } from "@/services/authApi";
 
 /**
@@ -39,7 +40,6 @@ export function PedidoAdminLinePricing({ order, panelId, onSaved }) {
     [order?.items],
   );
   const editable = orderLinePricingEditable(order);
-  const hasExistingDiscount = orderHasDiscountReadonly(order, items);
 
   const [open, setOpen] = useState(false);
   const [drafts, setDrafts] = useState({});
@@ -111,9 +111,12 @@ export function PedidoAdminLinePricing({ order, panelId, onSaved }) {
       const regenSheet = ["client_approved", "art_approved"].includes(
         String(order?.status ?? ""),
       );
+      const hadSignedSheet = Boolean(order?.negotiation_sheet_signed_url);
       setMsg(
         regenSheet
-          ? "Precios guardados. La hoja de negociación se regeneró; revisa la vista previa en Documentos."
+          ? hadSignedSheet
+            ? "Precios guardados. La hoja de negociación se regeneró; el cliente debe descargarla y firmarla de nuevo."
+            : "Precios guardados. La hoja de negociación se regeneró; revisa la vista previa en Documentos."
           : "Precios acordados guardados.",
       );
       await onSaved?.();
@@ -122,15 +125,14 @@ export function PedidoAdminLinePricing({ order, panelId, onSaved }) {
     } finally {
       setSaving(false);
     }
-  }, [drafts, items, onSaved, orderId]);
+  }, [drafts, items, onSaved, order?.negotiation_sheet_signed_url, order?.status, orderId]);
 
-  if (!editable && !hasExistingDiscount) {
+  if (!orderAdminIsBeforeInvoice(order)) {
     return null;
   }
 
-  const toggleLabel = editable
-    ? "Ajustar precios acordados por toma"
-    : "Ver precios acordados y descuentos";
+  const toggleLabel = "Ajustar precios acordados por toma";
+  const hasSignedSheet = Boolean(order?.negotiation_sheet_signed_url);
 
   return (
     <div className="space-y-4">
@@ -143,11 +145,11 @@ export function PedidoAdminLinePricing({ order, panelId, onSaved }) {
         />
         <span className="min-w-0 text-sm leading-snug text-zinc-800">
           <span className="font-semibold text-zinc-900">{toggleLabel}</span>
-          {editable ? (
-            <span className="mt-0.5 block text-zinc-600">
-              Se pueden aplicar descuentos hasta que el cliente suba la hoja firmada.
-            </span>
-          ) : null}
+          <span className="mt-0.5 block text-zinc-600">
+            {hasSignedSheet
+              ? "Puedes renegociar importes hasta facturar. Al guardar, se regenera la hoja de negociación y el cliente debe firmarla de nuevo."
+              : "Puedes aplicar descuentos por toma hasta facturar el pedido."}
+          </span>
         </span>
       </label>
 
@@ -167,7 +169,7 @@ export function PedidoAdminLinePricing({ order, panelId, onSaved }) {
 
         {!editable ? (
           <p className="text-sm text-zinc-600">
-            Descuento aplicado en este pedido. Los importes ya están fijados para facturación.
+            Los precios de este pedido ya no se pueden modificar.
           </p>
         ) : null}
 
@@ -261,9 +263,4 @@ export function PedidoAdminLinePricing({ order, panelId, onSaved }) {
       ) : null}
     </div>
   );
-}
-
-function orderHasDiscountReadonly(order, items) {
-  if (orderDiscountTotal(order) > 0.004) return true;
-  return items.some((it) => orderLineDiscountAmount(it) > 0.004);
 }
