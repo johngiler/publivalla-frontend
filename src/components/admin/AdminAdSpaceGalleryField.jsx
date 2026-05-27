@@ -159,11 +159,15 @@ export const AdminAdSpaceGalleryField = forwardRef(function AdminAdSpaceGalleryF
 
   return (
     <div>
-      <p className={adminLabel}>Imágenes de portada</p>
-      <p className="mt-1 text-xs text-zinc-500">
-        Una o varias imágenes. La primera es la portada principal en catálogo y pedidos. JPG, PNG, WebP o GIF · máx.
-        10 MB c/u · hasta {MAX_ITEMS} archivos. Recomendado cuadrado (p. ej. 1200×1200 px).
-      </p>
+      {!readOnly ? (
+        <>
+          <p className={adminLabel}>Imágenes de portada</p>
+          <p className="mt-1 text-xs text-zinc-500">
+            Una o varias imágenes. La primera es la portada principal en catálogo y pedidos. JPG, PNG, WebP o GIF ·
+            máx. 10 MB c/u · hasta {MAX_ITEMS} archivos. Recomendado cuadrado (p. ej. 1200×1200 px).
+          </p>
+        </>
+      ) : null}
 
       {readOnly && items.length === 0 ? (
         <p className="mt-3 text-sm text-zinc-400">Sin imágenes de portada.</p>

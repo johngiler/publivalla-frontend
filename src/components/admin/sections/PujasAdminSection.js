@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import useSWR, { mutate as globalMutate } from "swr";
 
+import { AdminAccordionDetailHeader, adminAdSpaceAccordionHeader } from "@/components/admin/AdminAccordionDetail";
 import { AdminConfirmDialog } from "@/components/admin/AdminConfirmDialog";
 import { AdminInlineAlert } from "@/components/admin/AdminInlineAlert";
 import {
@@ -107,14 +108,16 @@ function CompetingBidGroupBlock({ group, onAward }) {
     >
       <header className="border-b border-zinc-100 bg-zinc-50/80 px-4 py-3.5 sm:px-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="font-mono text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              {group.ad_space_code}
-            </p>
-            <h3 className="mt-0.5 text-base font-semibold text-zinc-900">{group.ad_space_title}</h3>
-            <p className="mt-1 text-sm text-zinc-600">{group.shopping_center_name}</p>
+          <div className="min-w-0 flex-1">
+            <AdminAccordionDetailHeader
+              embedded
+              {...adminAdSpaceAccordionHeader(group.ad_space_code, group.ad_space_title)}
+            />
+            {group.shopping_center_name ? (
+              <p className="mt-2 text-sm text-zinc-600">{group.shopping_center_name}</p>
+            ) : null}
           </div>
-          <p className="shrink-0 rounded-full bg-zinc-900 px-3 py-1 text-xs font-semibold text-white">
+          <p className="shrink-0 self-start rounded-full bg-zinc-900 px-3 py-1 text-xs font-semibold text-white">
             {bidCount} participante{bidCount === 1 ? "" : "s"}
           </p>
         </div>
@@ -372,7 +375,8 @@ export function PujasAdminSection() {
                   setSearch(v);
                   setPage(1);
                 }}
-                placeholder="Espacio publicitario, centro, empresa o pedido…"
+                placeholder="Buscar por espacio, empresa o pedido…"
+                className="min-w-0 flex-[1.6]"
               />
               <AdminFilterSelect
                 id="pujas-filter-center"

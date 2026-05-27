@@ -38,19 +38,24 @@ export function usersAdminListPath(page, search, role) {
   return `/api/admin/users/?${p.toString()}`;
 }
 
-export function centersAdminListPath(page, search, active) {
+export function centersAdminListPath(page, search, active, city) {
   const p = new URLSearchParams();
   p.set("page", String(page));
   if (search.trim()) p.set("search", search.trim());
   if (active && active !== "all") p.set("active", active);
+  const c = (city ?? "").trim();
+  if (c && c !== "all") p.set("city", c);
   return `/api/admin/centers/?${p.toString()}`;
 }
 
-export function spacesAdminListPath(page, search, status) {
+export function spacesAdminListPath(page, search, status, shoppingCenterId) {
   const p = new URLSearchParams();
   p.set("page", String(page));
   if (search.trim()) p.set("search", search.trim());
   if (status && status !== "all") p.set("status", status);
+  const cid =
+    shoppingCenterId != null ? String(shoppingCenterId).trim() : "";
+  if (cid && cid !== "all") p.set("shopping_center", cid);
   return `/api/admin/spaces/?${p.toString()}`;
 }
 

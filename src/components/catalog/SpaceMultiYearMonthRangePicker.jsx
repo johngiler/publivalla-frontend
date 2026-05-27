@@ -231,10 +231,18 @@ export function SpaceMultiYearMonthRangePicker({
 
   return (
     <div className="space-y-6" aria-readonly={readOnly || undefined}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-semibold text-zinc-900">
-          Calendario {yearLabel ? `(${yearLabel})` : ""}
-        </p>
+      <div
+        className={
+          blockForbiddenView
+            ? "flex justify-end"
+            : "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        }
+      >
+        {!blockForbiddenView ? (
+          <p className="text-sm font-semibold text-zinc-900">
+            Calendario {yearLabel ? `(${yearLabel})` : ""}
+          </p>
+        ) : null}
         <CatalogMonthLegend
           showReserved={!readOnly && hasReservedMonths}
           showActive={!readOnly && hasActiveMonths}

@@ -19,6 +19,7 @@ import {
   AdminDetailInset,
   AdminDetailSection,
   adminDetailEmpty,
+  adminOrderAccordionHeader,
 } from "@/components/admin/AdminAccordionDetail";
 import { AdminAccordionToggle } from "@/components/admin/AdminAccordionToggle";
 import { AdminCopyIconButton } from "@/components/admin/AdminCopyIconButton";
@@ -508,7 +509,8 @@ export function PedidosAdminSection() {
                 id="pedidos-filter-q"
                 value={filterQ}
                 onChange={setFilterQ}
-                placeholder="Empresa, número o referencia (#…-ORDER-…)"
+                placeholder="Buscar por empresa o referencia del pedido…"
+                className="min-w-0 flex-[1.6]"
               />
               <AdminFilterSelect
                 id="pedidos-filter-status"
@@ -655,22 +657,12 @@ export function PedidosAdminSection() {
                             </td>
                           </tr>
                           {open ? (
-                            <AdminAccordionRowPanel
-                              colSpan={8}
-                              panelId={panelId}
-                              fullWidthContent
-                            >
+                            <AdminAccordionRowPanel colSpan={8} panelId={panelId}>
                               <AdminAccordionDetailHeader
-                                badgeText={
-                                  o.created_at
-                                    ? formatHumanDateTime(o.created_at)
-                                    : ""
-                                }
-                                titleLabel="Pedido"
-                                titleLine={
-                                  clientDisplayName(o) ||
-                                  "Sin nombre de empresa"
-                                }
+                                {...adminOrderAccordionHeader(
+                                  orderRef || `#${o.id}`,
+                                  clientDisplayName(o) || "Sin empresa",
+                                )}
                               />
 
                               <div className="mt-4 grid w-full min-w-0 grid-cols-1 gap-4 lg:mt-5 lg:grid-cols-2 lg:items-start lg:gap-6 xl:gap-7">

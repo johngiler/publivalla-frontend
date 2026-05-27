@@ -1,28 +1,24 @@
-/** Unidad de facturación (mes / día), alineado con backend/apps/orders/utils/rental_billing.py */
+/** Cotización en reservas: solo meses de calendario (alineado con backend). */
 
 import { parseISODateOnly } from "@/lib/rentalDates";
 import { highSeasonFromSpace } from "@/lib/highSeasonPricing";
 
 export const RENTAL_BILLING_MONTH = "calendar_month";
+/** @deprecated Solo meses; se mantiene por compatibilidad API. */
 export const RENTAL_BILLING_DAY = "calendar_day";
 
-export const RENTAL_BILLING_OPTIONS = [
-  { value: RENTAL_BILLING_MONTH, label: "Por mes de calendario" },
-  { value: RENTAL_BILLING_DAY, label: "Por día (mensual ÷ 30)" },
-];
 export const DAYS_PER_MONTH_COMMERCIAL = 30;
 
 export const MIN_RESERVATION_CALENDAR_DAYS = 1;
 
-/** @param {unknown} raw */
-export function normalizeRentalBillingUnit(raw) {
-  const v = String(raw || RENTAL_BILLING_MONTH).trim().toLowerCase();
-  return v === RENTAL_BILLING_DAY ? RENTAL_BILLING_DAY : RENTAL_BILLING_MONTH;
+/** @param {unknown} _raw */
+export function normalizeRentalBillingUnit(_raw) {
+  return RENTAL_BILLING_MONTH;
 }
 
-/** @param {Record<string, unknown> | null | undefined} spaceOrItem */
-export function isDailyBilling(spaceOrItem) {
-  return normalizeRentalBillingUnit(spaceOrItem?.rental_billing_unit) === RENTAL_BILLING_DAY;
+/** @param {Record<string, unknown> | null | undefined} _spaceOrItem */
+export function isDailyBilling(_spaceOrItem) {
+  return false;
 }
 
 /** @param {number | string} monthlyUsd */

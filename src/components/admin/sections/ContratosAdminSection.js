@@ -10,6 +10,8 @@ import {
   AdminDetailField,
   AdminDetailInset,
   AdminDetailSection,
+  adminContractAccordionHeader,
+  adminDetailEmpty,
 } from "@/components/admin/AdminAccordionDetail";
 import { AdminAccordionToggle } from "@/components/admin/AdminAccordionToggle";
 import { AdminCopyIconButton } from "@/components/admin/AdminCopyIconButton";
@@ -407,14 +409,13 @@ export function ContratosAdminSection() {
         ) : (
           <>
             <AdminFiltersRow>
-              <div className="w-full min-w-0 shrink-0 basis-full">
-                <AdminFilterSearchInput
-                  id="contratos-filter-q"
-                  value={filterQ}
-                  onChange={setFilterQ}
-                  placeholder="Empresa, pedido, código de espacio (ej. DEMO-T5A o DEMO - T5A)…"
-                />
-              </div>
+              <AdminFilterSearchInput
+                id="contratos-filter-q"
+                value={filterQ}
+                onChange={setFilterQ}
+                placeholder="Buscar por empresa, pedido o código de espacio…"
+                className="min-w-0 flex-[1.6]"
+              />
               <AdminFilterSelect
                 id="contratos-filter-order-status"
                 label="Pedido"
@@ -606,29 +607,137 @@ export function ContratosAdminSection() {
                           </tr>
                           {open ? (
                             <AdminAccordionRowPanel colSpan={7} panelId={panelId}>
-                              <AdminDetailInset className="space-y-4">
-                                <AdminAccordionDetailHeader
-                                  titleLabel="Línea de contrato"
-                                  titleLine={`${it.ad_space_code} — ${it.ad_space_title || "Espacio publicitario"}`}
-                                  hint={clientName || undefined}
-                                />
-                                <AdminDetailSection panelId={panelId} sectionId="econom" title="Importes">
-                                  <div className="grid gap-3 sm:grid-cols-2">
+                              <AdminAccordionDetailHeader
+                                {...adminContractAccordionHeader(
+                                  it.ad_space_code,
+                                  it.ad_space_title,
+                                )}
+                              />
+                              <div className="mt-5 grid w-full max-w-none grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
+                                <AdminDetailSection
+                                  panelId={panelId}
+                                  sectionId="espacio"
+                                  title="Espacio y empresa"
+                                >
+                                  <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
+                                    <div className="sm:col-span-2">
+                                      <AdminDetailField label="Espacio publicitario">
+                                        <CatalogSpaceLink
+                                          spaceId={it.ad_space_id}
+                                          className="font-semibold text-zinc-900 no-underline hover:underline"
+                                        >
+                                          {it.ad_space_title || it.ad_space_code}
+                                        </CatalogSpaceLink>
+                                        <p className="mt-0.5 font-mono text-xs text-zinc-500">
+                                          {it.ad_space_code}
+                                        </p>
+                                      </AdminDetailField>
+                                    </div>
+                                    <AdminDetailField label="Centro comercial">
+                                      {it.shopping_center_name
+                                        ? `${it.shopping_center_name}${it.shopping_center_city ? ` · ${it.shopping_center_city}` : ""}`
+                                        : adminDetailEmpty("")}
+                                    </AdminDetailField>
+                                    <AdminDetailField label="Empresa">
+                                      {clientName ? (
+                                        <AdminDashboardFilterLink
+                                          href={dashboardClientesSearchHref(clientName)}
+                                        >
+                                          {clientName}
+                                        </AdminDashboardFilterLink>
+                                      ) : (
+                                        adminDetailEmpty("")
+                                      )}
+                                    </AdminDetailField>
+                                  </AdminDetailInset>
+                                </AdminDetailSection>
+
+                                <AdminDetailSection
+                                  panelId={panelId}
+                                  sectionId="pedido"
+                                  title="Pedido"
+                                >
+                                  <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
+                                    <AdminDetailField label="Referencia">
+                                      <div className="inline-flex max-w-full flex-wrap items-center gap-1.5">
+                                        <AdminDashboardFilterLink
+                                          href={dashboardPedidosSearchHref(
+                                            orderRef
+                                              ? orderRef.replace(/^#/, "")
+                                              : String(it.order_id),
+                                          )}
+                                          className="font-mono text-sm font-semibold"
+                                        >
+                                          {orderRef || `#${it.order_id}`}
+                                        </AdminDashboardFilterLink>
+                                        <AdminCopyIconButton
+                                          value={orderRef || `#${it.order_id}`}
+                                          ariaLabel="Copiar referencia del pedido"
+                                        />
+                                      </div>
+                                    </AdminDetailField>
+                                    <AdminDetailField label="Estado del pedido">
+                                      <span
+                                        className={`inline-flex rounded-full border border-transparent px-2.5 py-0.5 text-xs font-semibold shadow-sm ${orderStatusPillClassName(it.order_status)}`}
+                                      >
+                                        {it.order_status_label || it.order_status}
+                                      </span>
+                                    </AdminDetailField>
+                                    <AdminDetailField label="Fase del periodo">
+                                      <span
+                                        className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${kindPillClass(it.contract_row_kind)}`}
+                                      >
+                                        {kindLabel(it.contract_row_kind)}
+                                      </span>
+                                    </AdminDetailField>
+                                  </AdminDetailInset>
+                                </AdminDetailSection>
+
+                                <AdminDetailSection
+                                  panelId={panelId}
+                                  sectionId="periodo"
+                                  title="Periodo"
+                                >
+                                  <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
+                                    <AdminDetailField label="Inicio">
+                                      {formatContractDay(it.start_date)}
+                                    </AdminDetailField>
+                                    <AdminDetailField label="Fin">
+                                      {formatContractDay(it.end_date)}
+                                    </AdminDetailField>
+                                    <div className="sm:col-span-2">
+                                      <ContractTimelineBar row={it} />
+                                    </div>
+                                    <AdminDetailField label="Días del periodo">
+                                      {it.period_days_total != null
+                                        ? String(it.period_days_total)
+                                        : "—"}
+                                    </AdminDetailField>
+                                    <AdminDetailField label="Días restantes">
+                                      {it.days_remaining != null
+                                        ? String(it.days_remaining)
+                                        : it.days_until_start != null
+                                          ? `Inicia en ${it.days_until_start} día${it.days_until_start === 1 ? "" : "s"}`
+                                          : "—"}
+                                    </AdminDetailField>
+                                  </AdminDetailInset>
+                                </AdminDetailSection>
+
+                                <AdminDetailSection
+                                  panelId={panelId}
+                                  sectionId="importes"
+                                  title="Importes"
+                                >
+                                  <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
                                     <AdminDetailField label="Subtotal línea (sin IVA)">
                                       {formatUsdMoney(Number(it.subtotal))}
                                     </AdminDetailField>
                                     <AdminDetailField label="Precio mensual (USD)">
                                       {formatUsdMoney(Number(it.monthly_price))}
                                     </AdminDetailField>
-                                    <AdminDetailField label="Días del periodo (aprox.)">
-                                      {it.period_days_total != null ? String(it.period_days_total) : "—"}
-                                    </AdminDetailField>
-                                    <AdminDetailField label="Días restantes (en curso)">
-                                      {it.days_remaining != null ? String(it.days_remaining) : "—"}
-                                    </AdminDetailField>
-                                  </div>
+                                  </AdminDetailInset>
                                 </AdminDetailSection>
-                              </AdminDetailInset>
+                              </div>
                             </AdminAccordionRowPanel>
                           ) : null}
                         </Fragment>

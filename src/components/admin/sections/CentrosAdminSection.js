@@ -14,18 +14,9 @@ import { AdminAccordionToggle } from "@/components/admin/AdminAccordionToggle";
 import { AdminCreatePlusIcon } from "@/components/admin/AdminCreatePlusIcon";
 import { AdminConfirmDialog } from "@/components/admin/AdminConfirmDialog";
 import { AdminModal } from "@/components/admin/AdminModal";
-import { AdminSelect } from "@/components/admin/AdminSelect";
-import { HighSeasonMonthsField } from "@/components/admin/HighSeasonMonthsField";
-import {
-  MONTH_LABELS_ES,
-  normalizeHighSeasonMonths,
-  parseHighSeasonMultiplier,
-} from "@/lib/highSeasonPricing";
-import {
-  RENTAL_BILLING_OPTIONS,
-  normalizeRentalBillingUnit,
-} from "@/lib/rentalBilling";
+import { LeaseCanonHighSeasonPanel } from "@/components/admin/LeaseCanonHighSeasonPanel";
 import { AdminRowActions } from "@/components/admin/AdminRowActions";
+import { IconRowEdit } from "@/components/admin/rowActionIcons";
 import { AdminInlineAlert } from "@/components/admin/AdminInlineAlert";
 import {
   adminField,
@@ -49,7 +40,11 @@ import { useWorkspace } from "@/context/WorkspaceContext";
 import { useWorkspaceCapabilities } from "@/hooks/useWorkspaceCapabilities";
 import { EmptyState, EmptyStateIconBuilding } from "@/components/ui/EmptyState";
 import { centersAdminListPath } from "@/lib/adminListQuery";
-import { ADMIN_CENTERS_ALL_SWR_KEY, authJsonFetcher } from "@/lib/swr/fetchers";
+import {
+  ADMIN_CENTERS_ALL_SWR_KEY,
+  adminCentersAllPagesFetcher,
+  authJsonFetcher,
+} from "@/lib/swr/fetchers";
 import { adminCenterCoverLightboxItems } from "@/lib/imageLightboxItems";
 import { catalogRasterImgAttrs } from "@/lib/catalogImageProps";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
@@ -66,6 +61,7 @@ import {
 } from "@/lib/humanDateTime";
 import { parsePaginatedResponse } from "@/services/api";
 import {
+  adminShoppingCenterAccordionHeader,
   AdminAccordionDetailHeader,
   AdminAccordionRowPanel,
   AdminDetailField,
@@ -91,18 +87,6 @@ const CENTER_ACTIVE_FILTERS = [
   { v: "inactive", l: "Inactivos" },
 ];
 
-/** Catálogo marketplace en respuesta del API (`marketplace_catalog_enabled` o alias `marketplace_enabled`). */
-function centerCatalogEnabled(c) {
-  if (c == null) return false;
-  if (typeof c.marketplace_catalog_enabled === "boolean") {
-    return c.marketplace_catalog_enabled;
-  }
-  if (typeof c.marketplace_enabled === "boolean") {
-    return c.marketplace_enabled;
-  }
-  return false;
-}
-
 export function CentrosAdminSection() {
   const { authReady, accessToken } = useAuth();
   const { workspace } = useWorkspace();
@@ -122,10 +106,29 @@ export function CentrosAdminSection() {
     initialIndex: 0,
   });
   const [filterQ, setFilterQ] = useState("");
+  const [filterCity, setFilterCity] = useState("all");
   const [filterActive, setFilterActive] = useState("all");
   const [page, setPage] = useState(1);
   const debouncedFilterQ = useDebouncedValue(filterQ, 400);
-  const filtersActive = filterQ.trim() !== "" || filterActive !== "all";
+  const filtersActive =
+    filterQ.trim() !== "" || filterCity !== "all" || filterActive !== "all";
+
+  const centersAllKey = authReady && accessToken ? ADMIN_CENTERS_ALL_SWR_KEY : null;
+  const { data: centersAllData } = useSWR(centersAllKey, adminCentersAllPagesFetcher);
+  const cityFilterOptions = useMemo(() => {
+    const list = Array.isArray(centersAllData) ? centersAllData : [];
+    const cities = new Set();
+    for (const c of list) {
+      const city = String(c?.city ?? "").trim();
+      if (city) cities.add(city);
+    }
+    return [
+      { v: "all", l: "Todas las ciudades" },
+      ...[...cities]
+        .sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }))
+        .map((city) => ({ v: city, l: city })),
+    ];
+  }, [centersAllData]);
 
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -133,19 +136,8 @@ export function CentrosAdminSection() {
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
   const [country, setCountry] = useState("Venezuela");
-  const [phone, setPhone] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [website, setWebsite] = useState("");
   const [description, setDescription] = useState("");
-  const [district, setDistrict] = useState("");
-  const [onHomepage, setOnHomepage] = useState(true);
   const [isActive, setIsActive] = useState(true);
-  const [marketplaceCatalogEnabled, setMarketplaceCatalogEnabled] =
-    useState(false);
-  const [listingOrder, setListingOrder] = useState("0");
-  const [rentalBillingUnit, setRentalBillingUnit] = useState("calendar_month");
-  const [highSeasonMonths, setHighSeasonMonths] = useState([]);
-  const [highSeasonMultiplier, setHighSeasonMultiplier] = useState("1");
   const [municipalAuthorityLine, setMunicipalAuthorityLine] = useState("");
   const [authorizationLetterCity, setAuthorizationLetterCity] = useState("Caracas");
   const [coverFile, setCoverFile] = useState(null);
@@ -155,7 +147,7 @@ export function CentrosAdminSection() {
 
   const listKey =
     authReady && accessToken
-      ? centersAdminListPath(page, debouncedFilterQ, filterActive)
+      ? centersAdminListPath(page, debouncedFilterQ, filterActive, filterCity)
       : null;
   const {
     data,
@@ -198,7 +190,7 @@ export function CentrosAdminSection() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedFilterQ, filterActive]);
+  }, [debouncedFilterQ, filterCity, filterActive]);
 
   useEffect(() => {
     if (!coverFile) {
@@ -218,18 +210,8 @@ export function CentrosAdminSection() {
     setCity("");
     setAddress("");
     setCountry("Venezuela");
-    setPhone("");
-    setContactEmail("");
-    setWebsite("");
     setDescription("");
-    setDistrict("");
-    setOnHomepage(true);
     setIsActive(true);
-    setMarketplaceCatalogEnabled(false);
-    setListingOrder("0");
-    setRentalBillingUnit("calendar_month");
-    setHighSeasonMonths([]);
-    setHighSeasonMultiplier("1");
     setMunicipalAuthorityLine("");
     setAuthorizationLetterCity("Caracas");
     setCoverFile(null);
@@ -238,11 +220,6 @@ export function CentrosAdminSection() {
     setModal("create");
     setFieldErrors({});
     setModalErr("");
-  }
-
-  function openView(c) {
-    setSelected(c);
-    setModal("view");
   }
 
   function openEdit(c) {
@@ -254,18 +231,8 @@ export function CentrosAdminSection() {
     setCity(c.city || "");
     setAddress(c.address || "");
     setCountry(c.country?.trim() || "Venezuela");
-    setPhone(c.phone || "");
-    setContactEmail(c.contact_email || "");
-    setWebsite(c.website || "");
     setDescription(c.description || "");
-    setDistrict(c.district?.trim() || "");
-    setOnHomepage(c.on_homepage !== false);
     setIsActive(c.is_active !== false);
-    setMarketplaceCatalogEnabled(centerCatalogEnabled(c));
-    setListingOrder(String(c.listing_order ?? 0));
-    setRentalBillingUnit(normalizeRentalBillingUnit(c.rental_billing_unit));
-    setHighSeasonMonths(normalizeHighSeasonMonths(c.high_season_months));
-    setHighSeasonMultiplier(String(parseHighSeasonMultiplier(c.high_season_multiplier)));
     setMunicipalAuthorityLine(c.municipal_authority_line?.trim() || "");
     setAuthorizationLetterCity(
       c.authorization_letter_city?.trim() || "Caracas",
@@ -354,18 +321,8 @@ export function CentrosAdminSection() {
       setModalErr("Revisa los campos marcados.");
       return;
     }
-    const lo = Math.max(0, parseInt(listingOrder, 10) || 0);
-    const mult = parseHighSeasonMultiplier(highSeasonMultiplier);
-    const hsMonths = normalizeHighSeasonMonths(highSeasonMonths);
     const extra = {
-      district: district.trim(),
-      on_homepage: onHomepage,
       is_active: isActive,
-      marketplace_catalog_enabled: marketplaceCatalogEnabled,
-      listing_order: lo,
-      high_season_months: hsMonths,
-      high_season_multiplier: mult,
-      rental_billing_unit: normalizeRentalBillingUnit(rentalBillingUnit),
       municipal_authority_line: municipalAuthorityLine.trim(),
       authorization_letter_city:
         authorizationLetterCity.trim() || "Caracas",
@@ -377,23 +334,10 @@ export function CentrosAdminSection() {
           fd.append("name", name.trim());
           fd.append("slug", slug.trim());
           fd.append("city", city.trim());
-          fd.append("district", district.trim());
           fd.append("address", address.trim());
           fd.append("country", country.trim());
-          fd.append("phone", phone.trim());
-          fd.append("contact_email", contactEmail.trim());
-          fd.append("website", website.trim());
           fd.append("description", description.trim());
-          fd.append("on_homepage", onHomepage ? "true" : "false");
           fd.append("is_active", isActive ? "true" : "false");
-          fd.append(
-            "marketplace_catalog_enabled",
-            marketplaceCatalogEnabled ? "true" : "false",
-          );
-          fd.append("listing_order", String(lo));
-          fd.append("high_season_months", JSON.stringify(hsMonths));
-          fd.append("high_season_multiplier", String(mult));
-          fd.append("rental_billing_unit", normalizeRentalBillingUnit(rentalBillingUnit));
           fd.append("municipal_authority_line", municipalAuthorityLine.trim());
           fd.append(
             "authorization_letter_city",
@@ -414,9 +358,6 @@ export function CentrosAdminSection() {
               ...extra,
               address: address.trim(),
               country: country.trim(),
-              phone: phone.trim(),
-              contact_email: contactEmail.trim(),
-              website: website.trim(),
               description: description.trim(),
             },
           });
@@ -428,23 +369,10 @@ export function CentrosAdminSection() {
           fd.append("name", name.trim());
           fd.append("slug", slug.trim());
           fd.append("city", city.trim());
-          fd.append("district", district.trim());
           fd.append("address", address.trim());
           fd.append("country", country.trim());
-          fd.append("phone", phone.trim());
-          fd.append("contact_email", contactEmail.trim());
-          fd.append("website", website.trim());
           fd.append("description", description.trim());
-          fd.append("on_homepage", onHomepage ? "true" : "false");
           fd.append("is_active", isActive ? "true" : "false");
-          fd.append(
-            "marketplace_catalog_enabled",
-            marketplaceCatalogEnabled ? "true" : "false",
-          );
-          fd.append("listing_order", String(lo));
-          fd.append("high_season_months", JSON.stringify(hsMonths));
-          fd.append("high_season_multiplier", String(mult));
-          fd.append("rental_billing_unit", normalizeRentalBillingUnit(rentalBillingUnit));
           fd.append("municipal_authority_line", municipalAuthorityLine.trim());
           fd.append(
             "authorization_letter_city",
@@ -465,9 +393,6 @@ export function CentrosAdminSection() {
               ...extra,
               address: address.trim(),
               country: country.trim(),
-              phone: phone.trim(),
-              contact_email: contactEmail.trim(),
-              website: website.trim(),
               description: description.trim(),
               ...(pendingClearCover ? { cover_image: null } : {}),
             },
@@ -506,13 +431,12 @@ export function CentrosAdminSection() {
     }
   }
 
-  const readOnly = modal === "view";
   const existingCover =
     selected?.cover_image && !pendingClearCover ? selected.cover_image : null;
 
   useEffect(() => {
     setExpandedId(null);
-  }, [filterQ, filterActive, page]);
+  }, [filterQ, filterCity, filterActive, page]);
 
   if (!ready) {
     return <CentrosAdminSectionSkeleton />;
@@ -582,7 +506,15 @@ export function CentrosAdminSection() {
                 id="centros-filter-q"
                 value={filterQ}
                 onChange={setFilterQ}
-                placeholder="Slug, nombre, ciudad, zona…"
+                placeholder="Nombre del centro comercial…"
+                className="min-w-0 flex-[1.6]"
+              />
+              <AdminFilterSelect
+                id="centros-filter-city"
+                label="Ciudad"
+                value={filterCity}
+                onChange={setFilterCity}
+                options={cityFilterOptions}
               />
               <AdminFilterSelect
                 id="centros-filter-active"
@@ -595,6 +527,7 @@ export function CentrosAdminSection() {
                 show={filtersActive}
                 onClick={() => {
                   setFilterQ("");
+                  setFilterCity("all");
                   setFilterActive("all");
                   setPage(1);
                 }}
@@ -608,6 +541,7 @@ export function CentrosAdminSection() {
                   <FilterClearAction
                     onClick={() => {
                       setFilterQ("");
+                      setFilterCity("all");
                       setFilterActive("all");
                       setPage(1);
                     }}
@@ -736,7 +670,7 @@ export function CentrosAdminSection() {
                               </td>
                               <td className="px-3 py-2">
                                 <AdminRowActions
-                                  onView={() => openView(c)}
+                                  onView={() => setExpandedId(open ? null : c.id)}
                                   onEdit={() => openEdit(c)}
                                   onDelete={() => askDeleteCenter(c.id)}
                                 />
@@ -744,107 +678,96 @@ export function CentrosAdminSection() {
                             </tr>
                             {open ? (
                               <AdminAccordionRowPanel
-                                colSpan={7}
+                                colSpan={8}
                                 panelId={panelId}
                               >
                                 <AdminAccordionDetailHeader
-                                  badgeText={
-                                    typeof c.slug === "string" &&
-                                    c.slug.trim() !== ""
-                                      ? c.slug.trim()
-                                      : undefined
-                                  }
-                                  titleLabel="Centro en sistema"
-                                  titleLine={
-                                    <p className="truncate text-sm font-medium text-zinc-900">
-                                      <span className="font-mono text-zinc-600">
-                                        {c.slug}
-                                      </span>
-                                      <span
-                                        className="mx-2 text-zinc-300"
-                                        aria-hidden
-                                      >
-                                        ·
-                                      </span>
-                                      {c.name}
-                                    </p>
-                                  }
-                                  hint="Datos ampliados del centro comercial"
+                                  {...adminShoppingCenterAccordionHeader(c.slug, c.name)}
                                 />
 
-                                <div className="mt-5 grid gap-6 lg:grid-cols-2 lg:gap-8">
+                                <div className="mt-5 grid w-full max-w-none grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
+                                  <AdminDetailSection
+                                    panelId={panelId}
+                                    sectionId="general"
+                                    title="Datos del centro"
+                                  >
+                                    <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
+                                      <AdminDetailField label="Nombre">
+                                        {adminDetailEmpty(c.name)}
+                                      </AdminDetailField>
+                                      <AdminDetailField label="Slug (URL)">
+                                        <span className="font-mono text-zinc-800">
+                                          {adminDetailEmpty(c.slug)}
+                                        </span>
+                                      </AdminDetailField>
+                                      <AdminDetailField label="Estado">
+                                        {c.is_active !== false ? "Activo" : "Inactivo"}
+                                      </AdminDetailField>
+                                      <AdminDetailField label="Espacios publicitarios">
+                                        {typeof c.tomas_count === "number"
+                                          ? String(c.tomas_count)
+                                          : adminDetailEmpty("")}
+                                      </AdminDetailField>
+                                      {c.display_title ? (
+                                        <AdminDetailField label="Título en tarjetas">
+                                          {c.display_title}
+                                        </AdminDetailField>
+                                      ) : null}
+                                      <AdminDetailField label="Creado">
+                                        {c.created_at ? (
+                                          <time
+                                            dateTime={c.created_at}
+                                            title={formatDateTimeFull(c.created_at)}
+                                          >
+                                            {formatHumanDateTime(c.created_at)}
+                                          </time>
+                                        ) : (
+                                          adminDetailEmpty("")
+                                        )}
+                                      </AdminDetailField>
+                                      <AdminDetailField label="Última actualización">
+                                        {c.updated_at ? (
+                                          <time
+                                            dateTime={c.updated_at}
+                                            title={formatDateTimeFull(c.updated_at)}
+                                          >
+                                            {formatHumanDateTime(c.updated_at)}
+                                          </time>
+                                        ) : (
+                                          adminDetailEmpty("")
+                                        )}
+                                      </AdminDetailField>
+                                    </AdminDetailInset>
+                                  </AdminDetailSection>
+
                                   <AdminDetailSection
                                     panelId={panelId}
                                     sectionId="ubic"
                                     title="Ubicación"
                                   >
-                                    <AdminDetailInset>
-                                      <AdminDetailField label="Dirección">
-                                        {adminDetailEmpty(c.address)}
+                                    <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
+                                      <AdminDetailField label="País">
+                                        {adminDetailEmpty(c.country)}
                                       </AdminDetailField>
-                                      <div className="grid gap-4 sm:grid-cols-2">
-                                        <AdminDetailField label="Ciudad">
-                                          {adminDetailEmpty(c.city)}
-                                        </AdminDetailField>
-                                        <AdminDetailField label="País">
-                                          {adminDetailEmpty(c.country)}
+                                      <AdminDetailField label="Ciudad">
+                                        {adminDetailEmpty(c.city)}
+                                      </AdminDetailField>
+                                      <div className="sm:col-span-2">
+                                        <AdminDetailField label="Dirección">
+                                          {adminDetailEmpty(c.address)}
                                         </AdminDetailField>
                                       </div>
                                     </AdminDetailInset>
                                   </AdminDetailSection>
-
-                                  <AdminDetailSection
-                                    panelId={panelId}
-                                    sectionId="contact"
-                                    title="Contacto del centro"
-                                  >
-                                    <AdminDetailInset>
-                                      <AdminDetailField label="Teléfono">
-                                        {adminDetailEmpty(c.phone)}
-                                      </AdminDetailField>
-                                      <AdminDetailField label="Correo">
-                                        {c.contact_email?.trim() ? (
-                                          <a
-                                            href={`mailto:${c.contact_email.trim()}`}
-                                            className="font-medium text-zinc-900 no-underline underline-offset-2 hover:underline"
-                                          >
-                                            {c.contact_email.trim()}
-                                          </a>
-                                        ) : (
-                                          adminDetailEmpty("")
-                                        )}
-                                      </AdminDetailField>
-                                      <AdminDetailField label="Sitio web">
-                                        {c.website?.trim() ? (
-                                          <a
-                                            href={
-                                              /^https?:\/\//i.test(
-                                                c.website.trim(),
-                                              )
-                                                ? c.website.trim()
-                                                : `https://${c.website.trim()}`
-                                            }
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="font-medium text-zinc-900 no-underline underline-offset-2 hover:underline"
-                                          >
-                                            {c.website.trim()}
-                                          </a>
-                                        ) : (
-                                          adminDetailEmpty("")
-                                        )}
-                                      </AdminDetailField>
-                                    </AdminDetailInset>
-                                  </AdminDetailSection>
                                 </div>
 
-                                <div className="mt-6 border-t border-zinc-100 pt-5">
+                                <div className="mt-6 grid w-full max-w-none grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
                                   <AdminDetailSection
                                     panelId={panelId}
                                     sectionId="municipio"
                                     title="Carta al municipio"
                                   >
-                                    <AdminDetailInset>
+                                    <AdminDetailInset className="grid gap-4">
                                       <AdminDetailField label="Destinatario (Atención)">
                                         {adminDetailEmpty(c.municipal_authority_line)}
                                       </AdminDetailField>
@@ -853,37 +776,19 @@ export function CentrosAdminSection() {
                                       </AdminDetailField>
                                     </AdminDetailInset>
                                   </AdminDetailSection>
-                                </div>
 
-                                <div className="mt-6 border-t border-zinc-100 pt-5">
                                   <AdminDetailSection
                                     panelId={panelId}
-                                    sectionId="pricing"
-                                    title="Precios y reserva"
+                                    sectionId="lease-canon"
+                                    title="Canon de arrendamiento"
                                   >
                                     <AdminDetailInset>
-                                      <AdminDetailField label="Facturación">
-                                        {RENTAL_BILLING_OPTIONS.find(
-                                          (o) => o.value === normalizeRentalBillingUnit(c.rental_billing_unit),
-                                        )?.label ?? adminDetailEmpty("")}
-                                      </AdminDetailField>
-                                      <AdminDetailField label="Meses temporada alta">
-                                        {normalizeHighSeasonMonths(c.high_season_months).length
-                                          ? normalizeHighSeasonMonths(c.high_season_months)
-                                              .map((m) => MONTH_LABELS_ES[m - 1])
-                                              .join(", ")
-                                          : adminDetailEmpty("")}
-                                      </AdminDetailField>
-                                      <AdminDetailField label="Multiplicador">
-                                        {normalizeHighSeasonMonths(c.high_season_months).length
-                                          ? `×${parseHighSeasonMultiplier(c.high_season_multiplier)}`
-                                          : adminDetailEmpty("")}
-                                      </AdminDetailField>
+                                      <LeaseCanonHighSeasonPanel slug={c.slug} name={c.name} />
                                     </AdminDetailInset>
                                   </AdminDetailSection>
                                 </div>
 
-                                <div className="mt-6 border-t border-zinc-100 pt-5">
+                                <div className="mt-6 w-full max-w-none">
                                   <AdminDetailSection
                                     panelId={panelId}
                                     sectionId="desc"
@@ -894,6 +799,16 @@ export function CentrosAdminSection() {
                                       emptyHint="Aún no hay descripción del centro."
                                     />
                                   </AdminDetailSection>
+                                </div>
+                                <div className="mt-4 flex justify-end border-t border-zinc-100 pt-4">
+                                  <button
+                                    type="button"
+                                    className={adminPrimaryBtn}
+                                    onClick={() => openEdit(c)}
+                                  >
+                                    <IconRowEdit className="shrink-0" aria-hidden />
+                                    Editar
+                                  </button>
                                 </div>
                               </AdminAccordionRowPanel>
                             ) : null}
@@ -916,219 +831,31 @@ export function CentrosAdminSection() {
         <AdminModal
           open={modal != null}
           onClose={closeModal}
-          title={
-            modal === "create"
-              ? "Nuevo centro"
-              : modal === "edit"
-                ? "Editar centro"
-                : "Detalle del centro"
-          }
-          subtitle={
-            modal === "view"
-              ? `${selected?.slug} · ${selected?.name}`
-              : undefined
-          }
-          wide={modal !== "view"}
+          title={modal === "create" ? "Nuevo centro" : "Editar centro"}
+          wide
           footer={
-            readOnly ? (
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  className={adminSecondaryBtn}
-                  onClick={closeModal}
-                >
-                  Cerrar
-                </button>
-                <button
-                  type="button"
-                  className={adminPrimaryBtn}
-                  onClick={() => {
-                    openEdit(selected);
-                  }}
-                >
-                  Editar
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-wrap justify-end gap-2">
-                <button
-                  type="button"
-                  className={adminSecondaryBtn}
-                  onClick={closeModal}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  className={adminPrimaryBtn}
-                  onClick={submitSave}
-                >
-                  {modal === "create" ? "Crear" : "Guardar"}
-                </button>
-              </div>
-            )
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                className={adminSecondaryBtn}
+                onClick={closeModal}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={adminPrimaryBtn}
+                onClick={submitSave}
+              >
+                {modal === "create" ? "Crear" : "Guardar"}
+              </button>
+            </div>
           }
         >
-          {!readOnly && modalErr ? (
+          {modalErr ? (
             <AdminInlineAlert variant="error">{modalErr}</AdminInlineAlert>
           ) : null}
-          {readOnly && selected ? (
-            <div className="space-y-4 text-sm">
-              <CoverImageField
-                readOnly
-                variant="cover"
-                existingUrl={selected.cover_image}
-              />
-              <div>
-                <p className={adminLabel}>Nombre</p>
-                <p className="mt-1 font-medium text-zinc-900">
-                  {selected.name}
-                </p>
-              </div>
-              <div>
-                <p className={adminLabel}>Slug (URL)</p>
-                <p className="mt-1 font-mono text-zinc-800">{selected.slug}</p>
-              </div>
-              <div>
-                <p className={adminLabel}>Ciudad</p>
-                <p className="mt-1 text-zinc-800">{selected.city || "—"}</p>
-              </div>
-              <div>
-                <p className={adminLabel}>
-                  Zona / barrio (titular en tarjetas)
-                </p>
-                <p className="mt-1 text-zinc-800">
-                  {selected.district?.trim() || "—"}
-                </p>
-              </div>
-              {selected.display_title ? (
-                <div>
-                  <p className={adminLabel}>Título en tarjetas (calculado)</p>
-                  <p className="mt-1 font-medium text-zinc-900">
-                    {selected.display_title}
-                  </p>
-                </div>
-              ) : null}
-              <div>
-                <p className={adminLabel}>En listado público de centros</p>
-                <p className="mt-1 text-zinc-800">
-                  {selected.on_homepage !== false ? "Sí" : "No"}
-                </p>
-              </div>
-              <div>
-                <p className={adminLabel}>Estado</p>
-                <p className="mt-1 text-zinc-800">
-                  {selected.is_active !== false ? "Activo" : "Inactivo"}
-                </p>
-              </div>
-              <div>
-                <p className={adminLabel}>Catálogo de reservas (marketplace)</p>
-                <p className="mt-1 text-zinc-800">
-                  {centerCatalogEnabled(selected) ? "Sí" : "No"}
-                </p>
-              </div>
-              <div>
-                <p className={adminLabel}>Facturación en marketplace</p>
-                <p className="mt-1 text-zinc-800">
-                  {RENTAL_BILLING_OPTIONS.find((o) => o.value === normalizeRentalBillingUnit(selected.rental_billing_unit))
-                    ?.label ?? "Por mes de calendario"}
-                </p>
-              </div>
-              <div>
-                <p className={adminLabel}>Temporada alta</p>
-                <p className="mt-1 text-zinc-800">
-                  {normalizeHighSeasonMonths(selected.high_season_months).length
-                    ? `${normalizeHighSeasonMonths(selected.high_season_months)
-                        .map((m) => MONTH_LABELS_ES[m - 1])
-                        .join(", ")} · ×${parseHighSeasonMultiplier(selected.high_season_multiplier)}`
-                    : "Sin meses configurados (canon base todo el año)"}
-                </p>
-              </div>
-              <div>
-                <p className={adminLabel}>Carta al municipio — destinatario</p>
-                <p className="mt-1 text-zinc-800">
-                  {selected.municipal_authority_line?.trim() || "—"}
-                </p>
-              </div>
-              <div>
-                <p className={adminLabel}>Carta al municipio — ciudad en fecha</p>
-                <p className="mt-1 text-zinc-800">
-                  {selected.authorization_letter_city?.trim() || "Caracas"}
-                </p>
-              </div>
-              <div>
-                <p className={adminLabel}>Creado</p>
-                <p className="mt-1 tabular-nums text-zinc-800">
-                  {selected.created_at ? (
-                    <time
-                      dateTime={selected.created_at}
-                      title={formatDateTimeFull(selected.created_at)}
-                    >
-                      {formatHumanDateTime(selected.created_at)}
-                    </time>
-                  ) : (
-                    "—"
-                  )}
-                </p>
-              </div>
-              <div>
-                <p className={adminLabel}>Última actualización</p>
-                <p className="mt-1 tabular-nums text-zinc-800">
-                  {selected.updated_at ? (
-                    <time
-                      dateTime={selected.updated_at}
-                      title={formatDateTimeFull(selected.updated_at)}
-                    >
-                      {formatHumanDateTime(selected.updated_at)}
-                    </time>
-                  ) : (
-                    "—"
-                  )}
-                </p>
-              </div>
-              <div>
-                <p className={adminLabel}>Orden en listado de centros</p>
-                <p className="mt-1 tabular-nums text-zinc-800">
-                  {selected.listing_order ?? 0}
-                </p>
-              </div>
-              <div>
-                <p className={adminLabel}>Dirección</p>
-                <p className="mt-1 text-zinc-800">{selected.address || "—"}</p>
-              </div>
-              <div>
-                <p className={adminLabel}>País</p>
-                <p className="mt-1 text-zinc-800">
-                  {selected.country?.trim() || "—"}
-                </p>
-              </div>
-              <div>
-                <p className={adminLabel}>Teléfono del centro</p>
-                <p className="mt-1 text-zinc-800">
-                  {selected.phone?.trim() || "—"}
-                </p>
-              </div>
-              <div>
-                <p className={adminLabel}>Email de contacto</p>
-                <p className="mt-1 text-zinc-800">
-                  {selected.contact_email?.trim() || "—"}
-                </p>
-              </div>
-              <div>
-                <p className={adminLabel}>Sitio web</p>
-                <p className="mt-1 break-all text-zinc-800">
-                  {selected.website?.trim() || "—"}
-                </p>
-              </div>
-              <div>
-                <p className={adminLabel}>Descripción</p>
-                <p className="mt-1 whitespace-pre-wrap text-zinc-800">
-                  {selected.description?.trim() || "—"}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
+          <div className="space-y-4">
               <CoverImageField
                 readOnly={false}
                 variant="cover"
@@ -1190,6 +917,17 @@ export function CentrosAdminSection() {
                 </p>
               </div>
               <div>
+                <label className={adminLabel} htmlFor="c-country">
+                  País
+                </label>
+                <input
+                  id="c-country"
+                  className={adminField}
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                />
+              </div>
+              <div>
                 <label className={adminLabel} htmlFor="c-city">
                   Ciudad <span className="text-red-600">*</span>
                 </label>
@@ -1207,15 +945,26 @@ export function CentrosAdminSection() {
                 ) : null}
               </div>
               <div>
-                <label className={adminLabel} htmlFor="c-district">
-                  Zona / barrio (titular en tarjetas)
+                <label className={adminLabel} htmlFor="c-addr">
+                  Dirección
                 </label>
                 <input
-                  id="c-district"
+                  id="c-addr"
                   className={adminField}
-                  value={district}
-                  onChange={(e) => setDistrict(e.target.value)}
-                  placeholder="Ej. Chacao, La Candelaria…"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className={adminLabel} htmlFor="c-desc">
+                  Descripción
+                </label>
+                <textarea
+                  id="c-desc"
+                  className={adminField}
+                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
               <div className="flex flex-wrap items-center gap-3">
@@ -1226,45 +975,13 @@ export function CentrosAdminSection() {
                     checked={isActive}
                     onChange={(e) => setIsActive(e.target.checked)}
                   />
-                  Centro activo (inactivo: sin catálogo de espacios publicitarios ni reservas en
-                  el marketplace)
+                  Centro activo?
                 </label>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-zinc-800">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-zinc-300"
-                    checked={marketplaceCatalogEnabled}
-                    onChange={(e) =>
-                      setMarketplaceCatalogEnabled(e.target.checked)
-                    }
-                  />
-                  Catálogo de reservas en marketplace (espacios publicitarios públicos y ruta
-                  /m/…)
-                </label>
+              <div className="border-t border-zinc-100 pt-4">
+                <p className="text-sm font-semibold text-zinc-900">Canon de arrendamiento</p>
+                <LeaseCanonHighSeasonPanel slug={slug} name={name} className="mt-2" />
               </div>
-              <div>
-                <label className={adminLabel} htmlFor="c-billing-unit">
-                  Facturación en marketplace
-                </label>
-                <AdminSelect
-                  inputId="c-billing-unit"
-                  value={RENTAL_BILLING_OPTIONS.find((o) => o.value === rentalBillingUnit) ?? RENTAL_BILLING_OPTIONS[0]}
-                  onChange={(opt) => setRentalBillingUnit(opt?.value ?? "calendar_month")}
-                  options={RENTAL_BILLING_OPTIONS}
-                />
-                <p className="mt-1 text-xs text-zinc-500">
-                  Por día: la empresa elige fechas concretas; el total usa canon mensual ÷ 30 por día (temporada alta
-                  por mes del día).
-                </p>
-              </div>
-              <HighSeasonMonthsField
-                value={highSeasonMonths}
-                onChange={setHighSeasonMonths}
-                multiplier={highSeasonMultiplier}
-                onMultiplierChange={setHighSeasonMultiplier}
-              />
               <div className="border-t border-zinc-100 pt-4">
                 <p className="text-sm font-semibold text-zinc-900">Carta al municipio</p>
                 <p className="mt-1 text-xs text-zinc-500">
@@ -1306,109 +1023,7 @@ export function CentrosAdminSection() {
                   </p>
                 ) : null}
               </div>
-              <div className="space-y-1">
-                <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-zinc-800">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-zinc-300"
-                    checked={onHomepage}
-                    onChange={(e) => setOnHomepage(e.target.checked)}
-                  />
-                  Incluir en listado público de centros
-                </label>
-                <p className="ml-6 text-xs text-zinc-500">
-                  La portada principal del sitio muestra espacios publicitarios, no centros. Esto
-                  solo afecta el API de centros y posibles integraciones.
-                </p>
-              </div>
-              <div>
-                <label className={adminLabel} htmlFor="c-order">
-                  Orden en listado de centros
-                </label>
-                <input
-                  id="c-order"
-                  type="number"
-                  min={0}
-                  className={`${adminField} max-w-[8rem]`}
-                  value={listingOrder}
-                  onChange={(e) => setListingOrder(e.target.value)}
-                />
-                <p className="mt-1 text-xs text-zinc-500">
-                  Número menor = aparece antes en ese listado.
-                </p>
-              </div>
-              <div>
-                <label className={adminLabel} htmlFor="c-addr">
-                  Dirección
-                </label>
-                <input
-                  id="c-addr"
-                  className={adminField}
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className={adminLabel} htmlFor="c-country">
-                  País
-                </label>
-                <input
-                  id="c-country"
-                  className={adminField}
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className={adminLabel} htmlFor="c-phone">
-                  Teléfono del centro
-                </label>
-                <input
-                  id="c-phone"
-                  className={adminField}
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className={adminLabel} htmlFor="c-cemail">
-                  Email de contacto
-                </label>
-                <input
-                  id="c-cemail"
-                  type="email"
-                  className={adminField}
-                  value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className={adminLabel} htmlFor="c-web">
-                  Sitio web
-                </label>
-                <input
-                  id="c-web"
-                  type="url"
-                  className={adminField}
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  placeholder="https://"
-                />
-              </div>
-              <div>
-                <label className={adminLabel} htmlFor="c-desc">
-                  Descripción
-                </label>
-                <textarea
-                  id="c-desc"
-                  className={adminField}
-                  rows={3}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
+          </div>
         </AdminModal>
 
         <AdminConfirmDialog

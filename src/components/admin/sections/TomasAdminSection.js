@@ -10,6 +10,7 @@ import {
   AdminDetailInset,
   AdminDetailProse,
   AdminDetailSection,
+  adminAdSpaceAccordionHeader,
   adminDetailEmpty,
 } from "@/components/admin/AdminAccordionDetail";
 import { AdminAccordionToggle } from "@/components/admin/AdminAccordionToggle";
@@ -17,6 +18,7 @@ import { AdminCreatePlusIcon } from "@/components/admin/AdminCreatePlusIcon";
 import { AdminConfirmDialog } from "@/components/admin/AdminConfirmDialog";
 import { AdminModal } from "@/components/admin/AdminModal";
 import { AdminRowActions } from "@/components/admin/AdminRowActions";
+import { IconRowEdit } from "@/components/admin/rowActionIcons";
 import { AdminInlineAlert } from "@/components/admin/AdminInlineAlert";
 import {
   adminField,
@@ -154,12 +156,13 @@ function spaceTypeLabel(v) {
   return o ? o.l : v;
 }
 
-function centerAllowsPublicCatalog(center) {
-  if (!center) return false;
-  const enabled =
-    center.marketplace_catalog_enabled === true || center.marketplace_enabled === true;
-  const active = center.is_active !== false;
-  return Boolean(enabled && active);
+function tomaAccordionGalleryImages(s) {
+  if (!s) return [];
+  if (Array.isArray(s.gallery_images) && s.gallery_images.length > 0) {
+    return s.gallery_images;
+  }
+  if (s.cover_image) return [{ id: -1, image: s.cover_image, sort_order: 0 }];
+  return [];
 }
 
 export function TomasAdminSection() {
@@ -181,10 +184,12 @@ export function TomasAdminSection() {
     initialIndex: 0,
   });
   const [filterQ, setFilterQ] = useState("");
+  const [filterCenter, setFilterCenter] = useState("all");
   const [filterSpaceStatus, setFilterSpaceStatus] = useState("all");
   const [page, setPage] = useState(1);
   const debouncedFilterQ = useDebouncedValue(filterQ, 400);
-  const filtersActive = filterQ.trim() !== "" || filterSpaceStatus !== "all";
+  const filtersActive =
+    filterQ.trim() !== "" || filterCenter !== "all" || filterSpaceStatus !== "all";
 
   const [shoppingCenter, setShoppingCenter] = useState("");
   const [code, setCode] = useState("");
@@ -217,7 +222,9 @@ export function TomasAdminSection() {
   } = useSWR(centersAllKey, adminCentersAllPagesFetcher);
 
   const spacesListKey =
-    authReady && accessToken ? spacesAdminListPath(page, debouncedFilterQ, filterSpaceStatus) : null;
+    authReady && accessToken
+      ? spacesAdminListPath(page, debouncedFilterQ, filterSpaceStatus, filterCenter)
+      : null;
   const {
     data: spacesData,
     error: spacesSwrError,
@@ -228,6 +235,16 @@ export function TomasAdminSection() {
   const centers = useMemo(
     () => (Array.isArray(centersData) ? centersData : []),
     [centersData],
+  );
+  const centerFilterOptions = useMemo(
+    () => [
+      { v: "all", l: "Todos los centros" },
+      ...centers.map((c) => ({
+        v: String(c.id),
+        l: [c.name, c.city].filter(Boolean).join(" · ") || `Centro #${c.id}`,
+      })),
+    ],
+    [centers],
   );
   const rows = useMemo(
     () => (spacesData ? parsePaginatedResponse(spacesData).results : []),
@@ -264,7 +281,7 @@ export function TomasAdminSection() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedFilterQ, filterSpaceStatus]);
+  }, [debouncedFilterQ, filterCenter, filterSpaceStatus]);
 
   function resetForm() {
     setShoppingCenter("");
@@ -295,23 +312,18 @@ export function TomasAdminSection() {
     setFieldErrors({});
   }
 
-  function openView(s) {
-    setSelected(s);
-    setModal("view");
-  }
-
-  const openViewById = useCallback(
+  const expandById = useCallback(
     async (id) => {
       const sid = String(id ?? "").trim();
       if (!sid) return;
       const fromList = rows.find((s) => String(s.id) === sid);
       if (fromList) {
-        openView(fromList);
+        setExpandedId(fromList.id);
         return;
       }
       try {
         const data = await authFetch(`/api/admin/spaces/${sid}/`);
-        openView(data);
+        setExpandedId(data.id);
       } catch (e) {
         setPageErr(
           e instanceof Error ? e.message : "No se pudo abrir el detalle del espacio publicitario.",
@@ -386,9 +398,9 @@ export function TomasAdminSection() {
       if (data?.suggested_code) {
         setCode(String(data.suggested_code));
       }
-      if (data?.marketplace_catalog_enabled === false) {
+      if (data?.is_active === false) {
         setModalErr(
-          "Este centro tiene el catálogo del marketplace desactivado. El espacio publicitario se creará, pero no aparecerá en el catálogo público hasta que habilites el centro.",
+          "Este centro está inactivo. El espacio se creará, pero no aparecerá en el catálogo hasta que actives el centro.",
         );
       }
     } catch (e) {
@@ -433,13 +445,11 @@ export function TomasAdminSection() {
     }
     if (modal === "create") {
       const c = centers.find((x) => Number(x.id) === Number(centerId));
-      const enabled =
-        c?.marketplace_catalog_enabled === true || c?.marketplace_enabled === true;
-      if (!enabled) {
+      if (c?.is_active === false) {
         setModalErr(
-          "Este centro tiene el catálogo del marketplace desactivado. Habilítalo en «Centros comerciales» para que el espacio publicitario aparezca en el catálogo público.",
+          "Este centro está inactivo. Actívalo en «Centros comerciales» para publicar el espacio en el catálogo.",
         );
-        setFieldErrors({ shopping_center: "Habilita el catálogo del centro" });
+        setFieldErrors({ shopping_center: "Activa el centro" });
         return;
       }
     }
@@ -506,18 +516,9 @@ export function TomasAdminSection() {
     }
   }
 
-  const readOnly = modal === "view";
-
-  function tomaViewGalleryRows(s) {
-    if (!s) return [];
-    if (Array.isArray(s.gallery_images) && s.gallery_images.length > 0) return s.gallery_images;
-    if (s.cover_image) return [{ id: -1, image: s.cover_image, sort_order: 0 }];
-    return [];
-  }
-
   useEffect(() => {
     setExpandedId(null);
-  }, [filterQ, filterSpaceStatus, page]);
+  }, [filterQ, filterCenter, filterSpaceStatus, page]);
 
   if (!ready) {
     return <TomasAdminSectionSkeleton />;
@@ -525,7 +526,7 @@ export function TomasAdminSection() {
 
   return (
     <div className={adminPanelCard}>
-      <AdminTomasViewQuerySync onViewId={openViewById} />
+      <AdminTomasViewQuerySync onViewId={expandById} />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">
           <div className={adminSectionHeaderIconWrap}>
@@ -572,7 +573,15 @@ export function TomasAdminSection() {
               id="tomas-filter-q"
               value={filterQ}
               onChange={setFilterQ}
-              placeholder="Código, título, centro comercial…"
+              placeholder="Código o título del espacio…"
+              className="min-w-0 flex-[1.6]"
+            />
+            <AdminFilterSelect
+              id="tomas-filter-center"
+              label="Centro comercial"
+              value={filterCenter}
+              onChange={setFilterCenter}
+              options={centerFilterOptions}
             />
             <AdminFilterSelect
               id="tomas-filter-status"
@@ -585,6 +594,7 @@ export function TomasAdminSection() {
               show={filtersActive}
               onClick={() => {
                 setFilterQ("");
+                setFilterCenter("all");
                 setFilterSpaceStatus("all");
                 setPage(1);
               }}
@@ -598,6 +608,7 @@ export function TomasAdminSection() {
                 <FilterClearAction
                   onClick={() => {
                     setFilterQ("");
+                    setFilterCenter("all");
                     setFilterSpaceStatus("all");
                     setPage(1);
                   }}
@@ -637,11 +648,6 @@ export function TomasAdminSection() {
                 {rows.map((s) => {
                 const open = expandedId === s.id;
                 const panelId = `toma-extra-${s.id}`;
-                      const centerForRow = centers.find(
-                        (c) => String(c.id) === String(s.shopping_center),
-                      );
-                      const publicOk =
-                        s.is_active !== false && centerAllowsPublicCatalog(centerForRow);
                 return (
                   <Fragment key={s.id}>
                     <tr className="border-b border-zinc-100 transition-colors hover:bg-zinc-50/70">
@@ -733,7 +739,7 @@ export function TomasAdminSection() {
                       </td>
                       <td className="px-3 py-2">
                         <AdminRowActions
-                          onView={() => openView(s)}
+                          onView={() => setExpandedId(open ? null : s.id)}
                           onEdit={() => openEdit(s)}
                           onDelete={() => askDeleteSpace(s.id)}
                         />
@@ -742,75 +748,151 @@ export function TomasAdminSection() {
                     {open ? (
                       <AdminAccordionRowPanel colSpan={7} panelId={panelId}>
                         <AdminAccordionDetailHeader
-                          badgeText={s.code || "—"}
-                          titleLabel={
-                            publicOk ? "Espacio publicitario en catálogo" : "No visible en catálogo"
-                          }
-                          titleLine={
-                            <p className="truncate text-sm font-medium text-zinc-900">{s.title}</p>
-                          }
-                          hint={
-                            publicOk
-                              ? "Vista ampliada sin editar"
-                              : "Activa el catálogo del centro y/o el espacio publicitario para que aparezca en el marketplace"
-                          }
+                          {...adminAdSpaceAccordionHeader(s.code, s.title)}
                         />
 
-                        <div className="mt-5 space-y-6">
-                          <AdminDetailSection panelId={panelId} sectionId="gen" title="Datos generales">
-                            <AdminDetailInset>
-                              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                <AdminDetailField label="Centro comercial">
-                                  <TomaCentroComercialValue s={s} />
-                                </AdminDetailField>
-                                <AdminDetailField label="Tipo">{spaceTypeLabel(s.type)}</AdminDetailField>
-                                <AdminDetailField label="Estado">
-                                  <span
-                                    className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${spaceStatusPillClassName(s.status)}`}
-                                  >
-                                    {spaceStatusLabel(s.status, s.status_label)}
-                                  </span>
-                                </AdminDetailField>
-                                <AdminDetailField label="Precio USD / mes">
-                                  <span className="tabular-nums">{s.monthly_price_usd}</span>
-                                </AdminDetailField>
-                                <AdminDetailField label="Cantidad">
-                                  {s.quantity != null ? s.quantity : adminDetailEmpty("")}
-                                </AdminDetailField>
-                                <AdminDetailField label="Medidas">
-                                  {s.width != null || s.height != null
-                                    ? `${s.width ?? "—"} × ${s.height ?? "—"}`
-                                    : adminDetailEmpty("")}
-                                </AdminDetailField>
-                                <AdminDetailField label="Material">{adminDetailEmpty(s.material)}</AdminDetailField>
-                                <AdminDetailField label="Nivel">{adminDetailEmpty(s.level)}</AdminDetailField>
-                                <AdminDetailField label="Zona / plaza">{adminDetailEmpty(s.venue_zone)}</AdminDetailField>
-                                <AdminDetailField label="Doble cara">{s.double_sided ? "Sí" : "No"}</AdminDetailField>
-                                <AdminDetailField label="Bolsillo (cm)">
-                                  {s.hem_pocket_top_cm != null
-                                    ? s.hem_pocket_top_cm
-                                    : adminDetailEmpty("")}
-                                </AdminDetailField>
-                                <div className="sm:col-span-2 lg:col-span-3">
-                                  <AdminDetailField label="Ubicación en centro">
-                                    {adminDetailEmpty(s.location_description)}
-                                  </AdminDetailField>
-                                </div>
-                              </div>
+                        <div className="mt-5 grid w-full max-w-none grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
+                          <AdminDetailSection
+                            panelId={panelId}
+                            sectionId="datos"
+                            title="Datos del espacio"
+                          >
+                            <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
+                              <AdminDetailField label="Código">
+                                <span className="font-mono text-zinc-800">
+                                  {adminDetailEmpty(s.code)}
+                                </span>
+                              </AdminDetailField>
+                              <AdminDetailField label="Título">
+                                {adminDetailEmpty(s.title)}
+                              </AdminDetailField>
+                              <AdminDetailField label="Centro comercial">
+                                <TomaCentroComercialValue s={s} />
+                              </AdminDetailField>
+                              <AdminDetailField label="Tipo">
+                                {spaceTypeLabel(s.type)}
+                              </AdminDetailField>
+                              <AdminDetailField label="Estado">
+                                <span
+                                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${spaceStatusPillClassName(s.status)}`}
+                                >
+                                  {spaceStatusLabel(s.status, s.status_label)}
+                                </span>
+                              </AdminDetailField>
+                              <AdminDetailField label="Precio USD / mes">
+                                <span className="tabular-nums">{s.monthly_price_usd}</span>
+                              </AdminDetailField>
+                              <AdminDetailField label="Visible en catálogo">
+                                {s.is_active !== false ? "Sí" : "No"}
+                              </AdminDetailField>
                             </AdminDetailInset>
                           </AdminDetailSection>
 
-                          <AdminDetailSection panelId={panelId} sectionId="desc" title="Descripción">
+                          <AdminDetailSection
+                            panelId={panelId}
+                            sectionId="tecnicos"
+                            title="Detalles técnicos y ubicación"
+                          >
+                            <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
+                              <AdminDetailField label="Ancho">
+                                {s.width != null && String(s.width).trim() !== ""
+                                  ? s.width
+                                  : adminDetailEmpty("")}
+                              </AdminDetailField>
+                              <AdminDetailField label="Alto">
+                                {s.height != null && String(s.height).trim() !== ""
+                                  ? s.height
+                                  : adminDetailEmpty("")}
+                              </AdminDetailField>
+                              <AdminDetailField label="Cantidad">
+                                {s.quantity != null ? s.quantity : adminDetailEmpty("")}
+                              </AdminDetailField>
+                              <AdminDetailField label="Material">
+                                {adminDetailEmpty(s.material)}
+                              </AdminDetailField>
+                              <AdminDetailField label="Doble cara">
+                                {s.double_sided ? "Sí" : "No"}
+                              </AdminDetailField>
+                              <AdminDetailField label="Bolsillo superior (cm)">
+                                {s.hem_pocket_top_cm != null
+                                  ? s.hem_pocket_top_cm
+                                  : adminDetailEmpty("")}
+                              </AdminDetailField>
+                              <div className="sm:col-span-2">
+                                <AdminDetailField label="Ubicación">
+                                  {adminDetailEmpty(s.location_description)}
+                                </AdminDetailField>
+                              </div>
+                              <AdminDetailField label="Nivel">
+                                {adminDetailEmpty(s.level)}
+                              </AdminDetailField>
+                              <AdminDetailField label="Zona / plaza">
+                                {adminDetailEmpty(s.venue_zone)}
+                              </AdminDetailField>
+                            </AdminDetailInset>
+                          </AdminDetailSection>
+                        </div>
+
+                        <div className="mt-6 grid w-full max-w-none grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
+                          <AdminDetailSection
+                            panelId={panelId}
+                            sectionId="galeria"
+                            title="Galería de imágenes"
+                          >
+                            <AdminDetailInset>
+                              <AdminAdSpaceGalleryField
+                                readOnly
+                                initialServerImages={tomaAccordionGalleryImages(s)}
+                              />
+                            </AdminDetailInset>
+                          </AdminDetailSection>
+
+                          <AdminDetailSection
+                            panelId={panelId}
+                            sectionId="prod"
+                            title="Especificaciones artes / producción"
+                          >
+                            <AdminDetailInset className="space-y-5">
+                              <div>
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                                  Especificaciones para artes y producción
+                                </p>
+                                <AdminDetailProse
+                                  text={s.production_specs}
+                                  emptyHint="Sin especificaciones."
+                                />
+                              </div>
+                              <div>
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                                  Notas de montaje / instalación
+                                </p>
+                                <AdminDetailProse
+                                  text={s.installation_notes}
+                                  emptyHint="Sin notas de montaje."
+                                />
+                              </div>
+                            </AdminDetailInset>
+                          </AdminDetailSection>
+                        </div>
+
+                        <div className="mt-6 w-full max-w-none">
+                          <AdminDetailSection
+                            panelId={panelId}
+                            sectionId="desc"
+                            title="Descripción"
+                          >
                             <AdminDetailProse text={s.description} emptyHint="Sin descripción." />
                           </AdminDetailSection>
-
-                          <AdminDetailSection panelId={panelId} sectionId="prod" title="Especificaciones artes / producción">
-                            <AdminDetailProse text={s.production_specs} emptyHint="Sin especificaciones." />
-                          </AdminDetailSection>
-
-                          <AdminDetailSection panelId={panelId} sectionId="inst" title="Notas de montaje">
-                            <AdminDetailProse text={s.installation_notes} emptyHint="Sin notas de montaje." />
-                          </AdminDetailSection>
+                        </div>
+                        <div className="mt-4 flex justify-end border-t border-zinc-100 pt-4">
+                          <button
+                            type="button"
+                            className={adminPrimaryBtn}
+                            onClick={() => openEdit(s)}
+                          >
+                            <IconRowEdit className="shrink-0" aria-hidden />
+                            Editar
+                          </button>
                         </div>
                       </AdminAccordionRowPanel>
                     ) : null}
@@ -830,104 +912,21 @@ export function TomasAdminSection() {
         open={modal != null}
         onClose={closeModal}
         title={
-          modal === "create"
-            ? "Nuevo espacio publicitario"
-            : modal === "edit"
-              ? "Editar espacio publicitario"
-              : "Detalle del espacio publicitario"
+          modal === "create" ? "Nuevo espacio publicitario" : "Editar espacio publicitario"
         }
-        subtitle={modal === "view" ? `${selected?.code} · ${selected?.title}` : undefined}
         wide
         footer={
-          readOnly ? (
-            <div className="flex justify-end gap-2">
-              <button type="button" className={adminSecondaryBtn} onClick={closeModal}>
-                Cerrar
-              </button>
-              <button type="button" className={adminPrimaryBtn} onClick={() => openEdit(selected)}>
-                Editar
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-wrap justify-end gap-2">
-              <button type="button" className={adminSecondaryBtn} onClick={closeModal}>
-                Cancelar
-              </button>
-              <button type="button" className={adminPrimaryBtn} onClick={submitSave}>
-                {modal === "create" ? "Crear" : "Guardar"}
-              </button>
-            </div>
-          )
+          <div className="flex flex-wrap justify-end gap-2">
+            <button type="button" className={adminSecondaryBtn} onClick={closeModal}>
+              Cancelar
+            </button>
+            <button type="button" className={adminPrimaryBtn} onClick={submitSave}>
+              {modal === "create" ? "Crear" : "Guardar"}
+            </button>
+          </div>
         }
       >
-        {readOnly && selected ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <AdminAdSpaceGalleryField readOnly initialServerImages={tomaViewGalleryRows(selected)} />
-            </div>
-            <div>
-              <p className={adminLabel}>Código</p>
-              <p className="mt-1 font-mono text-sm text-zinc-800">{selected.code}</p>
-            </div>
-            <div>
-              <p className={adminLabel}>Centro comercial</p>
-              <div className="mt-1 text-sm">
-                <TomaCentroComercialValue s={selected} />
-              </div>
-            </div>
-            <div>
-              <p className={adminLabel}>Tipo</p>
-              <p className="mt-1 text-sm text-zinc-800">{spaceTypeLabel(selected.type)}</p>
-            </div>
-            <div>
-              <p className={adminLabel}>Estado</p>
-              <p className="mt-1">
-                <span
-                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${spaceStatusPillClassName(selected.status)}`}
-                >
-                  {spaceStatusLabel(selected.status, selected.status_label)}
-                </span>
-              </p>
-            </div>
-            <div className="sm:col-span-2">
-              <p className={adminLabel}>Título</p>
-              <p className="mt-1 font-medium text-zinc-900">{selected.title}</p>
-            </div>
-            <div className="sm:col-span-2">
-              <p className={adminLabel}>Descripción</p>
-              <p className="mt-1 text-sm text-zinc-700">{selected.description || "—"}</p>
-            </div>
-            <div>
-              <p className={adminLabel}>Precio USD / mes</p>
-              <p className="mt-1 text-sm tabular-nums text-zinc-800">{selected.monthly_price_usd}</p>
-            </div>
-            <div>
-              <p className={adminLabel}>Zona / plaza (catálogo)</p>
-              <p className="mt-1 text-sm text-zinc-800">{selected.venue_zone?.trim() || "—"}</p>
-            </div>
-            <div>
-              <p className={adminLabel}>Doble cara</p>
-              <p className="mt-1 text-sm text-zinc-800">{selected.double_sided ? "Sí" : "No"}</p>
-            </div>
-            <div>
-              <p className={adminLabel}>Bolsillo superior (cm)</p>
-              <p className="mt-1 text-sm text-zinc-800">{selected.hem_pocket_top_cm ?? "—"}</p>
-            </div>
-            <div className="sm:col-span-2">
-              <p className={adminLabel}>Especificaciones para artes / producción</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-700">
-                {selected.production_specs?.trim() || "—"}
-              </p>
-            </div>
-            <div className="sm:col-span-2">
-              <p className={adminLabel}>Notas de montaje / instalación</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-700">
-                {selected.installation_notes?.trim() || "—"}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div>
+        <div>
             {modalErr ? <AdminInlineAlert variant="error">{modalErr}</AdminInlineAlert> : null}
             <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
@@ -1183,8 +1182,7 @@ export function TomasAdminSection() {
               />
             </div>
             </div>
-          </div>
-        )}
+        </div>
       </AdminModal>
 
       <ImageLightbox

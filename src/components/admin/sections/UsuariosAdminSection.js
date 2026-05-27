@@ -17,7 +17,9 @@ import {
   AdminDetailInset,
   AdminDetailSection,
   adminDetailEmpty,
+  adminUserAccordionHeader,
 } from "@/components/admin/AdminAccordionDetail";
+import { IconRowEdit } from "@/components/admin/rowActionIcons";
 import { AdminAccordionToggle } from "@/components/admin/AdminAccordionToggle";
 import { AdminCreatePlusIcon } from "@/components/admin/AdminCreatePlusIcon";
 import { AdminConfirmDialog } from "@/components/admin/AdminConfirmDialog";
@@ -150,6 +152,8 @@ export function UsuariosAdminSection() {
   const filtersActive = filterQ.trim() !== "" || filterRole !== "all";
 
   const [username, setUsername] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showUserPassword, setShowUserPassword] = useState(false);
@@ -259,6 +263,8 @@ export function UsuariosAdminSection() {
 
   function resetForm() {
     setUsername("");
+    setFirstName("");
+    setLastName("");
     setEmail("");
     setPassword("");
     setShowUserPassword(false);
@@ -278,16 +284,13 @@ export function UsuariosAdminSection() {
     setFieldErrors({});
   }
 
-  function openView(u) {
-    setSelected(u);
-    setModal("view");
-  }
-
   function openEdit(u) {
     if (!u) return;
     void reloadClients();
     setSelected(u);
     setUsername(u.username);
+    setFirstName(u.first_name || "");
+    setLastName(u.last_name || "");
     setEmail(u.email || "");
     setPassword("");
     setRole(u.role || "client");
@@ -364,6 +367,8 @@ export function UsuariosAdminSection() {
         if (coverFile) {
           const fd = new FormData();
           fd.append("username", username.trim());
+          fd.append("first_name", firstName.trim());
+          fd.append("last_name", lastName.trim());
           fd.append("email", email.trim());
           fd.append("password", password);
           fd.append("role", role);
@@ -378,6 +383,8 @@ export function UsuariosAdminSection() {
             method: "POST",
             body: {
               username: username.trim(),
+              first_name: firstName.trim(),
+              last_name: lastName.trim(),
               email: email.trim(),
               password,
               role,
@@ -407,6 +414,8 @@ export function UsuariosAdminSection() {
         }
         if (coverFile) {
           const fd = new FormData();
+          fd.append("first_name", firstName.trim());
+          fd.append("last_name", lastName.trim());
           fd.append("email", email.trim());
           fd.append("role", role);
           if (password.trim()) fd.append("password", password.trim());
@@ -419,6 +428,8 @@ export function UsuariosAdminSection() {
           });
         } else {
           const body = {
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
             email: email.trim(),
             role,
           };
@@ -474,7 +485,6 @@ export function UsuariosAdminSection() {
     }
   }
 
-  const readOnly = modal === "view";
   const existingCover =
     selected?.cover_image && !pendingClearCover ? selected.cover_image : null;
 
@@ -538,7 +548,8 @@ export function UsuariosAdminSection() {
               id="usuarios-filter-q"
               value={filterQ}
               onChange={setFilterQ}
-              placeholder="Usuario, correo, empresa…"
+              placeholder="Usuario, correo, nombre, apellido…"
+              className="min-w-0 flex-[1.6]"
             />
             <AdminFilterSelect
               id="usuarios-filter-role"
@@ -658,7 +669,7 @@ export function UsuariosAdminSection() {
                             </td>
                             <td className="px-3 py-2">
                               <AdminRowActions
-                                onView={() => openView(u)}
+                                onView={() => setExpandedId(open ? null : u.id)}
                                 onEdit={() => openEdit(u)}
                                 onDelete={() => askDeleteUser(u)}
                                 showDelete={!isSelf}
@@ -688,67 +699,114 @@ export function UsuariosAdminSection() {
                               panelId={panelId}
                             >
                               <AdminAccordionDetailHeader
-                                titleLabel="Usuario"
-                                titleLine={
-                                  <p className="truncate text-sm font-medium text-zinc-900">
-                                    {u.username}
-                                    {isSelf ? (
-                                      <span className="mp-text-brand ml-2 text-xs font-normal">
-                                        Tu sesión
-                                      </span>
-                                    ) : null}
-                                  </p>
-                                }
-                                hint="Permisos y alta en el sistema"
+                                {...adminUserAccordionHeader(
+                                  u.first_name,
+                                  u.last_name,
+                                  u.username,
+                                  { isSelf },
+                                )}
                               />
 
-                              <div className="mt-5">
+                              <div className="mt-5 grid w-full max-w-none grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
                                 <AdminDetailSection
                                   panelId={panelId}
-                                  sectionId="account"
-                                  title="Cuenta y permisos"
+                                  sectionId="cuenta"
+                                  title="Cuenta"
                                 >
-                                  <AdminDetailInset>
-                                    <div className="grid gap-4 sm:grid-cols-2">
-                                      <AdminDetailField label="Rol">
-                                        {roleLabel(u.role)}
-                                      </AdminDetailField>
-                                      <AdminDetailField label="Email">
-                                        {u.email?.trim() ? (
-                                          <a
-                                            href={`mailto:${u.email.trim()}`}
-                                            className="break-all font-medium text-zinc-900 no-underline underline-offset-2 hover:underline"
-                                          >
-                                            {u.email.trim()}
-                                          </a>
-                                        ) : (
-                                          adminDetailEmpty("")
-                                        )}
-                                      </AdminDetailField>
-                                      <AdminDetailField label="Fecha de alta">
-                                        {u.date_joined ? (
-                                          <time
-                                            dateTime={u.date_joined}
-                                            title={formatDateTimeFull(u.date_joined)}
-                                          >
-                                            {formatHumanDateTime(u.date_joined)}
-                                          </time>
-                                        ) : (
-                                          adminDetailEmpty("")
-                                        )}
-                                      </AdminDetailField>
-                                      {u.role === "client" ? (
-                                        <AdminDetailField label="Empresa vinculada">
-                                          {u.client_company_name?.trim() ? (
-                                            <EmpresaVinculadaAdminLink companyName={u.client_company_name} />
-                                          ) : (
-                                            adminDetailEmpty("")
-                                          )}
-                                        </AdminDetailField>
-                                      ) : null}
-                                    </div>
+                                  <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
+                                    <AdminDetailField label="Nombre">
+                                      {adminDetailEmpty(u.first_name)}
+                                    </AdminDetailField>
+                                    <AdminDetailField label="Apellido">
+                                      {adminDetailEmpty(u.last_name)}
+                                    </AdminDetailField>
+                                    <AdminDetailField label="Nombre de usuario">
+                                      <span className="font-mono text-zinc-800">
+                                        {adminDetailEmpty(u.username)}
+                                      </span>
+                                    </AdminDetailField>
+                                    <AdminDetailField label="Email">
+                                      {u.email?.trim() ? (
+                                        <a
+                                          href={`mailto:${u.email.trim()}`}
+                                          className="break-all font-medium text-zinc-900 no-underline underline-offset-2 hover:underline"
+                                        >
+                                          {u.email.trim()}
+                                        </a>
+                                      ) : (
+                                        adminDetailEmpty("")
+                                      )}
+                                    </AdminDetailField>
+                                    <AdminDetailField label="Fecha de alta">
+                                      {u.date_joined ? (
+                                        <time
+                                          dateTime={u.date_joined}
+                                          title={formatDateTimeFull(u.date_joined)}
+                                        >
+                                          {formatHumanDateTime(u.date_joined)}
+                                        </time>
+                                      ) : (
+                                        adminDetailEmpty("")
+                                      )}
+                                    </AdminDetailField>
                                   </AdminDetailInset>
                                 </AdminDetailSection>
+
+                                <AdminDetailSection
+                                  panelId={panelId}
+                                  sectionId="permisos"
+                                  title="Permisos"
+                                >
+                                  <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
+                                    <AdminDetailField label="Rol">
+                                      {roleLabel(u.role)}
+                                    </AdminDetailField>
+                                    {u.role === "client" ? (
+                                      <AdminDetailField label="Empresa vinculada">
+                                        {u.client_company_name?.trim() ? (
+                                          <EmpresaVinculadaAdminLink
+                                            companyName={u.client_company_name}
+                                          />
+                                        ) : (
+                                          adminDetailEmpty("")
+                                        )}
+                                      </AdminDetailField>
+                                    ) : (
+                                      <AdminDetailField label="Empresa vinculada">
+                                        —
+                                      </AdminDetailField>
+                                    )}
+                                    <AdminDetailField label="Contraseña">
+                                      {u.has_usable_password === false
+                                        ? "Pendiente de definir"
+                                        : "Definida"}
+                                    </AdminDetailField>
+                                    {u.role === "client" && u.has_usable_password === false ? (
+                                      <div className="sm:col-span-2">
+                                        <button
+                                          type="button"
+                                          className={`${adminSecondaryBtn} text-sm`}
+                                          disabled={passwordLinkUserId === u.id}
+                                          onClick={() => void copyPasswordSetupLink(u)}
+                                        >
+                                          {passwordLinkUserId === u.id
+                                            ? "Copiando enlace…"
+                                            : "Copiar enlace de registro"}
+                                        </button>
+                                      </div>
+                                    ) : null}
+                                  </AdminDetailInset>
+                                </AdminDetailSection>
+                              </div>
+                              <div className="mt-4 flex justify-end border-t border-zinc-100 pt-4">
+                                <button
+                                  type="button"
+                                  className={adminPrimaryBtn}
+                                  onClick={() => openEdit(u)}
+                                >
+                                  <IconRowEdit className="shrink-0" aria-hidden />
+                                  Editar
+                                </button>
                               </div>
                             </AdminAccordionRowPanel>
                           ) : null}
@@ -771,111 +829,21 @@ export function UsuariosAdminSection() {
       <AdminModal
         open={modal != null}
         onClose={closeModal}
-        title={
-          modal === "create"
-            ? "Nuevo usuario"
-            : modal === "edit"
-              ? "Editar usuario"
-              : "Detalle del usuario"
-        }
-        subtitle={modal === "view" ? selected?.username : undefined}
+        title={modal === "create" ? "Nuevo usuario" : "Editar usuario"}
         wide
         footer={
-          readOnly ? (
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                className={adminSecondaryBtn}
-                onClick={closeModal}
-              >
-                Cerrar
-              </button>
-              <button
-                type="button"
-                className={adminPrimaryBtn}
-                onClick={() => openEdit(selected)}
-              >
-                Editar
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-wrap justify-end gap-2">
-              <button
-                type="button"
-                className={adminSecondaryBtn}
-                onClick={closeModal}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className={adminPrimaryBtn}
-                onClick={submitSave}
-              >
-                {modal === "create" ? "Crear" : "Guardar"}
-              </button>
-            </div>
-          )
+          <div className="flex flex-wrap justify-end gap-2">
+            <button type="button" className={adminSecondaryBtn} onClick={closeModal}>
+              Cancelar
+            </button>
+            <button type="button" className={adminPrimaryBtn} onClick={submitSave}>
+              {modal === "create" ? "Crear" : "Guardar"}
+            </button>
+          </div>
         }
       >
-        {!readOnly && modalErr ? <AdminInlineAlert variant="error">{modalErr}</AdminInlineAlert> : null}
-        {readOnly && selected ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <CoverImageField
-                readOnly
-                variant="avatar"
-                existingUrl={selected.cover_image}
-              />
-            </div>
-            <div>
-              <p className={adminLabel}>Usuario</p>
-              <p className="mt-1 font-mono text-sm font-medium text-zinc-900">
-                {selected.username}
-              </p>
-            </div>
-            <div>
-              <p className={adminLabel}>Rol</p>
-              <p className="mt-1 text-sm text-zinc-800">
-                {roleLabel(selected.role)}
-              </p>
-            </div>
-            <div className="sm:col-span-2">
-              <p className={adminLabel}>Email</p>
-              <p className="mt-1 text-sm text-zinc-800">
-                {selected.email || "—"}
-              </p>
-            </div>
-            <div className="sm:col-span-2">
-              <p className={adminLabel}>Alta</p>
-              <p className="mt-1 text-sm text-zinc-800">
-                {selected.date_joined ? (
-                  <time
-                    dateTime={selected.date_joined}
-                    title={formatDateTimeFull(selected.date_joined)}
-                  >
-                    {formatHumanDateTime(selected.date_joined)}
-                  </time>
-                ) : (
-                  "—"
-                )}
-              </p>
-            </div>
-            {selected.role === "client" ? (
-              <div className="sm:col-span-2">
-                <p className={adminLabel}>Empresa vinculada</p>
-                <p className="mt-1 text-sm text-zinc-800">
-                  {selected.client_company_name?.trim() ? (
-                    <EmpresaVinculadaAdminLink companyName={selected.client_company_name} />
-                  ) : (
-                    "—"
-                  )}
-                </p>
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+        {modalErr ? <AdminInlineAlert variant="error">{modalErr}</AdminInlineAlert> : null}
+        <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <CoverImageField
                 readOnly={false}
@@ -893,6 +861,36 @@ export function UsuariosAdminSection() {
                 }}
                 fileInputRef={fileRef}
               />
+            </div>
+            <div>
+              <label className={adminLabel} htmlFor="u-first-name">
+                Nombre
+              </label>
+              <input
+                id="u-first-name"
+                className={fieldClass("first_name")}
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                autoComplete="given-name"
+              />
+              {fieldErrors?.first_name ? (
+                <p className="mt-1 text-xs text-rose-700">{fieldErrors.first_name}</p>
+              ) : null}
+            </div>
+            <div>
+              <label className={adminLabel} htmlFor="u-last-name">
+                Apellido
+              </label>
+              <input
+                id="u-last-name"
+                className={fieldClass("last_name")}
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                autoComplete="family-name"
+              />
+              {fieldErrors?.last_name ? (
+                <p className="mt-1 text-xs text-rose-700">{fieldErrors.last_name}</p>
+              ) : null}
             </div>
             <div className="sm:col-span-2">
               <label className={adminLabel} htmlFor="u-user">
@@ -1035,8 +1033,7 @@ export function UsuariosAdminSection() {
                 )}
               </div>
             ) : null}
-          </div>
-        )}
+        </div>
       </AdminModal>
 
       <AdminConfirmDialog

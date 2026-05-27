@@ -54,9 +54,15 @@ function SearchIcon({ className }) {
  * @param {(v: string) => void} props.onChange
  * @param {string} [props.placeholder]
  */
-export function AdminFilterSearchInput({ id, value, onChange, placeholder = "Buscar…" }) {
+export function AdminFilterSearchInput({
+  id,
+  value,
+  onChange,
+  placeholder = "Buscar…",
+  className = "",
+}) {
   return (
-    <div className="min-w-0 flex-1">
+    <div className={`min-w-0 flex-1 sm:min-w-[12rem] ${className}`.trim()}>
       <label htmlFor={id} className={filterLabelClass}>
         Buscar
       </label>
@@ -166,7 +172,7 @@ export function AdminFiltersRow({ children, className = "" }) {
     >
       <div className="mp-admin-filters-top-accent" aria-hidden />
       <div className="px-4 pb-4 sm:px-5 sm:pb-5">
-        <div className="flex min-w-0 flex-col gap-4 rounded-xl border border-zinc-200/60 bg-zinc-50/50 p-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-6 sm:gap-y-4 sm:p-5">
+        <div className="flex min-w-0 flex-col gap-4 rounded-xl border border-zinc-200/60 bg-zinc-50/50 p-4 sm:flex-row sm:flex-nowrap sm:items-end sm:gap-x-4 sm:gap-y-4 sm:p-5">
           {children}
         </div>
       </div>

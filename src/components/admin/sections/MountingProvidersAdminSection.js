@@ -8,9 +8,12 @@ import {
   AdminAccordionRowPanel,
   AdminDetailField,
   AdminDetailInset,
+  AdminDetailProse,
   AdminDetailSection,
   adminDetailEmpty,
+  adminMountingProviderAccordionHeader,
 } from "@/components/admin/AdminAccordionDetail";
+import { IconRowEdit } from "@/components/admin/rowActionIcons";
 import { AdminAccordionToggle } from "@/components/admin/AdminAccordionToggle";
 import { AdminConfirmDialog } from "@/components/admin/AdminConfirmDialog";
 import { AdminModal } from "@/components/admin/AdminModal";
@@ -500,7 +503,8 @@ export function MountingProvidersAdminSection() {
                   setSearch(v);
                   setPage(1);
                 }}
-                placeholder="Empresa, contacto, RIF, correo o teléfono…"
+                placeholder="Buscar por empresa, RIF o contacto…"
+                className="min-w-0 flex-[1.6]"
               />
               <AdminFilterSelect
                 id="mounting-providers-filter-center"
@@ -598,29 +602,19 @@ export function MountingProvidersAdminSection() {
                         </td>
                       </tr>
                       {open ? (
-                        <AdminAccordionRowPanel colSpan={7} panelId={panelId} fullWidthContent>
+                        <AdminAccordionRowPanel colSpan={7} panelId={panelId}>
                           <AdminAccordionDetailHeader
-                            titleLabel="Proveedor"
-                            titleLine={String(row.company_name || "").trim() || "Proveedor"}
-                            hint="Datos completos y notas internas"
+                            {...adminMountingProviderAccordionHeader(row.rif, row.company_name)}
                           />
-                          <div className="mt-4">
-                            <AdminDetailSection panelId={panelId} sectionId="detail" title="Detalle">
+                          <div className="mt-5 grid w-full max-w-none grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
+                            <AdminDetailSection
+                              panelId={panelId}
+                              sectionId="datos"
+                              title="Datos del proveedor"
+                            >
                               <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
-                                <AdminDetailField label="Centros comerciales">
-                                  {centersLabelForRow(row)}
-                                </AdminDetailField>
-                                <AdminDetailField label="Correo">
-                                  {row.email?.trim() ? (
-                                    <a
-                                      href={`mailto:${encodeURIComponent(row.email.trim())}`}
-                                      className="break-all font-medium text-zinc-900 no-underline underline-offset-2 hover:underline"
-                                    >
-                                      {row.email.trim()}
-                                    </a>
-                                  ) : (
-                                    adminDetailEmpty("")
-                                  )}
+                                <AdminDetailField label="Empresa">
+                                  {adminDetailEmpty(row.company_name)}
                                 </AdminDetailField>
                                 <AdminDetailField label="RIF">
                                   {row.rif?.trim() ? (
@@ -628,6 +622,18 @@ export function MountingProvidersAdminSection() {
                                   ) : (
                                     adminDetailEmpty("")
                                   )}
+                                </AdminDetailField>
+                                <AdminDetailField label="Centros comerciales">
+                                  {centersLabelForRow(row)}
+                                </AdminDetailField>
+                                <AdminDetailField label="Estado">
+                                  <span
+                                    className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${activePillClass(
+                                      row.is_active !== false,
+                                    )}`}
+                                  >
+                                    {row.is_active !== false ? "Activo" : "Inactivo"}
+                                  </span>
                                 </AdminDetailField>
                                 <AdminDetailField label="Orden de listado">
                                   {row.sort_order != null ? String(row.sort_order) : "0"}
@@ -645,16 +651,70 @@ export function MountingProvidersAdminSection() {
                                   )}
                                 </AdminDetailField>
                                 <div className="sm:col-span-2">
-                                  <AdminDetailField label="Notas">
-                                    {row.notes?.trim() ? (
-                                      <span className="whitespace-pre-wrap text-zinc-800">{row.notes.trim()}</span>
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                                    Notas
+                                  </p>
+                                  <AdminDetailProse text={row.notes} emptyHint="Sin notas." />
+                                </div>
+                              </AdminDetailInset>
+                            </AdminDetailSection>
+
+                            <AdminDetailSection
+                              panelId={panelId}
+                              sectionId="contact"
+                              title="Contacto"
+                            >
+                              <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
+                                <AdminDetailField label="Persona de contacto">
+                                  {adminDetailEmpty(row.contact_name)}
+                                </AdminDetailField>
+                                <AdminDetailField label="Teléfono">
+                                  {adminDetailEmpty(row.phone)}
+                                </AdminDetailField>
+                                <div className="sm:col-span-2">
+                                  <AdminDetailField label="Correo">
+                                    {row.email?.trim() ? (
+                                      <a
+                                        href={`mailto:${encodeURIComponent(row.email.trim())}`}
+                                        className="break-all font-medium text-zinc-900 no-underline underline-offset-2 hover:underline"
+                                      >
+                                        {row.email.trim()}
+                                      </a>
                                     ) : (
                                       adminDetailEmpty("")
                                     )}
                                   </AdminDetailField>
                                 </div>
+                                {Array.isArray(row.staff_members) && row.staff_members.length > 0 ? (
+                                  <div className="sm:col-span-2">
+                                    <AdminDetailField label="Personal autorizado">
+                                      <ul className="mt-1 space-y-2 text-sm text-zinc-800">
+                                        {row.staff_members.map((m, i) => (
+                                          <li key={`${m.id_number || i}-${m.full_name || ""}`}>
+                                            <span className="font-medium">{m.full_name?.trim() || "—"}</span>
+                                            {m.id_number?.trim() ? (
+                                              <span className="ml-2 font-mono text-xs text-zinc-600">
+                                                {m.id_number.trim()}
+                                              </span>
+                                            ) : null}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </AdminDetailField>
+                                  </div>
+                                ) : null}
                               </AdminDetailInset>
                             </AdminDetailSection>
+                          </div>
+                          <div className="mt-4 flex justify-end border-t border-zinc-100 pt-4">
+                            <button
+                              type="button"
+                              className={adminPrimaryBtn}
+                              onClick={() => openEdit(row)}
+                            >
+                              <IconRowEdit className="shrink-0" aria-hidden />
+                              Editar
+                            </button>
                           </div>
                         </AdminAccordionRowPanel>
                       ) : null}

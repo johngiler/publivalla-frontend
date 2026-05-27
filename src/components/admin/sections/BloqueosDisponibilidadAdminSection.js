@@ -8,8 +8,12 @@ import {
   AdminAccordionRowPanel,
   AdminDetailField,
   AdminDetailInset,
+  AdminDetailProse,
+  AdminDetailSection,
+  adminAvailabilityBlockAccordionHeader,
   adminDetailEmpty,
 } from "@/components/admin/AdminAccordionDetail";
+import { IconRowEdit } from "@/components/admin/rowActionIcons";
 import { AdminAccordionToggle } from "@/components/admin/AdminAccordionToggle";
 import { AdminCreatePlusIcon } from "@/components/admin/AdminCreatePlusIcon";
 import { AdminConfirmDialog } from "@/components/admin/AdminConfirmDialog";
@@ -417,7 +421,8 @@ export function BloqueosDisponibilidadAdminSection() {
                   setSearch(v);
                   setPage(1);
                 }}
-                placeholder="Buscar espacio publicitario, centro o nota…"
+                placeholder="Buscar por código de espacio, centro o nota…"
+                className="min-w-0 flex-[1.6]"
               />
               <AdminFilterSelect
                 label="Centro"
@@ -597,50 +602,95 @@ export function BloqueosDisponibilidadAdminSection() {
                       {open ? (
                         <AdminAccordionRowPanel colSpan={7} panelId={`bloqueo-detail-${row.id}`}>
                           <AdminAccordionDetailHeader
-                            titleLabel="Bloqueo"
-                            titleLine={epLabel}
+                            {...adminAvailabilityBlockAccordionHeader(
+                              row.ad_space_code,
+                              epLabel,
+                            )}
                           />
-                          <AdminDetailInset className="mt-4 grid gap-4 sm:grid-cols-2">
-                            <AdminDetailField label="Espacio publicitario">
-                              {row.ad_space ? (
-                                <CatalogSpaceLink spaceId={row.ad_space} className="line-clamp-2">
-                                  {epLabel}
-                                </CatalogSpaceLink>
-                              ) : (
-                                adminDetailEmpty("")
-                              )}
-                            </AdminDetailField>
-                            <AdminDetailField label="Centro">
-                              {centerHref ? (
-                                <AdminDashboardFilterLink href={centerHref}>
-                                  {centerName}
-                                </AdminDashboardFilterLink>
-                              ) : (
-                                adminDetailEmpty("")
-                              )}
-                            </AdminDetailField>
-                            <AdminDetailField label="Estado">{typeLbl}</AdminDetailField>
-                            <AdminDetailField label="Periodo">
-                              {formatAvailabilityBlockPeriod(row.start_date, row.end_date)}
-                            </AdminDetailField>
-                            <AdminDetailField label="Activo">{row.is_active ? "Sí" : "No"}</AdminDetailField>
-                            <div className="sm:col-span-2">
-                              <AdminDetailField label="Nota interna">
-                                {row.note?.trim() ? row.note : adminDetailEmpty("")}
-                              </AdminDetailField>
-                            </div>
-                          </AdminDetailInset>
-                          <div className="mt-6 border-t border-zinc-200/90 pt-6">
-                            <AdminBlockViewAvailabilityCalendar
+                          <div className="mt-5 grid w-full max-w-none grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
+                            <AdminDetailSection
                               panelId={`bloqueo-detail-${row.id}`}
-                              adSpaceId={row.ad_space}
-                              pickSync={blockMonthPickFromRow(row)}
-                              editingPick={blockEditingPickFromRow(row)}
-                              periodLabel={formatAvailabilityBlockPeriod(
-                                row.start_date,
-                                row.end_date,
-                              )}
-                            />
+                              sectionId="bloqueo"
+                              title="Bloqueo"
+                            >
+                              <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
+                                <AdminDetailField label="Espacio publicitario">
+                                  {row.ad_space ? (
+                                    <CatalogSpaceLink spaceId={row.ad_space} className="line-clamp-2">
+                                      {epLabel}
+                                    </CatalogSpaceLink>
+                                  ) : (
+                                    adminDetailEmpty("")
+                                  )}
+                                </AdminDetailField>
+                                <AdminDetailField label="Centro">
+                                  {centerHref ? (
+                                    <AdminDashboardFilterLink href={centerHref}>
+                                      {centerName}
+                                    </AdminDashboardFilterLink>
+                                  ) : (
+                                    adminDetailEmpty("")
+                                  )}
+                                </AdminDetailField>
+                                <AdminDetailField label="Tipo">{typeLbl}</AdminDetailField>
+                                <AdminDetailField label="Activo">
+                                  <span
+                                    className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${activePillClass(row.is_active)}`}
+                                  >
+                                    {row.is_active ? "Sí" : "No"}
+                                  </span>
+                                </AdminDetailField>
+                              </AdminDetailInset>
+                            </AdminDetailSection>
+
+                            <AdminDetailSection
+                              panelId={`bloqueo-detail-${row.id}`}
+                              sectionId="periodo"
+                              title="Periodo"
+                            >
+                              <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
+                                <div className="sm:col-span-2">
+                                  <AdminDetailField label="Fechas bloqueadas">
+                                    {formatAvailabilityBlockPeriod(row.start_date, row.end_date)}
+                                  </AdminDetailField>
+                                </div>
+                                <div className="sm:col-span-2">
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                                    Nota interna
+                                  </p>
+                                  <AdminDetailProse text={row.note} emptyHint="Sin nota interna." />
+                                </div>
+                              </AdminDetailInset>
+                            </AdminDetailSection>
+                          </div>
+
+                          <div className="mt-6 w-full max-w-none">
+                            <AdminDetailSection
+                              panelId={`bloqueo-detail-${row.id}`}
+                              sectionId="cal"
+                              title="Calendario de disponibilidad"
+                            >
+                              <AdminBlockViewAvailabilityCalendar
+                                adSpaceId={row.ad_space}
+                                pickSync={blockMonthPickFromRow(row)}
+                                editingPick={blockEditingPickFromRow(row)}
+                                periodLabel={formatAvailabilityBlockPeriod(
+                                  row.start_date,
+                                  row.end_date,
+                                )}
+                              />
+                            </AdminDetailSection>
+                          </div>
+
+                          <div className="mt-4 flex justify-end border-t border-zinc-100 pt-4">
+                            <button
+                              type="button"
+                              className={adminPrimaryBtn}
+                              onClick={() => openEdit(row)}
+                            >
+                              <IconRowEdit className="shrink-0" aria-hidden />
+                              Editar
+                            </button>
                           </div>
                         </AdminAccordionRowPanel>
                       ) : null}

@@ -17,7 +17,7 @@ function AdminTomasViewQuerySyncInner({ onViewId }) {
   return null;
 }
 
-/** Abre el modal «Detalle del espacio publicitario» cuando la URL incluye `?view=<id>`. */
+/** Expande el acordeón del espacio cuando la URL incluye `?view=<id>`. */
 export function AdminTomasViewQuerySync({ onViewId }) {
   return (
     <Suspense fallback={null}>

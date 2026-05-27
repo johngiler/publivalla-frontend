@@ -8,9 +8,12 @@ import {
   AdminAccordionRowPanel,
   AdminDetailField,
   AdminDetailInset,
+  AdminDetailProse,
   AdminDetailSection,
+  adminCompanyAccordionHeader,
   adminDetailEmpty,
 } from "@/components/admin/AdminAccordionDetail";
+import { IconRowEdit } from "@/components/admin/rowActionIcons";
 import { AdminCopyIconButton } from "@/components/admin/AdminCopyIconButton";
 import { AdminAccordionToggle } from "@/components/admin/AdminAccordionToggle";
 import { AdminCreatePlusIcon } from "@/components/admin/AdminCreatePlusIcon";
@@ -214,11 +217,6 @@ export function ClientesAdminSection() {
     setFieldErrors({});
   }
 
-  function openView(c) {
-    setSelected(c);
-    setModal("view");
-  }
-
   function openEdit(c) {
     if (!c) return;
     setSelected(c);
@@ -404,7 +402,6 @@ export function ClientesAdminSection() {
     }
   }
 
-  const readOnly = modal === "view";
   const existingCover = selected?.cover_image && !pendingClearCover ? selected.cover_image : null;
 
   useEffect(() => {
@@ -459,7 +456,8 @@ export function ClientesAdminSection() {
               id="clientes-filter-q"
               value={filterQ}
               onChange={setFilterQ}
-              placeholder="Empresa, correo, contacto…"
+              placeholder="Razón social o RIF…"
+              className="min-w-0 flex-[1.6]"
             />
             <AdminFilterSelect
               id="clientes-filter-status"
@@ -606,7 +604,7 @@ export function ClientesAdminSection() {
                       </td>
                       <td className="px-3 py-2">
                         <AdminRowActions
-                          onView={() => openView(c)}
+                          onView={() => setExpandedId(open ? null : c.id)}
                           onEdit={() => openEdit(c)}
                           showDelete={clientCanBeDeleted(c)}
                           deleteDisabledTitle="Tiene pedidos relacionados. Revisa la sección Pedidos antes de eliminar."
@@ -617,29 +615,83 @@ export function ClientesAdminSection() {
                     {open ? (
                       <AdminAccordionRowPanel colSpan={7} panelId={panelId}>
                         <AdminAccordionDetailHeader
-                          badgeText={typeof c.rif === "string" && c.rif.trim() !== "" ? c.rif.trim() : undefined}
-                          titleLabel="Empresa en sistema"
-                          titleLine={c.company_name}
-                          hint="Datos de contacto y ubicación"
+                          {...adminCompanyAccordionHeader(c.rif, c.company_name)}
                         />
 
-                        <div className="mt-5 grid gap-6 lg:grid-cols-2">
-                          <AdminDetailSection panelId={panelId} sectionId="contact" title="Contacto">
-                            <AdminDetailInset>
-                              <AdminDetailField label="Usuarios vinculados">
-                                {Array.isArray(c.linked_usernames) && c.linked_usernames.length > 0 ? (
-                                  <span className="text-sm text-zinc-800">
-                                    <LinkedUsernamesAdminLinks usernames={c.linked_usernames} />
+                        <div className="mt-5 grid w-full max-w-none grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
+                          <AdminDetailSection
+                            panelId={panelId}
+                            sectionId="datos"
+                            title="Datos de la empresa"
+                          >
+                            <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
+                              <AdminDetailField label="Razón social">
+                                {adminDetailEmpty(c.company_name)}
+                              </AdminDetailField>
+                              <AdminDetailField label="RIF">
+                                {c.rif?.trim() ? (
+                                  <span className="inline-flex max-w-full flex-wrap items-center gap-1.5 font-mono text-sm text-zinc-800">
+                                    <span>{c.rif.trim()}</span>
+                                    <AdminCopyIconButton value={c.rif.trim()} ariaLabel="Copiar RIF" />
                                   </span>
-                                ) : linkedUsersText !== "—" ? (
-                                  <span className="text-sm text-zinc-800">{linkedUsersText}</span>
                                 ) : (
-                                  <span className="text-sm text-zinc-400">
-                                    Ninguno · usa «Generar usuario» en la columna Usuarios vinculados o crea la cuenta
-                                    en Usuarios
-                                  </span>
+                                  adminDetailEmpty("")
                                 )}
                               </AdminDetailField>
+                              <AdminDetailField label="Estado">
+                                <span
+                                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${clientStatusPillClassName(c.status)}`}
+                                >
+                                  {clientStatusLabel(c.status, c.status_label)}
+                                </span>
+                              </AdminDetailField>
+                              <AdminDetailField label="Pedidos vinculados">
+                                <span className="tabular-nums text-zinc-800">
+                                  {clientOrdersCount(c)}
+                                </span>
+                              </AdminDetailField>
+                              <div className="sm:col-span-2">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                                  Notas internas
+                                </p>
+                                <AdminDetailProse
+                                  text={c.notes}
+                                  emptyHint="Sin notas internas."
+                                />
+                              </div>
+                            </AdminDetailInset>
+                          </AdminDetailSection>
+
+                          <AdminDetailSection
+                            panelId={panelId}
+                            sectionId="contact"
+                            title="Contacto"
+                          >
+                            <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
+                              <div className="sm:col-span-2">
+                                <AdminDetailField label="Usuarios vinculados">
+                                  {Array.isArray(c.linked_usernames) && c.linked_usernames.length > 0 ? (
+                                    <LinkedUsernamesAdminLinks usernames={c.linked_usernames} />
+                                  ) : linkedUsersText !== "—" ? (
+                                    <span className="text-sm text-zinc-800">{linkedUsersText}</span>
+                                  ) : (
+                                    <span className="text-sm text-zinc-400">
+                                      Ninguno. Usa «Generar usuario» en la tabla o crea la cuenta en Usuarios.
+                                    </span>
+                                  )}
+                                </AdminDetailField>
+                                {clientCanGenerateUser(c) ? (
+                                  <button
+                                    type="button"
+                                    className={`${adminSecondaryBtn} w-full justify-center gap-1.5 text-sm sm:w-auto`}
+                                    disabled={generatingClientId === c.id}
+                                    onClick={() => void generateUserForClient(c)}
+                                  >
+                                    <IconAdminUserPlus className="!h-4 !w-4 shrink-0" />
+                                    {generatingClientId === c.id ? "Generando…" : "Generar usuario"}
+                                  </button>
+                                ) : null}
+                              </div>
                               <AdminDetailField label="Representante legal">
                                 {c.representative_name?.trim() ? (
                                   <span className="inline-flex max-w-full flex-wrap items-center gap-1.5 text-sm text-zinc-800">
@@ -663,7 +715,7 @@ export function ClientesAdminSection() {
                                     />
                                   </span>
                                 ) : (
-                                  <span className="font-mono text-sm text-zinc-800">{adminDetailEmpty("")}</span>
+                                  adminDetailEmpty("")
                                 )}
                               </AdminDetailField>
                               <AdminDetailField label="Persona de contacto">
@@ -691,16 +743,6 @@ export function ClientesAdminSection() {
                                   adminDetailEmpty("")
                                 )}
                               </AdminDetailField>
-                              <AdminDetailField label="RIF">
-                                {c.rif?.trim() ? (
-                                  <span className="inline-flex max-w-full flex-wrap items-center gap-1.5 font-mono text-sm text-zinc-800">
-                                    <span>{c.rif.trim()}</span>
-                                    <AdminCopyIconButton value={c.rif.trim()} ariaLabel="Copiar RIF" />
-                                  </span>
-                                ) : (
-                                  <span className="font-mono text-sm text-zinc-800">{adminDetailEmpty("")}</span>
-                                )}
-                              </AdminDetailField>
                               <AdminDetailField label="Teléfono">
                                 {c.phone?.trim() ? (
                                   <span className="inline-flex max-w-full flex-wrap items-center gap-1.5 text-sm text-zinc-800">
@@ -716,15 +758,36 @@ export function ClientesAdminSection() {
                               </AdminDetailField>
                             </AdminDetailInset>
                           </AdminDetailSection>
+                        </div>
 
-                          <AdminDetailSection panelId={panelId} sectionId="ubic" title="Ubicación">
-                            <AdminDetailInset>
-                              <AdminDetailField label="Ciudad">{adminDetailEmpty(c.city)}</AdminDetailField>
-                              <AdminDetailField label="Dirección fiscal / oficina">
-                                {adminDetailEmpty(c.address)}
+                        <div className="mt-6 w-full max-w-none">
+                          <AdminDetailSection
+                            panelId={panelId}
+                            sectionId="ubic"
+                            title="Ubicación"
+                          >
+                            <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
+                              <AdminDetailField label="Ciudad">
+                                {adminDetailEmpty(c.city)}
                               </AdminDetailField>
+                              <div className="sm:col-span-2">
+                                <AdminDetailField label="Dirección fiscal / oficina">
+                                  {adminDetailEmpty(c.address)}
+                                </AdminDetailField>
+                              </div>
                             </AdminDetailInset>
                           </AdminDetailSection>
+                        </div>
+
+                        <div className="mt-4 flex justify-end border-t border-zinc-100 pt-4">
+                          <button
+                            type="button"
+                            className={adminPrimaryBtn}
+                            onClick={() => openEdit(c)}
+                          >
+                            <IconRowEdit className="shrink-0" aria-hidden />
+                            Editar
+                          </button>
                         </div>
                       </AdminAccordionRowPanel>
                     ) : null}
@@ -743,149 +806,21 @@ export function ClientesAdminSection() {
       <AdminModal
         open={modal != null}
         onClose={closeModal}
-        title={
-          modal === "create"
-            ? "Nueva empresa"
-            : modal === "edit"
-              ? "Editar empresa"
-              : "Detalle de la empresa"
-        }
-        subtitle={modal === "view" ? selected?.company_name : undefined}
+        title={modal === "create" ? "Nueva empresa" : "Editar empresa"}
         wide
         footer={
-          readOnly ? (
-            <div className="flex justify-end gap-2">
-              <button type="button" className={adminSecondaryBtn} onClick={closeModal}>
-                Cerrar
-              </button>
-              <button type="button" className={adminPrimaryBtn} onClick={() => openEdit(selected)}>
-                Editar
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-wrap justify-end gap-2">
-              <button type="button" className={adminSecondaryBtn} onClick={closeModal}>
-                Cancelar
-              </button>
-              <button type="button" className={adminPrimaryBtn} onClick={submitSave}>
-                {modal === "create" ? "Crear" : "Guardar"}
-              </button>
-            </div>
-          )
+          <div className="flex flex-wrap justify-end gap-2">
+            <button type="button" className={adminSecondaryBtn} onClick={closeModal}>
+              Cancelar
+            </button>
+            <button type="button" className={adminPrimaryBtn} onClick={submitSave}>
+              {modal === "create" ? "Crear" : "Guardar"}
+            </button>
+          </div>
         }
       >
-        {!readOnly && modalErr ? <AdminInlineAlert variant="error">{modalErr}</AdminInlineAlert> : null}
-        {readOnly && selected ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <CoverImageField readOnly variant="avatar" existingUrl={selected.cover_image} />
-            </div>
-            <div className="sm:col-span-2">
-              <p className={adminLabel}>Razón social</p>
-              <p className="mt-1 font-medium text-zinc-900">{selected.company_name}</p>
-            </div>
-            <div>
-              <p className={adminLabel}>RIF</p>
-              <p className="mt-1 inline-flex flex-wrap items-center gap-1.5 font-mono text-sm text-zinc-800">
-                <span>{selected.rif?.trim() || "—"}</span>
-                {selected.rif?.trim() ? (
-                  <AdminCopyIconButton value={selected.rif.trim()} ariaLabel="Copiar RIF" />
-                ) : null}
-              </p>
-            </div>
-            <div>
-              <p className={adminLabel}>Estado</p>
-              <p className="mt-1">
-                <span
-                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${clientStatusPillClassName(selected.status)}`}
-                >
-                  {clientStatusLabel(selected.status, selected.status_label)}
-                </span>
-              </p>
-            </div>
-            <div>
-              <p className={adminLabel}>Representante legal</p>
-              <p className="mt-1 inline-flex flex-wrap items-center gap-1.5 text-sm text-zinc-800">
-                <span>{selected.representative_name?.trim() || "—"}</span>
-                {selected.representative_name?.trim() ? (
-                  <AdminCopyIconButton
-                    value={selected.representative_name.trim()}
-                    ariaLabel="Copiar representante legal"
-                  />
-                ) : null}
-              </p>
-            </div>
-            <div>
-              <p className={adminLabel}>Cédula del representante</p>
-              <p className="mt-1 inline-flex flex-wrap items-center gap-1.5 font-mono text-sm text-zinc-800">
-                <span>{selected.representative_id_number?.trim() || "—"}</span>
-                {selected.representative_id_number?.trim() ? (
-                  <AdminCopyIconButton
-                    value={selected.representative_id_number.trim()}
-                    ariaLabel="Copiar cédula del representante"
-                  />
-                ) : null}
-              </p>
-            </div>
-            <div>
-              <p className={adminLabel}>Persona de contacto</p>
-              <p className="mt-1 inline-flex flex-wrap items-center gap-1.5 text-sm text-zinc-800">
-                <span>{selected.contact_name?.trim() || "—"}</span>
-                {selected.contact_name?.trim() ? (
-                  <AdminCopyIconButton
-                    value={selected.contact_name.trim()}
-                    ariaLabel="Copiar persona de contacto"
-                  />
-                ) : null}
-              </p>
-            </div>
-            <div>
-              <p className={adminLabel}>Usuarios vinculados</p>
-              <p className="mt-1 text-sm text-zinc-800">
-                {Array.isArray(selected.linked_usernames) && selected.linked_usernames.length > 0 ? (
-                  <LinkedUsernamesAdminLinks usernames={selected.linked_usernames} />
-                ) : (
-                  formatLinkedUsersDisplay(selected)
-                )}
-              </p>
-              <p className="mt-1 text-xs text-zinc-500">
-                Solo lectura. Puedes usar «Generar usuario» en la columna Usuarios vinculados (enlace para definir
-                contraseña) o enlazar cuentas en Usuarios con rol «Cliente marketplace». Varias cuentas pueden compartir
-                la misma ficha.
-              </p>
-            </div>
-            <div>
-              <p className={adminLabel}>Email</p>
-              <p className="mt-1 text-sm text-zinc-800">{selected.email}</p>
-            </div>
-            <div>
-              <p className={adminLabel}>Teléfono</p>
-              <p className="mt-1 inline-flex flex-wrap items-center gap-1.5 text-sm text-zinc-800">
-                <span>{selected.phone?.trim() || "—"}</span>
-                {selected.phone?.trim() ? (
-                  <AdminCopyIconButton value={selected.phone.trim()} ariaLabel="Copiar teléfono" />
-                ) : null}
-              </p>
-            </div>
-            <div>
-              <p className={adminLabel}>Ciudad</p>
-              <p className="mt-1 text-sm text-zinc-800">{selected.city?.trim() || "—"}</p>
-            </div>
-            <div className="sm:col-span-2">
-              <p className={adminLabel}>Dirección fiscal / oficina</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-800">
-                {selected.address?.trim() || "—"}
-              </p>
-            </div>
-            <div className="sm:col-span-2">
-              <p className={adminLabel}>Notas internas</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-700">
-                {selected.notes?.trim() || "—"}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+        {modalErr ? <AdminInlineAlert variant="error">{modalErr}</AdminInlineAlert> : null}
+        <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <CoverImageField
                 readOnly={false}
@@ -1056,8 +991,7 @@ export function ClientesAdminSection() {
                 placeholder="Solo visibles en el panel"
               />
             </div>
-          </div>
-        )}
+        </div>
       </AdminModal>
 
       <AdminConfirmDialog

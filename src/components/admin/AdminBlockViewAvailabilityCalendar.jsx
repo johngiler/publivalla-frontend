@@ -2,14 +2,12 @@
 
 import useSWR from "swr";
 
-import { AdminDetailSection } from "@/components/admin/AdminAccordionDetail";
 import { SpaceMultiYearMonthRangePicker } from "@/components/catalog/SpaceMultiYearMonthRangePicker";
 import { getSpace } from "@/services/api";
 
 /**
  * Calendario multi-año en solo lectura (mismo componente que la reserva en ficha de toma).
  * @param {{
- *   panelId: string,
  *   adSpaceId?: string | number | null,
  *   pickSync?: object | null,
  *   editingPick?: { start_date?: string, end_date?: string } | null,
@@ -17,7 +15,6 @@ import { getSpace } from "@/services/api";
  * }} props
  */
 export function AdminBlockViewAvailabilityCalendar({
-  panelId,
   adSpaceId,
   pickSync = null,
   editingPick = null,
@@ -31,7 +28,7 @@ export function AdminBlockViewAvailabilityCalendar({
   );
 
   return (
-    <AdminDetailSection panelId={panelId} sectionId="disp" title="Disponibilidad">
+    <>
       {!id ? (
         <p className="text-sm text-zinc-500">Sin espacio publicitario asociado.</p>
       ) : isLoading ? (
@@ -52,6 +49,6 @@ export function AdminBlockViewAvailabilityCalendar({
           readOnlyPeriodLabel={periodLabel}
         />
       )}
-    </AdminDetailSection>
+    </>
   );
 }

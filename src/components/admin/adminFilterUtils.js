@@ -22,7 +22,7 @@ export function filterCenters(rows, { q, active }) {
     if (active === "active" && c.is_active === false) return false;
     if (active === "inactive" && c.is_active !== false) return false;
     if (!qNorm(q)) return true;
-    const blob = [c.code, c.name, c.city, c.district, c.address].map((x) => String(x ?? "")).join(" ");
+    const blob = [c.code, c.name, c.city, c.address].map((x) => String(x ?? "")).join(" ");
     return matchesQ(blob, q);
   });
 }
