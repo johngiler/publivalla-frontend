@@ -256,7 +256,7 @@ export function AdminDashboardMetrics({ metrics }) {
           <p className={SUB}>Suma de subtotales de líneas en pedidos activos o vencidos.</p>
           {top ? (
             <div className="mt-3">
-              <p className="font-semibold text-zinc-900">{top.title || top.code}</p>
+              <p className="font-semibold text-zinc-900">{top.name || top.title || top.code}</p>
               <p className="font-mono text-xs text-zinc-500">{top.code}</p>
               <p className="mt-2 text-xl font-bold tabular-nums text-emerald-800">
                 {formatUsdMoney(top.revenue_usd)}
@@ -290,7 +290,7 @@ export function AdminDashboardMetrics({ metrics }) {
                 <li key={r.ad_space_id} className={`flex flex-wrap items-baseline justify-between gap-2 ${ROW_DIVIDER}`}>
                   <span className="min-w-0 font-medium text-zinc-800">
                     <span className="font-mono text-xs text-zinc-500">{r.code}</span>{" "}
-                    <span className="line-clamp-2">{r.title}</span>
+                    <span className="line-clamp-2">{r.name || r.title}</span>
                   </span>
                   <span className="shrink-0 tabular-nums font-semibold text-amber-900">{r.idle_days} d</span>
                 </li>
@@ -381,7 +381,7 @@ export function AdminDashboardMetrics({ metrics }) {
                 key={r.type}
                 className="flex items-center justify-between gap-2 rounded-lg border border-white/55 bg-white/45 px-3 py-2 text-sm shadow-sm shadow-black/[0.03] backdrop-blur-[1px]"
               >
-                <span className="min-w-0 text-zinc-800">{labelSpaceType(r.type)}</span>
+                <span className="min-w-0 text-zinc-800">{r.label || labelSpaceType(r.type)}</span>
                 <span className="shrink-0 tabular-nums font-semibold text-zinc-900">{r.count}</span>
               </li>
             ))

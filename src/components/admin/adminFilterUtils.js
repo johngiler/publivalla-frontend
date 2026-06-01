@@ -31,7 +31,7 @@ export function filterSpaces(rows, { q, status }) {
   return rows.filter((s) => {
     if (status !== "all" && String(s.status) !== status) return false;
     if (!qNorm(q)) return true;
-    const blob = [s.code, s.title, s.shopping_center_name, s.shopping_center_slug]
+    const blob = [s.code, s.name, s.title, s.shopping_center_name, s.shopping_center_slug]
       .map((x) => String(x ?? ""))
       .join(" ");
     return matchesQ(blob, q);

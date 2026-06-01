@@ -166,7 +166,7 @@ export function BloqueosDisponibilidadAdminSection() {
       { v: "all", l: "Todos los espacios publicitarios" },
       ...spacesForFilter.map((s) => ({
         v: String(s.id),
-        l: [s.code, s.title].filter(Boolean).join(" — ") || `Espacio #${s.id}`,
+        l: [s.code, s.name ?? s.title].filter(Boolean).join(" — ") || `Espacio #${s.id}`,
       })),
     ],
     [spacesForFilter],
@@ -182,7 +182,7 @@ export function BloqueosDisponibilidadAdminSection() {
       { v: "", l: "Selecciona el espacio publicitario" },
       ...spacesForModal.map((s) => ({
         v: String(s.id),
-        l: [s.code, s.title].filter(Boolean).join(" — ") || `Espacio #${s.id}`,
+        l: [s.code, s.name ?? s.title].filter(Boolean).join(" — ") || `Espacio #${s.id}`,
       })),
     ],
     [spacesForModal],
