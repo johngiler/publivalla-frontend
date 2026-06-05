@@ -59,7 +59,9 @@ export function SpaceCard({
       ? space.code.trim()
       : "";
   const displayTitle = formatCatalogTitle(
-    typeof space.title === "string" ? space.title : "",
+    (typeof space.name === "string" && space.name.trim()) ||
+      (typeof space.title === "string" && space.title.trim()) ||
+      "",
   );
 
   const detailHref = `/catalog/${space.id}`;
