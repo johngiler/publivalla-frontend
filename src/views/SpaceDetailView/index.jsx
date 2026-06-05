@@ -60,6 +60,8 @@ export default function SpaceDetailView({ space }) {
     ? `Imagen principal: ${displayTitle}`
     : "Imagen principal del espacio publicitario";
   const formats = Array.isArray(space.formats) ? space.formats : [];
+  const hasDescription =
+    typeof space.description === "string" && space.description.trim() !== "";
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
@@ -73,12 +75,19 @@ export default function SpaceDetailView({ space }) {
         <span>Volver al catálogo</span>
       </Link>
 
-      <header className="mt-8 max-w-3xl lg:mt-10">
+      <header className="mt-8 lg:mt-10">
         <p className="font-mono text-xs font-medium uppercase tracking-wider text-zinc-400">{space.code}</p>
-        <h1 className="mt-2 break-words text-3xl font-semibold tracking-tight text-zinc-950 sm:text-4xl">
-          {displayTitle}
-        </h1>
-        <p className="mt-3 text-base text-zinc-600">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <h1 className="min-w-0 break-words text-3xl font-semibold tracking-tight text-zinc-950 sm:text-4xl">
+            {displayTitle}
+          </h1>
+          <span
+            className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${spaceStatusPillClassName(space.status)}`}
+          >
+            {statusLabel}
+          </span>
+        </div>
+        <p className="mt-3 max-w-3xl text-base text-zinc-600">
           <span className="font-medium text-zinc-700">Centro comercial: </span>
           {centerSlug ? (
             <Link
@@ -97,17 +106,10 @@ export default function SpaceDetailView({ space }) {
             </>
           ) : null}
         </p>
-        <p className="mt-2">
-          <span
-            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${spaceStatusPillClassName(space.status)}`}
-          >
-            {statusLabel}
-          </span>
-        </p>
       </header>
 
-      <div className="mt-6 grid gap-8 lg:mt-8 lg:grid-cols-12 lg:items-start lg:gap-x-6 lg:gap-y-0">
-        <div className="min-w-0 space-y-6 lg:col-span-7">
+      <div className="mt-6 grid gap-6 lg:mt-8 lg:grid-cols-12 lg:items-start lg:gap-x-6 lg:gap-y-8">
+        <div className="min-w-0 lg:col-span-7">
           <SpaceDetailCoverWithLightbox
             galleryUrls={galleryUrls}
             coverAlt={coverAlt}
@@ -115,18 +117,6 @@ export default function SpaceDetailView({ space }) {
             imageSizes="(max-width: 1024px) 100vw, min(420px, 55vw)"
             spaceId={space.id}
           />
-          {space.description ? (
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Descripción</h2>
-              <p className="mt-2 max-w-prose text-sm leading-relaxed text-zinc-700 sm:text-[15px]">
-                {space.description}
-              </p>
-            </div>
-          ) : null}
-          <SpaceDetailReferenceImages space={space} />
-          <div className="lg:hidden">
-            <SpaceDetailFormatsPanel formats={formats} />
-          </div>
         </div>
 
         <aside className="mx-auto flex w-full min-w-0 max-w-sm flex-col gap-5 sm:max-w-[23rem] lg:col-span-5 lg:mx-0 lg:max-w-none lg:sticky lg:top-24 lg:justify-self-start lg:self-start">
@@ -149,10 +139,24 @@ export default function SpaceDetailView({ space }) {
             </div>
           </div>
 
-          <div className="hidden w-full rounded-xl border border-zinc-200/90 bg-zinc-50/80 p-3.5 sm:block sm:p-4">
-            <SpaceDetailFormatsPanel formats={formats} />
-          </div>
+          {hasDescription ? (
+            <div className="w-full rounded-xl border border-zinc-200/90 bg-zinc-50/80 p-3.5 sm:p-4">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Descripción</h2>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-700 sm:text-[15px]">
+                {space.description.trim()}
+              </p>
+            </div>
+          ) : null}
         </aside>
+
+        <div className="min-w-0 space-y-6 lg:col-span-12">
+          <SpaceDetailReferenceImages space={space} />
+          {formats.length > 0 ? (
+            <div className="rounded-xl border border-zinc-200/90 bg-zinc-50/80 p-3.5 sm:p-5">
+              <SpaceDetailFormatsPanel formats={formats} />
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <SpaceDetailReservationActions space={space} />

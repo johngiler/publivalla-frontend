@@ -46,23 +46,23 @@ export function SpaceDetailReferenceImages({ space }) {
 
   return (
     <>
-      <div className="mt-6 space-y-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
         {items.map((item, idx) => (
-          <figure key={item.key}>
+          <figure key={item.key} className="min-w-0">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
               {item.label}
             </h2>
             <button
               type="button"
-              className={`mt-2 block w-full max-w-md overflow-hidden rounded-[10px] border border-zinc-200/90 bg-zinc-50 p-1 ${squareListImagePreviewButtonRingClass}`}
+              className={`mt-2 block w-full overflow-hidden rounded-[10px] border border-zinc-200/90 bg-zinc-50 p-1 ${squareListImagePreviewButtonRingClass}`}
               aria-label={`Ver ampliada: ${item.label}`}
               onClick={() => setLightbox({ open: true, index: idx })}
             >
               <CatalogRasterImage
                 src={item.src}
                 alt={item.alt}
-                className="mx-auto max-h-72 w-full object-contain"
-                sizes="(max-width: 1024px) 100vw, min(420px, 55vw)"
+                className="mx-auto aspect-[4/3] max-h-80 w-full object-contain"
+                sizes="(max-width: 640px) 100vw, min(420px, 50vw)"
               />
             </button>
           </figure>
