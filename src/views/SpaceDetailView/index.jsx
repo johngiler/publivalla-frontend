@@ -119,7 +119,7 @@ export default function SpaceDetailView({ space }) {
           />
         </div>
 
-        <aside className="mx-auto flex w-full min-w-0 max-w-sm flex-col gap-5 sm:max-w-[23rem] lg:col-span-5 lg:mx-0 lg:max-w-none lg:sticky lg:top-24 lg:justify-self-start lg:self-start">
+        <aside className="mx-auto flex w-full min-w-0 max-w-sm flex-col gap-5 sm:max-w-[23rem] lg:col-span-5 lg:mx-0 lg:max-w-none lg:justify-self-start lg:self-start">
           <div className="w-full rounded-xl border border-zinc-200/90 bg-white p-3.5 shadow-sm sm:p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Precio mensual</p>
             <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
