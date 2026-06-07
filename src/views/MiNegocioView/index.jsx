@@ -217,6 +217,7 @@ export default function MiNegocioView() {
 
   const [name, setName] = useState("");
   const [legalName, setLegalName] = useState("");
+  const [rif, setRif] = useState("");
   const [marketplaceTitle, setMarketplaceTitle] = useState("");
   const [marketplaceTagline, setMarketplaceTagline] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#0c9dcf");
@@ -252,20 +253,28 @@ export default function MiNegocioView() {
   const [logoMarkUrl, setLogoMarkUrl] = useState("");
   const [faviconUrl, setFaviconUrl] = useState("");
   const [logoPngArtifactsUrl, setLogoPngArtifactsUrl] = useState("");
+  const [signaturePngUrl, setSignaturePngUrl] = useState("");
+  const [stampPngUrl, setStampPngUrl] = useState("");
 
   const [logoFile, setLogoFile] = useState(null);
   const [logoMarkFile, setLogoMarkFile] = useState(null);
   const [faviconFile, setFaviconFile] = useState(null);
   const [logoPngArtifactsFile, setLogoPngArtifactsFile] = useState(null);
+  const [signaturePngFile, setSignaturePngFile] = useState(null);
+  const [stampPngFile, setStampPngFile] = useState(null);
   const [removeLogo, setRemoveLogo] = useState(false);
   const [removeLogoMark, setRemoveLogoMark] = useState(false);
   const [removeFavicon, setRemoveFavicon] = useState(false);
   const [removeLogoPngArtifacts, setRemoveLogoPngArtifacts] = useState(false);
+  const [removeSignaturePng, setRemoveSignaturePng] = useState(false);
+  const [removeStampPng, setRemoveStampPng] = useState(false);
 
   const [logoPreview, setLogoPreview] = useState(null);
   const [logoMarkPreview, setLogoMarkPreview] = useState(null);
   const [faviconPreview, setFaviconPreview] = useState(null);
   const [logoPngArtifactsPreview, setLogoPngArtifactsPreview] = useState(null);
+  const [signaturePngPreview, setSignaturePngPreview] = useState(null);
+  const [stampPngPreview, setStampPngPreview] = useState(null);
 
   const [saveErr, setSaveErr] = useState("");
   const [saveOk, setSaveOk] = useState("");
@@ -317,6 +326,26 @@ export default function MiNegocioView() {
   }, [logoPngArtifactsFile]);
 
   useEffect(() => {
+    if (!signaturePngFile) {
+      setSignaturePngPreview(null);
+      return;
+    }
+    const u = URL.createObjectURL(signaturePngFile);
+    setSignaturePngPreview(u);
+    return () => URL.revokeObjectURL(u);
+  }, [signaturePngFile]);
+
+  useEffect(() => {
+    if (!stampPngFile) {
+      setStampPngPreview(null);
+      return;
+    }
+    const u = URL.createObjectURL(stampPngFile);
+    setStampPngPreview(u);
+    return () => URL.revokeObjectURL(u);
+  }, [stampPngFile]);
+
+  useEffect(() => {
     if (!authReady) return;
     if (!me) {
       router.replace("/login?next=/cuenta/negocio");
@@ -343,6 +372,7 @@ export default function MiNegocioView() {
         setSlug(typeof d.slug === "string" ? d.slug : "");
         setName(typeof d.name === "string" ? d.name : "");
         setLegalName(typeof d.legal_name === "string" ? d.legal_name : "");
+        setRif(typeof d.rif === "string" ? d.rif : "");
         setMarketplaceTitle(
           typeof d.marketplace_title === "string" ? d.marketplace_title : "",
         );
@@ -421,14 +451,24 @@ export default function MiNegocioView() {
             ? d.logo_png_artifacts_url
             : "",
         );
+        setSignaturePngUrl(
+          typeof d.signature_png_url === "string" ? d.signature_png_url : "",
+        );
+        setStampPngUrl(
+          typeof d.stamp_png_url === "string" ? d.stamp_png_url : "",
+        );
         setLogoFile(null);
         setLogoMarkFile(null);
         setFaviconFile(null);
         setLogoPngArtifactsFile(null);
+        setSignaturePngFile(null);
+        setStampPngFile(null);
         setRemoveLogo(false);
         setRemoveLogoMark(false);
         setRemoveFavicon(false);
         setRemoveLogoPngArtifacts(false);
+        setRemoveSignaturePng(false);
+        setRemoveStampPng(false);
       } catch (e) {
         if (!cancelled)
           setLoadErr(e instanceof Error ? e.message : "Error al cargar");
@@ -528,6 +568,7 @@ export default function MiNegocioView() {
       const fd = new FormData();
       fd.append("name", name.trim());
       fd.append("legal_name", legalName.trim());
+      fd.append("rif", rif.trim());
       fd.append("marketplace_title", marketplaceTitle.trim());
       fd.append("marketplace_tagline", marketplaceTagline.trim());
       fd.append("primary_color", primaryColor.trim());
@@ -570,6 +611,10 @@ export default function MiNegocioView() {
         fd.append("logo_png_artifacts", logoPngArtifactsFile);
       if (removeLogoPngArtifacts)
         fd.append("remove_logo_png_artifacts", "true");
+      if (signaturePngFile) fd.append("signature_png", signaturePngFile);
+      if (removeSignaturePng) fd.append("remove_signature_png", "true");
+      if (stampPngFile) fd.append("stamp_png", stampPngFile);
+      if (removeStampPng) fd.append("remove_stamp_png", "true");
 
       const data = await patchMyWorkspace(fd, { token: accessToken });
       setSlug(typeof data.slug === "string" ? data.slug : slug);
@@ -585,14 +630,24 @@ export default function MiNegocioView() {
           ? data.logo_png_artifacts_url
           : "",
       );
+      setSignaturePngUrl(
+        typeof data.signature_png_url === "string" ? data.signature_png_url : "",
+      );
+      setStampPngUrl(
+        typeof data.stamp_png_url === "string" ? data.stamp_png_url : "",
+      );
       setLogoFile(null);
       setLogoMarkFile(null);
       setFaviconFile(null);
       setLogoPngArtifactsFile(null);
+      setSignaturePngFile(null);
+      setStampPngFile(null);
       setRemoveLogo(false);
       setRemoveLogoMark(false);
       setRemoveFavicon(false);
       setRemoveLogoPngArtifacts(false);
+      setRemoveSignaturePng(false);
+      setRemoveStampPng(false);
       setTxPassword("");
       setTxPwdSet(Boolean(data.transactional_email_password_set));
       setTxApiKey("");
@@ -645,6 +700,8 @@ export default function MiNegocioView() {
 
   const logoExisting = removeLogo ? "" : logoUrl;
   const logoPngArtifactsExisting = removeLogoPngArtifacts ? "" : logoPngArtifactsUrl;
+  const signaturePngExisting = removeSignaturePng ? "" : signaturePngUrl;
+  const stampPngExisting = removeStampPng ? "" : stampPngUrl;
   const markExisting = removeLogoMark ? "" : logoMarkUrl;
   const favExisting = removeFavicon ? "" : faviconUrl;
   const profileRoleBadge = marketplaceRoleLabel(role);
@@ -745,6 +802,23 @@ export default function MiNegocioView() {
                   value={legalName}
                   onChange={(e) => setLegalName(e.target.value)}
                   className={fieldClass}
+                  placeholder="Arrendador en documentos del pedido"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="ws-rif"
+                  className="block text-sm font-medium text-zinc-800"
+                >
+                  RIF (opcional)
+                </label>
+                <input
+                  id="ws-rif"
+                  value={rif}
+                  onChange={(e) => setRif(e.target.value)}
+                  className={fieldClass}
+                  placeholder="Ej. J-00008276-6"
+                  autoComplete="off"
                 />
               </div>
               <div>
@@ -1293,6 +1367,46 @@ export default function MiNegocioView() {
                   onClearMark={() => {
                     setRemoveFavicon(true);
                     setFaviconFile(null);
+                  }}
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-6">
+                <FileBlock
+                  previewVariant="square100"
+                  label="Firma (documentos PDF)"
+                  helper="Solo PNG. Se inserta en la hoja de negociación y en la carta al municipio, arriba de la línea de firma del arrendador."
+                  existingUrl={signaturePngExisting}
+                  previewObjectUrl={signaturePngPreview}
+                  file={signaturePngFile}
+                  accept={pngArtifactsAccept}
+                  formatsHint="PNG · máximo 5 MB"
+                  formatErrorMessage="Formato no permitido. Usa solo PNG."
+                  onFileChange={(f) => {
+                    setSignaturePngFile(f);
+                    setRemoveSignaturePng(false);
+                  }}
+                  onClearMark={() => {
+                    setRemoveSignaturePng(true);
+                    setSignaturePngFile(null);
+                  }}
+                />
+                <FileBlock
+                  previewVariant="square100"
+                  label="Sello (documentos PDF)"
+                  helper="Solo PNG. Se muestra en los mismos documentos cuando también tienes firma configurada."
+                  existingUrl={stampPngExisting}
+                  previewObjectUrl={stampPngPreview}
+                  file={stampPngFile}
+                  accept={pngArtifactsAccept}
+                  formatsHint="PNG · máximo 5 MB"
+                  formatErrorMessage="Formato no permitido. Usa solo PNG."
+                  onFileChange={(f) => {
+                    setStampPngFile(f);
+                    setRemoveStampPng(false);
+                  }}
+                  onClearMark={() => {
+                    setRemoveStampPng(true);
+                    setStampPngFile(null);
                   }}
                 />
               </div>

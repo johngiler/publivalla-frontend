@@ -132,7 +132,16 @@ function PedidoEstadoActualCell({ order }) {
  * con texto del estado o solo icono en el chevron.
  */
 const pedidoEstadoCompactBtnBase =
-  "inline-flex shrink-0 items-center justify-center rounded-[10px] border border-zinc-200 bg-white text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--mp-primary)_35%,transparent)]";
+  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-200 bg-white text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--mp-primary)_35%,transparent)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-zinc-200 disabled:hover:bg-white disabled:hover:text-zinc-700";
+
+function PedidoEstadoActionSpinner() {
+  return (
+    <span
+      className="inline-block size-3 shrink-0 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600"
+      aria-hidden
+    />
+  );
+}
 
 const pedidoEstadoCompactBtnText = `${pedidoEstadoCompactBtnBase} min-h-8 max-w-[12rem] px-2.5 py-1.5 text-left text-[11px] font-semibold leading-snug`;
 
@@ -140,7 +149,12 @@ const pedidoEstadoCompactBtnIcon = `${pedidoEstadoCompactBtnBase} size-8 text-zi
 
 const PEDIDO_ESTADO_PANEL_W = 216;
 
-function PedidoSiguienteEstadoCell({ order, orderRef, onStatusChangeRequest }) {
+function PedidoSiguienteEstadoCell({
+  order,
+  orderRef,
+  onStatusChangeRequest,
+  pendingStatusChange,
+}) {
   const [opcionesOpen, setOpcionesOpen] = useState(false);
   const [panelPos, setPanelPos] = useState(null);
   const wrapRef = useRef(null);
@@ -153,6 +167,8 @@ function PedidoSiguienteEstadoCell({ order, orderRef, onStatusChangeRequest }) {
   const showNextBtn = Boolean(quick && !quick.blockedReason);
   const showBlocked = Boolean(quick?.blockedReason);
   const showRejectActivo = orderAdminShowRejectPedidoActivoButton(order);
+  const isOrderBusy = pendingStatusChange?.orderId === order.id;
+  const pendingStatus = isOrderBusy ? pendingStatusChange.status : null;
 
   useLayoutEffect(() => {
     if (!opcionesOpen) {
@@ -232,9 +248,18 @@ function PedidoSiguienteEstadoCell({ order, orderRef, onStatusChangeRequest }) {
             className={`${pedidoEstadoCompactBtnText} max-w-[9rem] shrink-0 line-clamp-2 sm:max-w-[11rem]`}
             title={formatOrderAdminTransitionButtonLabel(quick.status)}
             aria-label={formatOrderAdminTransitionButtonLabel(quick.status)}
+            disabled={isOrderBusy}
+            aria-busy={pendingStatus === quick.status}
             onClick={() => onStatusChangeRequest(order, quick.status)}
           >
-            {formatOrderAdminTransitionButtonLabel(quick.status)}
+            {pendingStatus === quick.status ? (
+              <>
+                <PedidoEstadoActionSpinner />
+                Procesando…
+              </>
+            ) : (
+              formatOrderAdminTransitionButtonLabel(quick.status)
+            )}
           </button>
         ) : null}
         {showRejectActivo ? (
@@ -243,9 +268,18 @@ function PedidoSiguienteEstadoCell({ order, orderRef, onStatusChangeRequest }) {
             className={`${pedidoEstadoCompactBtnText} max-w-[8rem] shrink-0 line-clamp-2 sm:max-w-[9rem]`}
             title={`${formatOrderAdminTransitionButtonLabel("cancelled")} Se pedirá confirmación.`}
             aria-label={`${formatOrderAdminTransitionButtonLabel("cancelled")} Se pedirá confirmación.`}
+            disabled={isOrderBusy}
+            aria-busy={pendingStatus === "cancelled"}
             onClick={() => onStatusChangeRequest(order, "cancelled")}
           >
-            {formatOrderAdminTransitionButtonLabel("cancelled")}
+            {pendingStatus === "cancelled" ? (
+              <>
+                <PedidoEstadoActionSpinner />
+                Procesando…
+              </>
+            ) : (
+              formatOrderAdminTransitionButtonLabel("cancelled")
+            )}
           </button>
         ) : null}
         {hasSelectableAlternative ? (
@@ -256,6 +290,7 @@ function PedidoSiguienteEstadoCell({ order, orderRef, onStatusChangeRequest }) {
               aria-expanded={opcionesOpen}
               aria-haspopup="listbox"
               aria-label="Más opciones de estado"
+              disabled={isOrderBusy}
               onClick={() => setOpcionesOpen((v) => !v)}
             >
               <IconAdminChevronDown className="!h-[1.125rem] !w-[1.125rem]" />
@@ -278,11 +313,11 @@ function PedidoSiguienteEstadoCell({ order, orderRef, onStatusChangeRequest }) {
                       options={options}
                       value={order.status}
                       defaultMenuIsOpen
+                      isDisabled={isOrderBusy}
                       onChange={(v) => {
-                        if (v != null && v !== "") {
-                          onStatusChangeRequest(order, String(v));
-                          setOpcionesOpen(false);
-                        }
+                        if (isOrderBusy || v == null || v === "") return;
+                        onStatusChangeRequest(order, String(v));
+                        setOpcionesOpen(false);
                       }}
                       compact
                       aria-label={`Cambiar estado del pedido ${orderRef || order.id}`}
@@ -313,6 +348,8 @@ export function PedidosAdminSection() {
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
   const [reportLoading, setReportLoading] = useState(false);
+  /** { orderId, status } mientras PATCH de estado está en vuelo. */
+  const [pendingStatusChange, setPendingStatusChange] = useState(null);
   const [filterQ, setFilterQ] = useState("");
   const [filterOrderStatus, setFilterOrderStatus] = useState("all");
   const debouncedFilterQ = useDebouncedValue(filterQ, 400);
@@ -425,6 +462,7 @@ export function PedidosAdminSection() {
     async (orderId, status) => {
       setErr("");
       setMsg("");
+      setPendingStatusChange({ orderId, status: String(status) });
       try {
         await authFetch(`/api/orders/${orderId}/`, {
           method: "PATCH",
@@ -434,6 +472,8 @@ export function PedidosAdminSection() {
         await reloadOrders();
       } catch (e) {
         setErr(e instanceof Error ? e.message : "Error");
+      } finally {
+        setPendingStatusChange(null);
       }
     },
     [reloadOrders],
@@ -514,10 +554,12 @@ export function PedidosAdminSection() {
           </div>
           <button
             type="button"
-            className={`${adminPrimaryBtn} inline-flex items-center justify-center gap-2`}
+            className={`${adminPrimaryBtn} inline-flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-60`}
             disabled={reportLoading}
+            aria-busy={reportLoading}
             onClick={() => downloadOrdersReport()}
           >
+            {reportLoading ? <PedidoEstadoActionSpinner /> : null}
             <IconAdminArrowDownTray className="!h-[1.125rem] !w-[1.125rem]" />
             {reportLoading ? "Generando…" : "Generar reporte"}
           </button>
@@ -675,6 +717,7 @@ export function PedidosAdminSection() {
                                 order={o}
                                 orderRef={orderRef}
                                 onStatusChangeRequest={requestOrderStatusChange}
+                                pendingStatusChange={pendingStatusChange}
                               />
                             </td>
                             <td className="px-3 py-2">
