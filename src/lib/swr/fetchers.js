@@ -48,6 +48,7 @@ export const AUTH_ME_SWR_KEY = "/api/auth/me/";
 
 /** Ficha de empresa del cliente en sesión (`/api/me/company/`; 204 → `null`). */
 export const MY_COMPANY_SWR_KEY = "/api/me/company/";
+export const MY_COMPANY_MEMBERS_SWR_KEY = "/api/me/company/members/";
 
 /** Centros admin: todas las páginas (selectores y filtros). */
 export const ADMIN_CENTERS_ALL_SWR_KEY = ["GET", "admin", "centers", "all-pages"];

@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 
+import { ClientBrandsSection } from "@/components/account/ClientBrandsSection";
+import { ClientMembersSection } from "@/components/account/ClientMembersSection";
 import { CoverImageField } from "@/components/admin/CoverImageField";
 import { useAuth } from "@/context/AuthContext";
 import { marketplacePrimaryBtn } from "@/lib/marketplaceActionButtons";
@@ -401,6 +402,42 @@ export default function CuentaView() {
               </div>
             </div>
           </section>
+
+          <section aria-labelledby="sec-marcas">
+            <SectionTitle id="sec-marcas">Marcas</SectionTitle>
+            <p className="mt-2 text-sm text-zinc-600">
+              Marcas que tu empresa promociona en el marketplace (nombre y logo).
+            </p>
+            <ClientBrandsSection
+              brands={Array.isArray(companyData?.brands) ? companyData.brands : []}
+              hasProfile={hasProfile}
+              accessToken={accessToken}
+              onBrandsChange={(nextBrands) => {
+                mutateMyCompany(
+                  (prev) => {
+                    if (!prev || typeof prev !== "object") return prev;
+                    const next = { ...prev, brands: nextBrands };
+                    setCompanyData(next);
+                    return next;
+                  },
+                  { revalidate: false },
+                );
+              }}
+            />
+          </section>
+
+          <section aria-labelledby="sec-usuarios">
+            <SectionTitle id="sec-usuarios">Usuarios</SectionTitle>
+            <p className="mt-2 text-sm text-zinc-600">
+              Personas de tu empresa con acceso al marketplace. Cada una puede trabajar con una o
+              varias marcas.
+            </p>
+            <ClientMembersSection
+              brands={Array.isArray(companyData?.brands) ? companyData.brands : []}
+              hasProfile={hasProfile}
+              accessToken={accessToken}
+            />
+          </section>
           </div>
 
         {companyLoadErr ? (
@@ -428,20 +465,14 @@ export default function CuentaView() {
           </p>
         ) : null}
 
-        <div className="mt-8 flex flex-col gap-3 border-t border-zinc-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-3 pt-2">
           <button
             type="submit"
             disabled={saving}
-            className={`${marketplacePrimaryBtn} min-h-11 px-6 py-2.5 text-base sm:min-h-0 sm:text-sm`}
+            className={`${marketplacePrimaryBtn} min-h-11 px-5 py-2.5 text-sm font-semibold disabled:opacity-60`}
           >
             {saving ? "Guardando…" : hasProfile ? "Guardar cambios" : "Registrar empresa"}
           </button>
-          <Link
-            href="/"
-            className="text-center text-sm font-medium text-zinc-600 no-underline underline-offset-4 transition hover:text-zinc-900 hover:underline sm:text-left"
-          >
-            Volver al inicio
-          </Link>
         </div>
       </div>
       </form>

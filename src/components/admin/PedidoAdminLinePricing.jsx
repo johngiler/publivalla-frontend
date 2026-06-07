@@ -23,7 +23,7 @@ import {
   orderLinePricingEditable,
   parseUsdInput,
 } from "@/lib/orderLinePricing";
-import { orderAdminIsBeforeInvoice } from "@/lib/orderAdminWorkflow";
+import { orderAdminCommercialEditable } from "@/lib/orderAdminWorkflow";
 import { authFetch } from "@/services/authApi";
 
 /**
@@ -130,7 +130,7 @@ export function PedidoAdminLinePricing({ order, panelId, onSaved }) {
     }
   }, [drafts, items, onSaved, order?.negotiation_sheet_signed_url, order?.status, orderId]);
 
-  if (!orderAdminIsBeforeInvoice(order)) {
+  if (!orderAdminCommercialEditable(order)) {
     return null;
   }
 

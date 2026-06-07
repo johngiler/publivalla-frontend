@@ -192,9 +192,17 @@ export default function LoginForm() {
             />
           </div>
           <div>
-            <label htmlFor="login-password" className="text-sm font-medium text-zinc-800">
-              Contraseña
-            </label>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <label htmlFor="login-password" className="text-sm font-medium text-zinc-800">
+                Contraseña
+              </label>
+              <Link
+                href="/recuperar-contrasena"
+                className="text-xs font-medium text-zinc-700 no-underline underline-offset-4 hover:underline"
+              >
+                Olvidé mi contraseña
+              </Link>
+            </div>
             <div className="relative mt-2">
               <input
                 id="login-password"

@@ -71,10 +71,6 @@ function IconEyeOff({ className = "h-5 w-5 shrink-0 text-zinc-500" }) {
   );
 }
 
-const pillBase = `${ROUNDED_CONTROL} border px-3 py-1.5 text-sm font-medium shadow-sm transition`;
-const pillInactive = `border-zinc-200/90 bg-white text-zinc-700 hover:border-[color-mix(in_srgb,var(--mp-primary)_40%,transparent)] hover:text-[color:var(--mp-primary)]`;
-const pillCurrent = `border-[color-mix(in_srgb,var(--mp-primary)_45%,#d4d4d8)] bg-[color-mix(in_srgb,var(--mp-primary)_10%,color-mix(in_srgb,var(--mp-secondary)_5%,#fff))] font-semibold text-[color:var(--mp-primary)] ring-1 ring-[color-mix(in_srgb,var(--mp-primary)_18%,transparent)]`;
-
 const roleBadgeClass =
   "inline-flex max-w-full shrink-0 items-center rounded-full border border-orange-200/90 bg-gradient-to-r from-orange-50/95 via-amber-50/80 to-white px-3 py-1 text-xs font-semibold text-orange-950 shadow-sm ring-1 ring-orange-100/70 sm:text-sm";
 
@@ -708,18 +704,6 @@ export default function MiNegocioView() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-10">
-      <nav
-        className="flex flex-wrap gap-2 text-sm"
-        aria-label="Sección de cuenta"
-      >
-        <Link href="/cuenta/perfil" className={`${pillBase} ${pillInactive}`}>
-          Mi perfil
-        </Link>
-        <span className={`${pillBase} ${pillCurrent}`} aria-current="page">
-          Mi negocio
-        </span>
-      </nav>
-
       <div className="relative mt-8 overflow-hidden rounded-2xl border border-zinc-200/80 bg-white px-5 py-6 shadow-[0_2px_12px_rgba(15,23,42,0.06)] sm:px-6 sm:py-7">
         <div
           className="pointer-events-none absolute inset-x-0 top-0 z-[1] mp-admin-filters-top-accent"

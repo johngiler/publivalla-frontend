@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
@@ -13,10 +12,6 @@ import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 import { changeMePassword, patchMe } from "@/services/authApi";
 
 const fieldClass = `mp-form-field-accent mt-1.5 min-h-11 w-full ${ROUNDED_CONTROL} border border-zinc-200 bg-white px-3.5 py-2.5 text-base text-zinc-900 shadow-sm transition-[border-color,box-shadow] duration-200 ease-out placeholder:text-zinc-400 focus:outline-none sm:min-h-0 sm:py-2 sm:text-sm`;
-
-const pillBase = `${ROUNDED_CONTROL} border px-3 py-1.5 text-sm font-medium shadow-sm transition`;
-const pillInactive = `border-zinc-200/90 bg-white text-zinc-700 hover:border-[color-mix(in_srgb,var(--mp-primary)_40%,transparent)] hover:text-[color:var(--mp-primary)]`;
-const pillCurrent = `border-[color-mix(in_srgb,var(--mp-primary)_45%,#d4d4d8)] bg-[color-mix(in_srgb,var(--mp-primary)_10%,color-mix(in_srgb,var(--mp-secondary)_5%,#fff))] font-semibold text-[color:var(--mp-primary)] ring-1 ring-[color-mix(in_srgb,var(--mp-primary)_18%,transparent)]`;
 
 const roleBadgeClass =
   "inline-flex max-w-full shrink-0 items-center rounded-full border border-orange-200/90 bg-gradient-to-r from-orange-50/95 via-amber-50/80 to-white px-3 py-1 text-xs font-semibold text-orange-950 shadow-sm ring-1 ring-orange-100/70 sm:text-sm";
@@ -44,7 +39,7 @@ function SectionTitle({ children, id }) {
 
 export default function PerfilView() {
   const router = useRouter();
-  const { authReady, me, accessToken, refreshUser, isAdmin, isClient, role } = useAuth();
+  const { authReady, me, accessToken, refreshUser, role } = useAuth();
   const fileRef = useRef(null);
 
   const [email, setEmail] = useState("");
@@ -183,22 +178,7 @@ export default function PerfilView() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-10">
-      {!isClient ? (
-        <nav className="flex flex-wrap gap-2 text-sm" aria-label="Sección de cuenta">
-          {isAdmin ? (
-            <Link href="/cuenta/negocio" className={`${pillBase} ${pillInactive}`}>
-              Mi negocio
-            </Link>
-          ) : null}
-          <span className={`${pillBase} ${pillCurrent}`} aria-current="page">
-            Mi perfil
-          </span>
-        </nav>
-      ) : null}
-
-      <div
-        className={`relative ${isClient ? "mt-6" : "mt-8"} overflow-hidden rounded-2xl border border-zinc-200/80 bg-white px-5 py-6 shadow-[0_2px_12px_rgba(15,23,42,0.06)] sm:px-6 sm:py-7`}
-      >
+      <div className="relative mt-8 overflow-hidden rounded-2xl border border-zinc-200/80 bg-white px-5 py-6 shadow-[0_2px_12px_rgba(15,23,42,0.06)] sm:px-6 sm:py-7">
         <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] mp-admin-filters-top-accent" aria-hidden />
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-balance text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">

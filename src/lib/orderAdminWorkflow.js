@@ -19,7 +19,7 @@ export const ORDER_HAPPY_PATH_ADMIN = [
 
 const TERMINAL = new Set(["cancelled", "expired"]);
 
-/** Estados anteriores a «Facturada» (precios acordados y archivos digitales editables en admin). */
+/** Estados anteriores a «Facturada». */
 const ORDER_STATUSES_BEFORE_INVOICE = new Set([
   "draft",
   "submitted",
@@ -27,9 +27,24 @@ const ORDER_STATUSES_BEFORE_INVOICE = new Set([
   "art_approved",
 ]);
 
+/**
+ * Tras «Aprobar solicitud»: precios acordados, inicio de alquiler y factura digital.
+ * En «Enviada» aún no aplica (la negociación no ha empezado).
+ */
+const ORDER_STATUSES_COMMERCIAL_EDITABLE = new Set([
+  "client_approved",
+  "art_approved",
+]);
+
 /** @param {Record<string, unknown> | null | undefined} order */
 export function orderAdminIsBeforeInvoice(order) {
   return ORDER_STATUSES_BEFORE_INVOICE.has(String(order?.status ?? ""));
+}
+
+/** @param {Record<string, unknown> | null | undefined} order */
+export function orderAdminCommercialEditable(order) {
+  if (order?.line_pricing_editable === true) return true;
+  return ORDER_STATUSES_COMMERCIAL_EDITABLE.has(String(order?.status ?? ""));
 }
 
 /** Verbo de la acción (infinitivo) para el botón «acción?» en el listado admin. */

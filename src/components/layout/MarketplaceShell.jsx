@@ -2,6 +2,7 @@
 
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
+import { MarketplaceWhatsAppFab } from "@/components/layout/MarketplaceWhatsAppFab";
 import {
   PublivallaFallbackBadge,
   PublivallaFallbackChrome,
@@ -46,6 +47,7 @@ export function MarketplaceShell({ children }) {
       <Header />
       <main className="min-w-0 w-full flex-1">{children}</main>
       <Footer />
+      <MarketplaceWhatsAppFab />
     </>
   );
 }

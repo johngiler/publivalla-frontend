@@ -57,6 +57,7 @@ import {
   IconAdminClipboard,
 } from "@/components/admin/adminIcons";
 import { PedidoAdminLinePricing } from "@/components/admin/PedidoAdminLinePricing";
+import { PedidoAdminLineRentalStart } from "@/components/admin/PedidoAdminLineRentalStart";
 import { PedidoAdminOrderLinesList } from "@/components/admin/PedidoAdminOrderLinesList";
 import { PedidoDocumentosNegociacionAdmin } from "@/components/admin/PedidoDocumentosNegociacionAdmin";
 import { PedidosSectionSkeleton } from "@/components/admin/skeletons/PedidosSectionSkeleton";
@@ -1013,7 +1014,12 @@ export function PedidosAdminSection() {
                                   </AdminDetailSection>
                                 </div>
 
-                                <div className="min-w-0 lg:col-span-2">
+                                <div className="min-w-0 lg:col-span-2 space-y-6">
+                                  <PedidoAdminLineRentalStart
+                                    order={o}
+                                    panelId={panelId}
+                                    onSaved={refreshOrderAfterSave}
+                                  />
                                   <PedidoAdminLinePricing
                                     order={o}
                                     panelId={panelId}

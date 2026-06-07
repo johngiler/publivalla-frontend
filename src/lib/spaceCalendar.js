@@ -52,16 +52,23 @@ export function isoRangeTouchesBlockedRanges(startIso, endIso, ranges) {
   );
 }
 
+/** Día límite (inclusive) para reservar el mes en curso. */
+export const CURRENT_MONTH_SELECTABLE_UNTIL_DAY = 15;
+
 /**
- * Meses aún elegibles en el año (excluye pasados y el mes en curso).
+ * Meses aún elegibles en el año (excluye pasados; el mes en curso solo hasta el día 15).
  * @param {number} availabilityYear
  * @param {Date} [ref]
  */
 export function futureMonthsInYear(availabilityYear, ref = new Date()) {
   const cy = ref.getFullYear();
   const cm = ref.getMonth() + 1;
+  const cd = ref.getDate();
   if (availabilityYear < cy) return 0;
   if (availabilityYear > cy) return 12;
+  if (cd <= CURRENT_MONTH_SELECTABLE_UNTIL_DAY) {
+    return Math.max(0, 12 - cm + 1);
+  }
   return Math.max(0, 12 - cm);
 }
 
@@ -103,7 +110,7 @@ export function rangeTouchesOccupiedMonth(
 }
 
 /**
- * Mes pasado o mes en curso respecto a `ref` (mismo año calendario que `availabilityYear`).
+ * Mes no elegible: pasado o mes en curso tras el día 15.
  * @param {number} availabilityYear
  * @param {number} month1to12
  * @param {Date} [ref]
@@ -115,9 +122,12 @@ export function isMonthPastOrCurrentInYear(
 ) {
   const cy = ref.getFullYear();
   const cm = ref.getMonth() + 1;
+  const cd = ref.getDate();
   if (availabilityYear < cy) return true;
   if (availabilityYear > cy) return false;
-  return month1to12 <= cm;
+  if (month1to12 < cm) return true;
+  if (month1to12 > cm) return false;
+  return cd > CURRENT_MONTH_SELECTABLE_UNTIL_DAY;
 }
 
 /**

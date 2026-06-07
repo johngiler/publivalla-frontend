@@ -686,6 +686,55 @@ export async function getPasswordSetupIntent(token) {
   return /** @type {{ email: string }} */ (parsed.data);
 }
 
+/** Solicitud de enlace para restablecer contraseña (respuesta genérica). */
+export async function postPasswordResetRequest(email) {
+  const res = await fetch(apiUrl("/api/auth/password-reset-request/"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...workspaceSlugRequestHeaders(),
+    },
+    body: JSON.stringify({ email: String(email || "").trim() }),
+    cache: "no-store",
+  });
+  const parsed = await parseFetchResponse(res);
+  if (!parsed.ok) throw new Error(errorMessageFromParsed(parsed));
+  return parsed.data;
+}
+
+/** Datos del correo para el formulario de restablecer contraseña. */
+export async function getPasswordResetIntent(token) {
+  const q = new URLSearchParams();
+  q.set("token", String(token || "").trim());
+  const res = await fetch(apiUrl(`/api/auth/password-reset-intent/?${q}`), {
+    headers: { ...workspaceSlugRequestHeaders() },
+    cache: "no-store",
+  });
+  const parsed = await parseFetchResponse(res);
+  if (!parsed.ok) throw new Error(errorMessageFromParsed(parsed));
+  return /** @type {{ email: string }} */ (parsed.data);
+}
+
+/** Nueva contraseña tras enlace de recuperación (token firmado). */
+export async function postPasswordResetConfirm({
+  token,
+  password,
+  password_confirm,
+}) {
+  const res = await fetch(apiUrl("/api/auth/password-reset-confirm/"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...workspaceSlugRequestHeaders(),
+    },
+    body: JSON.stringify({ token, password, password_confirm }),
+    cache: "no-store",
+  });
+  const parsed = await parseFetchResponse(res);
+  if (!parsed.ok) throw new Error(errorMessageFromParsed(parsed));
+  return parsed.data;
+}
+
 /** Primera contraseña para usuario creado sin clave (token firmado). */
 export async function postSetInitialPassword({
   token,

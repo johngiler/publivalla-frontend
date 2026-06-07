@@ -212,6 +212,55 @@ export async function fetchMyCompany(accessToken) {
   }
 }
 
+/** Crear marca de la empresa (Mi empresa). */
+export async function createMyCompanyBrand(formData, { token } = {}) {
+  return authFetchForm("/api/me/company/brands/", { formData, token });
+}
+
+/** Actualizar marca (nombre, logo o `remove_logo=true`). */
+export async function updateMyCompanyBrand(brandId, formData, { token } = {}) {
+  return authFetchForm(`/api/me/company/brands/${brandId}/`, {
+    method: "PATCH",
+    formData,
+    token,
+  });
+}
+
+/** Eliminar marca de la empresa. */
+export async function deleteMyCompanyBrand(brandId, { token } = {}) {
+  return authFetch(`/api/me/company/brands/${brandId}/`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+/** Usuarios vinculados a la empresa (Mi empresa). */
+export async function fetchMyCompanyMembers({ token } = {}) {
+  return authFetch("/api/me/company/members/", { token });
+}
+
+/** Alta de usuario cliente adicional de la empresa. */
+export async function createMyCompanyMember(body, { token } = {}) {
+  return authFetch("/api/me/company/members/", { method: "POST", body, token });
+}
+
+/** Actualizar nombre o marcas de un usuario de la empresa. */
+export async function updateMyCompanyMember(memberUserId, body, { token } = {}) {
+  return authFetch(`/api/me/company/members/${memberUserId}/`, {
+    method: "PATCH",
+    body,
+    token,
+  });
+}
+
+/** Eliminar usuario de la empresa (no la propia cuenta). */
+export async function deleteMyCompanyMember(memberUserId, { token } = {}) {
+  return authFetch(`/api/me/company/members/${memberUserId}/`, {
+    method: "DELETE",
+    token,
+  });
+}
+
 /** JSON o `FormData` (logo/foto de empresa y `remove_company_cover`). */
 export async function saveMyCompany(payload, { method = "POST", token } = {}) {
   const t = token ?? getAccessToken();
