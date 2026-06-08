@@ -4,7 +4,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRONTEND_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-REMOTE_HOST="${PUBLIVALLA_FRONTEND_SSH:-publivalla-frontend}"
+REMOTE_HOST="${PUBLIVALLA_FRONTEND_SSH:-webapp}"
 REMOTE_PATH="/home/git/publivalla"
 STAGE_DIR="$FRONTEND_DIR/.next/publivalla-deploy-bundle"
 
