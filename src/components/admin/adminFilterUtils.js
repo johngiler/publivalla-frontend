@@ -27,9 +27,9 @@ export function filterCenters(rows, { q, active }) {
   });
 }
 
-export function filterSpaces(rows, { q, status }) {
+export function filterSpaces(rows, { q, availability }) {
   return rows.filter((s) => {
-    if (status !== "all" && String(s.status) !== status) return false;
+    if (availability !== "all" && String(s.availability) !== availability) return false;
     if (!qNorm(q)) return true;
     const blob = [s.code, s.name, s.title, s.shopping_center_name, s.shopping_center_slug]
       .map((x) => String(x ?? ""))

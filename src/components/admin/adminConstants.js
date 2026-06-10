@@ -47,10 +47,21 @@ export function availabilityBlockTypePillClassName(type) {
   return "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80";
 }
 
-export const SPACE_STATUS = [
+export const SPACE_AVAILABILITY = [
   { v: "available", l: "Disponible" },
   { v: "occupied", l: "Ocupado" },
   { v: "blocked", l: "Bloqueado" },
+];
+
+export const SPACE_AVAILABILITY_FILTER_OPTIONS = [
+  { v: "all", l: "Todas las disponibilidades" },
+  ...SPACE_AVAILABILITY,
+];
+
+export const SPACE_ACTIVE_FILTERS = [
+  { v: "all", l: "Todos (estado)" },
+  { v: "active", l: "Activos" },
+  { v: "inactive", l: "Inactivos" },
 ];
 
 export const CLIENT_STATUS = [
@@ -75,19 +86,19 @@ export function clientStatusPillClassName(status) {
   return "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80";
 }
 
-/** Texto en español; el API puede enviar `status_label` (get_status_display). */
-export function spaceStatusLabel(status, statusLabelFromApi) {
-  const s = String(status ?? "");
+/** Texto en español; el API puede enviar `availability_label` (get_availability_display). */
+export function spaceAvailabilityLabel(availability, availabilityLabelFromApi) {
+  const s = String(availability ?? "");
   if (s === "reserved") return "Ocupado";
-  if (typeof statusLabelFromApi === "string" && statusLabelFromApi.trim() !== "") {
-    return statusLabelFromApi.trim();
+  if (typeof availabilityLabelFromApi === "string" && availabilityLabelFromApi.trim() !== "") {
+    return availabilityLabelFromApi.trim();
   }
-  const o = SPACE_STATUS.find((x) => String(x.v) === s);
-  return o ? o.l : status ? String(status) : "—";
+  const o = SPACE_AVAILABILITY.find((x) => String(x.v) === s);
+  return o ? o.l : availability ? String(availability) : "—";
 }
 
-export function spaceStatusPillClassName(status) {
-  const s = String(status ?? "");
+export function spaceAvailabilityPillClassName(availability) {
+  const s = String(availability ?? "");
   if (s === "available") {
     return `${CATALOG_MONTH_AVAILABLE_BG} text-zinc-800 ${CATALOG_MONTH_AVAILABLE_RING}`;
   }
@@ -95,6 +106,16 @@ export function spaceStatusPillClassName(status) {
   if (s === "reserved") return "bg-violet-50 text-violet-900 ring-1 ring-violet-200/80";
   if (s === "blocked") return "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200/80";
   return "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80";
+}
+
+export function recordActiveLabel(isActive) {
+  return isActive !== false ? "Activo" : "Inactivo";
+}
+
+export function recordActivePillClassName(isActive) {
+  return isActive !== false
+    ? "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/80"
+    : "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80";
 }
 
 /**

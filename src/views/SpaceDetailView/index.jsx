@@ -7,7 +7,7 @@ import { SpaceDetailAvailabilityBar } from "@/components/catalog/SpaceDetailAvai
 import { SpaceDetailClientQuickLinks } from "@/components/catalog/SpaceDetailClientQuickLinks";
 import { SpaceMarketplaceCompliance } from "@/components/catalog/SpaceMarketplaceCompliance";
 import { SpaceDetailReservationActions } from "@/components/catalog/SpaceDetailReservationActions";
-import { spaceStatusLabel, spaceStatusPillClassName } from "@/components/admin/adminConstants";
+import { spaceAvailabilityLabel, spaceAvailabilityPillClassName } from "@/components/admin/adminConstants";
 import { formatCatalogTitle } from "@/lib/catalogDisplay";
 import { catalogSummaryAvailabilityYear } from "@/lib/spaceCalendar";
 import { subtitleCityAfterCenterName } from "@/lib/shoppingCenterDisplay";
@@ -26,7 +26,7 @@ function formatUsdMonthly(n) {
 export default function SpaceDetailView({ space }) {
   const summaryYear = catalogSummaryAvailabilityYear(new Date(), space);
   const backHref = "/";
-  const statusLabel = spaceStatusLabel(space.status, space.status_label);
+  const statusLabel = spaceAvailabilityLabel(space.availability, space.availability_label);
   const centerName =
     typeof space.shopping_center_name === "string" && space.shopping_center_name.trim() !== ""
       ? space.shopping_center_name.trim()
@@ -82,7 +82,7 @@ export default function SpaceDetailView({ space }) {
             {displayTitle}
           </h1>
           <span
-            className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${spaceStatusPillClassName(space.status)}`}
+            className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${spaceAvailabilityPillClassName(space.availability)}`}
           >
             {statusLabel}
           </span>

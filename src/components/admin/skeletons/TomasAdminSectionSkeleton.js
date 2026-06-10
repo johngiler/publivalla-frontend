@@ -35,6 +35,9 @@ export function TomasAdminSectionSkeleton() {
                   <Skeleton className="h-3 w-20" />
                 </th>
                 <th className="px-3 py-3">
+                  <Skeleton className="h-3 w-24" />
+                </th>
+                <th className="px-3 py-3">
                   <Skeleton className="h-3 w-14" />
                 </th>
                 <th className="px-3 py-3 text-right">
@@ -59,6 +62,9 @@ export function TomasAdminSectionSkeleton() {
                   </td>
                   <td className="px-3 py-3">
                     <Skeleton className="h-4 w-24" />
+                  </td>
+                  <td className="px-3 py-3">
+                    <Skeleton className="h-4 w-20" />
                   </td>
                   <td className="px-3 py-3">
                     <Skeleton className="h-4 w-16" />

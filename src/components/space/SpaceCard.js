@@ -4,8 +4,8 @@ import { SpaceDetailFavoriteButton } from "@/components/catalog/SpaceDetailFavor
 import { CatalogRasterImage } from "@/components/media/CatalogRasterImage";
 import { SpaceMultiYearAvailabilityBar } from "@/components/catalog/SpaceMultiYearAvailabilityBar";
 import {
-  spaceStatusLabel,
-  spaceStatusPillClassName,
+  spaceAvailabilityLabel,
+  spaceAvailabilityPillClassName,
 } from "@/components/admin/adminConstants";
 import { IconCart } from "@/components/layout/navIcons";
 import { CATALOG_CART_BADGE_CLASS } from "@/lib/catalogMonthColors";
@@ -53,7 +53,7 @@ export function SpaceCard({
     cityLine.localeCompare(centerName, undefined, { sensitivity: "accent" }) !==
       0;
   const hasLocationBadge = centerName !== "" || cityLine !== "";
-  const statusText = spaceStatusLabel(space.status, space.status_label);
+  const statusText = spaceAvailabilityLabel(space.availability, space.availability_label);
   const code =
     typeof space.code === "string" && space.code.trim() !== ""
       ? space.code.trim()
@@ -151,7 +151,7 @@ export function SpaceCard({
           ) : null}
           <div className="mt-2.5 flex w-full items-center justify-between gap-3">
             <span
-              className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold leading-tight ${spaceStatusPillClassName(space.status)}`}
+              className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold leading-tight ${spaceAvailabilityPillClassName(space.availability)}`}
             >
               {statusText}
             </span>

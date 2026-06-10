@@ -11,7 +11,7 @@ import {
  */
 export function spaceAllowsMarketplaceReservation(space) {
   if (space == null) return false;
-  if (String(space.status ?? "") === "blocked") return false;
+  if (String(space.availability ?? "") === "blocked") return false;
   if (space.marketplace_reservable === true) return true;
   if (space.marketplace_reservable === false) return false;
   const ref = new Date();

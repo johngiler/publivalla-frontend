@@ -16,7 +16,7 @@ import {
   YAxis,
 } from "recharts";
 
-import { ORDER_STATUS, SPACE_STATUS } from "@/components/admin/adminConstants";
+import { ORDER_STATUS, SPACE_AVAILABILITY } from "@/components/admin/adminConstants";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 
 /** Pares [intenso, suave] para rellenos en degradé de donuts y leyendas. */
@@ -49,6 +49,7 @@ function StatusDonut({
   subtitle,
   rows,
   mapChoices,
+  rowKey = "status",
   cardClass,
   gradientPrefix,
   afterChart = null,
@@ -56,11 +57,11 @@ function StatusDonut({
 }) {
   const data = useMemo(() => {
     return rows.map((r) => ({
-      name: statusLabel(mapChoices, r.status),
+      name: statusLabel(mapChoices, r[rowKey]),
       value: r.count,
-      key: r.status,
+      key: r[rowKey],
     }));
-  }, [rows, mapChoices]);
+  }, [rows, mapChoices, rowKey]);
 
   const hasData = data.some((d) => d.value > 0);
   if (!hasData) {
@@ -202,10 +203,13 @@ export function AdminDashboardCharts({ stats }) {
     <div className="space-y-5">
       <div className="grid gap-5 lg:grid-cols-2">
         <StatusDonut
-          title="Espacios publicitarios por estado"
-          subtitle="Disponible, reservado, ocupado, bloqueado"
-          rows={Array.isArray(stats?.spaces_by_status) ? stats.spaces_by_status : []}
-          mapChoices={SPACE_STATUS}
+          title="Espacios publicitarios por disponibilidad"
+          subtitle="Disponible, ocupado y bloqueado"
+          rows={
+            Array.isArray(stats?.spaces_by_availability) ? stats.spaces_by_availability : []
+          }
+          mapChoices={SPACE_AVAILABILITY}
+          rowKey="availability"
           cardClass={CARD_SPACES}
           gradientPrefix={gDonutSpaces}
         />

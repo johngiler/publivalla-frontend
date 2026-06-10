@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { spaceStatusLabel, spaceStatusPillClassName } from "@/components/admin/adminConstants";
+import { spaceAvailabilityLabel, spaceAvailabilityPillClassName } from "@/components/admin/adminConstants";
 import { adminPrimaryBtn } from "@/components/admin/adminFormStyles";
 import { SpaceDayRangePicker } from "@/components/catalog/SpaceDayRangePicker";
 import { SpaceMultiYearMonthRangePicker } from "@/components/catalog/SpaceMultiYearMonthRangePicker";
@@ -194,7 +194,7 @@ export function SpaceDetailReservationActions({ space }) {
 
   const canReserveCommercially = spaceAllowsMarketplaceReservation(space);
   if (!canReserveCommercially) {
-    const stLabel = spaceStatusLabel(space.status, space.status_label);
+    const stLabel = spaceAvailabilityLabel(space.availability, space.availability_label);
     return (
       <section
         className="mt-10 border-t border-zinc-200 pt-10"
@@ -213,7 +213,7 @@ export function SpaceDetailReservationActions({ space }) {
           <p className="mt-4 text-sm text-zinc-600">
             Estado comercial:{" "}
             <span
-              className={`inline-flex align-middle rounded-full px-2.5 py-0.5 text-xs font-semibold ${spaceStatusPillClassName(space.status)}`}
+              className={`inline-flex align-middle rounded-full px-2.5 py-0.5 text-xs font-semibold ${spaceAvailabilityPillClassName(space.availability)}`}
             >
               {stLabel}
             </span>

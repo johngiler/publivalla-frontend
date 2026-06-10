@@ -48,14 +48,15 @@ export function centersAdminListPath(page, search, active, city) {
   return `/api/admin/centers/?${p.toString()}`;
 }
 
-export function spacesAdminListPath(page, search, status, shoppingCenterId) {
+export function spacesAdminListPath(page, search, availability, shoppingCenterId, active) {
   const p = new URLSearchParams();
   p.set("page", String(page));
   if (search.trim()) p.set("search", search.trim());
-  if (status && status !== "all") p.set("status", status);
+  if (availability && availability !== "all") p.set("availability", availability);
   const cid =
     shoppingCenterId != null ? String(shoppingCenterId).trim() : "";
   if (cid && cid !== "all") p.set("shopping_center", cid);
+  if (active === "active" || active === "inactive") p.set("active", active);
   return `/api/admin/spaces/?${p.toString()}`;
 }
 

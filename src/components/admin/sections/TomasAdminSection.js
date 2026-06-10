@@ -26,9 +26,12 @@ import {
   adminTableCard,
 } from "@/components/admin/adminFormStyles";
 import {
-  SPACE_STATUS,
-  spaceStatusLabel,
-  spaceStatusPillClassName,
+  SPACE_AVAILABILITY_FILTER_OPTIONS,
+  SPACE_ACTIVE_FILTERS,
+  recordActiveLabel,
+  recordActivePillClassName,
+  spaceAvailabilityLabel,
+  spaceAvailabilityPillClassName,
 } from "@/components/admin/adminConstants";
 import { AdminAdSpaceGalleryField } from "@/components/admin/AdminAdSpaceGalleryField";
 import { AdminAdSpaceModal } from "@/components/admin/AdminAdSpaceModal";
@@ -75,8 +78,6 @@ import {
   dashboardCentrosSearchHref,
 } from "@/lib/adminDashboardLinks";
 import { subtitleCityAfterCenterName } from "@/lib/shoppingCenterDisplay";
-
-const SPACE_STATUS_FILTERS = [{ v: "all", l: "Todos los estados" }, ...SPACE_STATUS];
 
 function TomaCentroComercialValue({ s }) {
   const name = (s?.shopping_center_name || "").trim();
@@ -158,11 +159,15 @@ export function TomasAdminSection() {
   });
   const [filterQ, setFilterQ] = useState("");
   const [filterCenter, setFilterCenter] = useState("all");
-  const [filterSpaceStatus, setFilterSpaceStatus] = useState("all");
+  const [filterAvailability, setFilterAvailability] = useState("all");
+  const [filterActive, setFilterActive] = useState("all");
   const [page, setPage] = useState(1);
   const debouncedFilterQ = useDebouncedValue(filterQ, 400);
   const filtersActive =
-    filterQ.trim() !== "" || filterCenter !== "all" || filterSpaceStatus !== "all";
+    filterQ.trim() !== "" ||
+    filterCenter !== "all" ||
+    filterAvailability !== "all" ||
+    filterActive !== "all";
 
   const centersAllKey = authReady && accessToken ? ADMIN_CENTERS_ALL_SWR_KEY : null;
   const {
@@ -174,7 +179,13 @@ export function TomasAdminSection() {
 
   const spacesListKey =
     authReady && accessToken
-      ? spacesAdminListPath(page, debouncedFilterQ, filterSpaceStatus, filterCenter)
+      ? spacesAdminListPath(
+          page,
+          debouncedFilterQ,
+          filterAvailability,
+          filterCenter,
+          filterActive,
+        )
       : null;
   const {
     data: spacesData,
@@ -237,7 +248,7 @@ export function TomasAdminSection() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedFilterQ, filterCenter, filterSpaceStatus]);
+  }, [debouncedFilterQ, filterCenter, filterAvailability, filterActive]);
 
   function openCreate() {
     setSelected(null);
@@ -300,7 +311,7 @@ export function TomasAdminSection() {
 
   useEffect(() => {
     setExpandedId(null);
-  }, [filterQ, filterCenter, filterSpaceStatus, page]);
+  }, [filterQ, filterCenter, filterAvailability, filterActive, page]);
 
   if (!ready) {
     return <TomasAdminSectionSkeleton />;
@@ -366,18 +377,26 @@ export function TomasAdminSection() {
               options={centerFilterOptions}
             />
             <AdminFilterSelect
-              id="tomas-filter-status"
-              label="Estado del espacio publicitario"
-              value={filterSpaceStatus}
-              onChange={setFilterSpaceStatus}
-              options={SPACE_STATUS_FILTERS}
+              id="tomas-filter-availability"
+              label="Disponibilidad"
+              value={filterAvailability}
+              onChange={setFilterAvailability}
+              options={SPACE_AVAILABILITY_FILTER_OPTIONS}
+            />
+            <AdminFilterSelect
+              id="tomas-filter-active"
+              label="Estado"
+              value={filterActive}
+              onChange={setFilterActive}
+              options={SPACE_ACTIVE_FILTERS}
             />
             <AdminFilterClearButton
               show={filtersActive}
               onClick={() => {
                 setFilterQ("");
                 setFilterCenter("all");
-                setFilterSpaceStatus("all");
+                setFilterAvailability("all");
+                setFilterActive("all");
                 setPage(1);
               }}
             />
@@ -391,7 +410,8 @@ export function TomasAdminSection() {
                   onClick={() => {
                     setFilterQ("");
                     setFilterCenter("all");
-                    setFilterSpaceStatus("all");
+                    setFilterAvailability("all");
+                    setFilterActive("all");
                     setPage(1);
                   }}
                 />
@@ -417,6 +437,9 @@ export function TomasAdminSection() {
                   </th>
                   <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                     Centro comercial
+                  </th>
+                  <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Disponibilidad
                   </th>
                   <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                     Estado
@@ -515,9 +538,16 @@ export function TomasAdminSection() {
                       </td>
                       <td className="px-3 py-2.5">
                         <span
-                          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${spaceStatusPillClassName(s.status)}`}
+                          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${spaceAvailabilityPillClassName(s.availability)}`}
                         >
-                          {spaceStatusLabel(s.status, s.status_label)}
+                          {spaceAvailabilityLabel(s.availability, s.availability_label)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${recordActivePillClassName(s.is_active)}`}
+                        >
+                          {recordActiveLabel(s.is_active)}
                         </span>
                       </td>
                       <td className="px-3 py-2">
@@ -529,7 +559,7 @@ export function TomasAdminSection() {
                       </td>
                     </tr>
                     {open ? (
-                      <AdminAccordionRowPanel colSpan={7} panelId={panelId}>
+                      <AdminAccordionRowPanel colSpan={8} panelId={panelId}>
                         <AdminAccordionDetailHeader
                           {...adminAdSpaceAccordionHeader(s.code, displayName)}
                         />
@@ -552,18 +582,22 @@ export function TomasAdminSection() {
                               <AdminDetailField label="Centro comercial">
                                 <TomaCentroComercialValue s={s} />
                               </AdminDetailField>
+                              <AdminDetailField label="Disponibilidad">
+                                <span
+                                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${spaceAvailabilityPillClassName(s.availability)}`}
+                                >
+                                  {spaceAvailabilityLabel(s.availability, s.availability_label)}
+                                </span>
+                              </AdminDetailField>
                               <AdminDetailField label="Estado">
                                 <span
-                                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${spaceStatusPillClassName(s.status)}`}
+                                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${recordActivePillClassName(s.is_active)}`}
                                 >
-                                  {spaceStatusLabel(s.status, s.status_label)}
+                                  {recordActiveLabel(s.is_active)}
                                 </span>
                               </AdminDetailField>
                               <AdminDetailField label="Precio USD / mes">
                                 <span className="tabular-nums">{s.monthly_price_usd}</span>
-                              </AdminDetailField>
-                              <AdminDetailField label="Visible en catálogo">
-                                {s.is_active !== false ? "Sí" : "No"}
                               </AdminDetailField>
                               <div className="sm:col-span-2">
                                 <AdminDetailField label="Descripción">

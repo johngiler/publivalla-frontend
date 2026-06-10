@@ -20,7 +20,7 @@ import {
   adminPrimaryBtn,
   adminSecondaryBtn,
 } from "@/components/admin/adminFormStyles";
-import { SPACE_STATUS } from "@/components/admin/adminConstants";
+import { SPACE_AVAILABILITY } from "@/components/admin/adminConstants";
 import { authJsonFetcher } from "@/lib/swr/fetchers";
 import { authFetch, authFetchForm } from "@/services/authApi";
 
@@ -41,7 +41,7 @@ function buildSpaceFormData(values, extras) {
   fd.append("name", values.name.trim());
   fd.append("description", values.description.trim());
   fd.append("monthly_price_usd", String(values.monthly_price_usd).trim());
-  fd.append("status", values.status);
+  fd.append("availability", values.availability);
   fd.append("is_active", values.is_active ? "true" : "false");
   fd.append("formats_json", JSON.stringify(extras.formats));
   fd.append("gallery_plan", JSON.stringify(extras.galleryPlan));
@@ -81,7 +81,7 @@ export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [monthlyPrice, setMonthlyPrice] = useState("");
-  const [status, setStatus] = useState("available");
+  const [availability, setAvailability] = useState("available");
   const [isActive, setIsActive] = useState(true);
   const [formatRows, setFormatRows] = useState([emptyFormatRow()]);
   const [productTypes, setProductTypes] = useState([]);
@@ -107,7 +107,7 @@ export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved
     setName("");
     setDescription("");
     setMonthlyPrice("");
-    setStatus("available");
+    setAvailability("available");
     setIsActive(true);
     setFormatRows([emptyFormatRow()]);
     setLocationFile(null);
@@ -126,7 +126,7 @@ export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved
       setName(String(space.name ?? space.title ?? ""));
       setDescription(String(space.description ?? ""));
       setMonthlyPrice(String(space.monthly_price_usd ?? ""));
-      setStatus(String(space.status ?? "available"));
+      setAvailability(String(space.availability ?? "available"));
       setIsActive(space.is_active !== false);
       setFormatRows(formatsFromApi(space.formats));
       setLocationFile(null);
@@ -216,7 +216,7 @@ export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved
           name,
           description,
           monthly_price_usd: monthlyPrice,
-          status,
+          availability,
           is_active: isActive,
         },
         {
@@ -337,28 +337,28 @@ export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved
               ) : null}
             </div>
             <div>
-              <label className={adminLabel} htmlFor="ep-status">
-                Estado
+              <label className={adminLabel} htmlFor="ep-availability">
+                Disponibilidad
               </label>
               <AdminSelect
-                id="ep-status"
-                options={SPACE_STATUS}
-                value={status}
-                onChange={(v) => setStatus(v || "available")}
+                id="ep-availability"
+                options={SPACE_AVAILABILITY}
+                value={availability}
+                onChange={(v) => setAvailability(v || "available")}
                 inModal
-                aria-label="Estado"
+                aria-label="Disponibilidad"
               />
             </div>
             <div className="flex items-end pb-1 sm:col-span-2">
-              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-zinc-800">
+              <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-zinc-800">
                 <input
                   id="ep-active"
                   type="checkbox"
-                  className="size-4 rounded border-zinc-300 accent-[var(--mp-primary)]"
+                  className="h-4 w-4 rounded border-zinc-300"
                   checked={isActive}
                   onChange={(e) => setIsActive(e.target.checked)}
                 />
-                Activo en catálogo
+                Espacio activo?
               </label>
             </div>
             <div className="sm:col-span-2">
