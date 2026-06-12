@@ -58,6 +58,7 @@ import {
 } from "@/components/admin/adminIcons";
 import { PedidoAdminLinePricing } from "@/components/admin/PedidoAdminLinePricing";
 import { PedidoAdminLineRentalStart } from "@/components/admin/PedidoAdminLineRentalStart";
+import { PedidoAdminPaymentPlan } from "@/components/admin/PedidoAdminPaymentPlan";
 import { PedidoAdminOrderLinesList } from "@/components/admin/PedidoAdminOrderLinesList";
 import { PedidoDocumentosNegociacionAdmin } from "@/components/admin/PedidoDocumentosNegociacionAdmin";
 import { PedidosSectionSkeleton } from "@/components/admin/skeletons/PedidosSectionSkeleton";
@@ -1023,6 +1024,12 @@ export function PedidosAdminSection() {
                                   <PedidoAdminLinePricing
                                     order={o}
                                     panelId={panelId}
+                                    onSaved={refreshOrderAfterSave}
+                                  />
+                                  <PedidoAdminPaymentPlan
+                                    order={o}
+                                    panelId={panelId}
+                                    accessToken={accessToken}
                                     onSaved={refreshOrderAfterSave}
                                   />
                                 </div>

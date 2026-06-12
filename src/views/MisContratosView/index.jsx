@@ -26,6 +26,7 @@ import {
   marketplaceOrderRefLinkClass,
 } from "@/lib/marketplaceLineTypography";
 import { formatUsdMoney } from "@/lib/marketplacePricing";
+import { orderUsesSplitPayment } from "@/lib/orderPaymentPlan";
 import { catalogRasterImgAttrs } from "@/lib/catalogImageProps";
 import { mediaUrlForUiWithWebp, primaryAdSpaceMediaRawFromOrderLike } from "@/lib/mediaUrls";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
@@ -382,6 +383,11 @@ export default function MisContratosView() {
                             >
                               {it.order_status_label || it.order_status}
                             </span>
+                            {orderUsesSplitPayment(it) ? (
+                              <span className="inline-flex rounded-full border border-violet-200/90 bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-900">
+                                Pago por partes
+                              </span>
+                            ) : null}
                           </div>
                         </div>
                         {periodMonths.length > 0 ? (

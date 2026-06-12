@@ -16,6 +16,7 @@ import { RasterFromApiUrl } from "@/components/media/RasterFromApiUrl";
 import { FileDropZoneField } from "@/components/ui/FileDropZoneField";
 import { isPdfReceiptUrl } from "@/lib/orderPaymentMethods";
 import { orderAdminCommercialEditable } from "@/lib/orderAdminWorkflow";
+import { orderUsesSplitPayment } from "@/lib/orderPaymentPlan";
 import { ROUNDED_CONTROL, ROUNDED_PDF_GRID_CARD } from "@/lib/uiRounding";
 import { normalizeMediaUrlForUi } from "@/lib/mediaUrls";
 import { authFetchBlob, authFetchForm, mediaAbsoluteUrl } from "@/services/authApi";
@@ -248,7 +249,9 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
     : "";
   const hasGeneratedInvoicePdf = Boolean(order?.invoice_pdf_url);
   const orderCodeKey = String(order?.code ?? id ?? "").trim();
-  const showDigitalFilesSection = orderAdminCommercialEditable(order);
+  const splitPayment = orderUsesSplitPayment(order);
+  const showDigitalFilesSection =
+    orderAdminCommercialEditable(order) && !splitPayment;
 
   return (
     <div className="space-y-4">
@@ -378,33 +381,37 @@ export function PedidoDocumentosNegociacionAdmin({ order, panelId, accessToken, 
               loadKey={`${id}-municipality-${String(order?.updated_at ?? "")}`}
               onFetchBlob={fetchMunicipalityPdf}
             />
-            {invoiceDigitalUrl ? (
+            {!splitPayment ? (
+              invoiceDigitalUrl ? (
+                <OrderAttachmentAdminPreview
+                  order={order}
+                  title="Factura/Nota de cobro"
+                  downloadBase="factura"
+                  fileUrl={invoiceDigitalUrl}
+                  emptyHint="Factura digital no disponible."
+                />
+              ) : (
+                <PdfPreview
+                  {...orderPdfGridPreviewProps}
+                  title="Factura/Nota de cobro"
+                  downloadFileName={orderDocFilename(order, "factura")}
+                  disabled={!hasGeneratedInvoicePdf}
+                  emptyHint="Se genera al facturar, salvo que adjuntes una factura digital arriba."
+                  loadKey={`${id}-invoice-${orderCodeKey}`}
+                  onFetchBlob={fetchInvoicePdf}
+                />
+              )
+            ) : null}
+            {!splitPayment ? (
               <OrderAttachmentAdminPreview
                 order={order}
-                title="Factura/Nota de cobro"
-                downloadBase="factura"
-                fileUrl={invoiceDigitalUrl}
-                emptyHint="Factura digital no disponible."
+                title="Comprobante de pago"
+                downloadBase="comprobante"
+                fileUrl={order?.payment_receipt_url}
+                emptyHint="La empresa puede subir el comprobante cuando el pedido esté facturado o pagado, desde Mis pedidos."
+                imageFit="cover"
               />
-            ) : (
-              <PdfPreview
-                {...orderPdfGridPreviewProps}
-                title="Factura/Nota de cobro"
-                downloadFileName={orderDocFilename(order, "factura")}
-                disabled={!hasGeneratedInvoicePdf}
-                emptyHint="Se genera al facturar, salvo que adjuntes una factura digital arriba."
-                loadKey={`${id}-invoice-${orderCodeKey}`}
-                onFetchBlob={fetchInvoicePdf}
-              />
-            )}
-            <OrderAttachmentAdminPreview
-              order={order}
-              title="Comprobante de pago"
-              downloadBase="comprobante"
-              fileUrl={order?.payment_receipt_url}
-              emptyHint="La empresa puede subir el comprobante cuando el pedido esté facturado o pagado, desde Mis pedidos."
-              imageFit="cover"
-            />
+            ) : null}
             <PdfPreview
               {...orderPdfGridPreviewProps}
               title="Solicitud permiso instalación"

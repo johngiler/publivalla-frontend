@@ -8,6 +8,7 @@ import {
   IconRowTrash,
 } from "@/components/admin/rowActionIcons";
 import { orderLineItemPk } from "@/components/catalog/MarketplaceLineSpaceHeading";
+import { OrderPaymentInstallmentsPanel } from "@/components/orders/OrderPaymentInstallmentsPanel";
 import { OrderArtUploadFields } from "@/components/orders/OrderArtUploadFields";
 import { OrderArtUploadModal } from "@/components/orders/OrderArtUploadModal";
 import { NegotiationSheetSignedUpload } from "@/components/orders/NegotiationSheetSignedUpload";
@@ -41,6 +42,11 @@ import {
 import { squareListImagePreviewButtonRingClass } from "@/lib/squareImagePreview";
 import { ROUNDED_CONTROL, ROUNDED_PDF_GRID_CARD } from "@/lib/uiRounding";
 import { orderHoldIsActive, formatOrderHoldExpiresAt } from "@/lib/orderHoldDisplay";
+import {
+  firstInstallmentHasInvoice,
+  firstInstallmentHasReceipt,
+  orderUsesSplitPayment,
+} from "@/lib/orderPaymentPlan";
 import { hasMunicipalInstallationDocuments } from "@/lib/orderInstallationMunicipalDocs";
 import {
   defaultArtUploadOrderItemPk,
@@ -239,6 +245,7 @@ function MunicipalAttachmentClientPreview({
  *   hasMunicipalDocsComplete: boolean;
  *   holdActive?: boolean;
  *   holdExpiresAt?: string | null;
+ *   usesSplitPayment?: boolean;
  * }} ctx
  * @returns {{ kind: "waiting" | "action" | "outcome" | "done"; nextStep: string; detail: string } | null}
  */
@@ -303,17 +310,22 @@ function getClientOrderGuidanceNotice(ctx) {
     return {
       kind: "waiting",
       nextStep: "Facturación",
-      detail: ctx.hasInvoicePdf
-        ? "Los artes ya están aprobados. El equipo está finalizando la facturación; te avisaremos cuando puedas consultar la factura y adjuntar el comprobante de pago."
-        : "Los artes ya están aprobados. El equipo preparará la factura; pronto podrás verla y adjuntar el comprobante de pago.",
+      detail: ctx.usesSplitPayment
+        ? ctx.hasInvoicePdf
+          ? "Los artes ya están aprobados. El equipo está finalizando la factura de la primera cuota; te avisaremos cuando puedas consultarla y adjuntar el comprobante."
+          : "Los artes ya están aprobados. El equipo preparará la primera cuota del plan de pago; pronto podrás ver la factura y adjuntar el comprobante."
+        : ctx.hasInvoicePdf
+          ? "Los artes ya están aprobados. El equipo está finalizando la facturación; te avisaremos cuando puedas consultar la factura y adjuntar el comprobante de pago."
+          : "Los artes ya están aprobados. El equipo preparará la factura; pronto podrás verla y adjuntar el comprobante de pago.",
     };
   }
   if (s === "invoiced" && !ctx.hasReceiptSaved) {
     return {
       kind: "action",
-      nextStep: "Factura y comprobante",
-      detail:
-        "Ya puedes consultar la factura en el paso 3 del resumen. Adjunta el comprobante de pago para que el equipo confirme el cobro.",
+      nextStep: ctx.usesSplitPayment ? "Primera cuota" : "Factura y comprobante",
+      detail: ctx.usesSplitPayment
+        ? "Consulta la factura de la primera cuota en el paso 3 del resumen y adjunta el comprobante para que el equipo confirme el cobro."
+        : "Ya puedes consultar la factura en el paso 3 del resumen. Adjunta el comprobante de pago para que el equipo confirme el cobro.",
     };
   }
   if (s === "paid" && !ctx.hasPermitRecorded) {
@@ -397,6 +409,7 @@ export function OrderClientWorkflowPanel({
 }) {
   const id = order?.id;
   const status = String(order?.status || "");
+  const usesSplitPayment = orderUsesSplitPayment(order);
 
   const [busy, setBusy] = useState("");
   const [localErr, setLocalErr] = useState("");
@@ -476,7 +489,9 @@ export function OrderClientWorkflowPanel({
 
   const hasNegotiationPdf = Boolean(order?.negotiation_sheet_pdf_url);
   const hasMunicipalityPdf = Boolean(order?.municipality_authorization_pdf_url);
-  const hasInvoicePdf = Boolean(order?.invoice_file_url);
+  const hasInvoicePdf = usesSplitPayment
+    ? firstInstallmentHasInvoice(order)
+    : Boolean(order?.invoice_file_url);
   const invoiceOrderCodeKey = String(order?.code ?? id ?? "").trim();
   const invoiceRawForUi = order?.invoice_file_url
     ? String(order.invoice_file_url)
@@ -501,7 +516,9 @@ export function OrderClientWorkflowPanel({
     ? String(order.payment_receipt_url)
     : "";
   const receiptUrl = receiptRawForUi ? mediaAbsoluteUrl(receiptRawForUi) : "";
-  const hasReceiptSaved = Boolean(receiptUrl);
+  const hasReceiptSaved = usesSplitPayment
+    ? firstInstallmentHasReceipt(order)
+    : Boolean(receiptUrl);
   const isReceiptPdfSaved = isPdfReceiptUrl(receiptUrl);
   const receiptKindInPanel = receiptRawForUi
     ? orderAttachmentKindFromUrls(receiptRawForUi, receiptUrl)
@@ -830,6 +847,7 @@ export function OrderClientWorkflowPanel({
         hasArtAttachments,
         hasPermitRecorded: Boolean(permit),
         hasMunicipalDocsComplete,
+        usesSplitPayment,
       }),
     [
       status,
@@ -841,16 +859,18 @@ export function OrderClientWorkflowPanel({
       hasArtAttachments,
       permit,
       hasMunicipalDocsComplete,
+      usesSplitPayment,
     ],
   );
 
   /** Solo en «Facturada»: formulario de pago como «Paso actual». */
   const showPaymentForm = status === "invoiced";
   /** Sin comprobante: siempre visible; con comprobante: solo al pulsar «Cambiar comprobante». */
-  const showInvoicedPaymentPasoActual =
-    showPaymentForm &&
-    step3Unlocked &&
-    (!hasReceiptSaved || invoicedPaymentPasoVisible);
+  const showInvoicedPaymentPasoActual = usesSplitPayment
+    ? showPaymentForm && step3Unlocked && !hasReceiptSaved
+    : showPaymentForm &&
+      step3Unlocked &&
+      (!hasReceiptSaved || invoicedPaymentPasoVisible);
 
   /**
    * «Siguiente paso»: solo si el paso no es interactuable ahora (p. ej. ocultar el aviso de subir documentos
@@ -942,10 +962,12 @@ export function OrderClientWorkflowPanel({
   const step3Complete =
     hasReceiptSaved ||
     ["paid", "permit_pending", "installation", "active"].includes(status);
-  const step3CanExpandResumen =
-    step3Unlocked &&
-    (hasInvoicePdf || hasReceiptSaved) &&
-    (canPayFields || step3Complete);
+  const step3CanExpandResumen = usesSplitPayment
+    ? step3Unlocked && (canPayFields || step3Complete)
+    : step3Unlocked &&
+      (hasInvoicePdf || hasReceiptSaved) &&
+      (canPayFields || step3Complete);
+  const step3Label = usesSplitPayment ? "Cuotas de pago" : "Factura y comprobante";
   const step4Complete = Boolean(permit);
   /** 1 hoja · 2 artes · 3 pago (factura + comprobante) · 4 permiso (solo uno con formulario «Paso actual»). */
   const activeDocUploadStep =
@@ -1235,6 +1257,16 @@ export function OrderClientWorkflowPanel({
     signNegotiationOnWeb,
     signedFile,
   ]);
+
+  const refreshOrder = useCallback(async () => {
+    if (!id || !accessToken) return;
+    try {
+      const data = await authFetch(`/api/orders/${id}/`, { token: accessToken });
+      onOrderUpdated(data);
+    } catch {
+      /* el panel conserva el estado previo */
+    }
+  }, [accessToken, id, onOrderUpdated]);
 
   const savePayment = useCallback(async () => {
     if (!id) return;
@@ -1775,14 +1807,18 @@ export function OrderClientWorkflowPanel({
                     <span className="tabular-nums">3.</span>
                     <span>
                       {paymentResumenExpanded
-                        ? "Ocultar factura y comprobante"
-                        : "Ver factura y comprobante"}
+                        ? `Ocultar ${step3Label.toLowerCase()}`
+                        : `Ver ${step3Label.toLowerCase()}`}
                     </span>
                   </button>
                 ) : step3Unlocked && status === "art_approved" ? (
                   <span className={docStepChipClass(3)}>
                     <span className="tabular-nums">3.</span>
-                    <span>Factura y comprobante (en preparación)</span>
+                    <span>
+                      {usesSplitPayment
+                        ? "Cuotas de pago (en preparación)"
+                        : "Factura y comprobante (en preparación)"}
+                    </span>
                   </span>
                 ) : step3Unlocked && canPayFields && status === "invoiced" ? (
                   <span
@@ -1790,17 +1826,25 @@ export function OrderClientWorkflowPanel({
                     aria-current={activeDocFlowStep === 3 ? "step" : undefined}
                   >
                     <span className="tabular-nums">3.</span>
-                    <span>Factura y comprobante</span>
+                    <span>{step3Label}</span>
                   </span>
                 ) : step3Unlocked && canPayFields && status === "paid" ? (
                   <span className={docStepPendingClass}>
                     <span className="tabular-nums">3.</span>
-                    <span>Factura y comprobante (comprobante opcional)</span>
+                    <span>
+                      {usesSplitPayment
+                        ? "Cuotas de pago"
+                        : "Factura y comprobante (comprobante opcional)"}
+                    </span>
                   </span>
                 ) : (
                   <span className={docStepPendingClass}>
                     <span className="tabular-nums">3.</span>
-                    <span>Factura y comprobante (pendiente)</span>
+                    <span>
+                      {usesSplitPayment
+                        ? "Cuotas de pago (pendiente)"
+                        : "Factura y comprobante (pendiente)"}
+                    </span>
                   </span>
                 )}
               </li>
@@ -2074,10 +2118,18 @@ export function OrderClientWorkflowPanel({
               <div
                 id={`payment-resumen-${id}`}
                 role="region"
-                aria-label="Factura y comprobante de pago"
+                aria-label={step3Label}
                 className={`mt-3 border border-zinc-200/90 bg-zinc-50/80 px-3 py-3 ${ROUNDED_CONTROL}`}
               >
-                {hasInvoicePdf ? (
+                {usesSplitPayment ? (
+                  <OrderPaymentInstallmentsPanel
+                    order={order}
+                    mode="client"
+                    accessToken={accessToken}
+                    onSaved={refreshOrder}
+                  />
+                ) : null}
+                {!usesSplitPayment && hasInvoicePdf ? (
                   <div
                     className={
                       hasReceiptSaved ? "pb-4 border-b border-zinc-200/80" : ""
@@ -2114,7 +2166,7 @@ export function OrderClientWorkflowPanel({
                     )}
                   </div>
                 ) : null}
-                {hasReceiptSaved ? (
+                {!usesSplitPayment && hasReceiptSaved ? (
                   <div className={hasInvoicePdf ? "mt-4" : ""}>
                     <p className={`${labelClass} mb-2`}>Comprobante de pago</p>
                     <div>
@@ -2423,9 +2475,26 @@ export function OrderClientWorkflowPanel({
           <div className="min-w-0">
             <p className={`${labelClass}`}>Paso actual</p>
             <p className="mt-2 text-sm font-semibold text-zinc-900">
-              3 · Factura y comprobante
+              3 · {step3Label}
             </p>
           </div>
+          {usesSplitPayment ? (
+            <>
+              <p className="mt-1 text-sm text-zinc-600">
+                Revisa la factura de la primera cuota y adjunta el comprobante de pago para
+                activar el contrato.
+              </p>
+              <div className="mt-4">
+                <OrderPaymentInstallmentsPanel
+                  order={order}
+                  mode="client"
+                  accessToken={accessToken}
+                  onSaved={refreshOrder}
+                />
+              </div>
+            </>
+          ) : (
+          <>
           <p className="mt-1 text-sm text-zinc-600">
             {hasReceiptSaved && wantReplaceReceipt
               ? "Sube el archivo nuevo; el comprobante actual sigue visible en el resumen del paso 3."
@@ -2611,6 +2680,8 @@ export function OrderClientWorkflowPanel({
                 {busy === "payment" ? "Enviando…" : "Enviar comprobante"}
               </button>
             </>
+          )}
+          </>
           )}
         </div>
       ) : null}

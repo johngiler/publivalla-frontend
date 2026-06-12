@@ -1,5 +1,9 @@
 import { ORDER_STATUS } from "@/components/admin/adminConstants";
 import { hasMunicipalInstallationDocuments } from "@/lib/orderInstallationMunicipalDocs";
+import {
+  firstInstallmentHasReceipt,
+  orderUsesSplitPayment,
+} from "@/lib/orderPaymentPlan";
 
 /**
  * Flujo que el admin avanza paso a paso. «Vencida» no entra aquí: la pone el sistema
@@ -85,6 +89,9 @@ function hasNegotiationSheetSigned(order) {
 }
 
 function hasPaymentReceipt(order) {
+  if (orderUsesSplitPayment(order)) {
+    return firstInstallmentHasReceipt(order);
+  }
   const u = order?.payment_receipt_url;
   return typeof u === "string" && u.trim() !== "";
 }
@@ -230,8 +237,9 @@ export function buildOrderAdminStatusSelectOptions(order) {
         return {
           ...opt,
           disabled: true,
-          disabledReason:
-            "Falta el comprobante de pago de la empresa (Mis pedidos o detalle del pedido).",
+          disabledReason: orderUsesSplitPayment(order)
+            ? "Falta el comprobante de la primera cuota (plan de pago por partes)."
+            : "Falta el comprobante de pago de la empresa (Mis pedidos o detalle del pedido).",
         };
       }
       if (
@@ -358,8 +366,9 @@ export function getOrderAdminQuickNext(order) {
     return {
       status: nextStatus,
       label,
-      blockedReason:
-        "No puedes pasar a «Pagada» sin comprobante. La empresa debe adjuntarlo desde Mis pedidos.",
+      blockedReason: orderUsesSplitPayment(order)
+        ? "No puedes pasar a «Pagada» sin el comprobante de la primera cuota."
+        : "No puedes pasar a «Pagada» sin comprobante. La empresa debe adjuntarlo desde Mis pedidos.",
     };
   }
 
