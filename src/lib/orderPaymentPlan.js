@@ -19,6 +19,12 @@ export function orderUsesSplitPayment(order) {
   return order?.split_payment_enabled === true;
 }
 
+/** Opciones de filtro de listados (pedidos / contratos). */
+export const PAYMENT_PLAN_FILTER_OPTIONS = [
+  { v: "all", l: "Todos" },
+  { v: "pending", l: "Pago por partes pendiente" },
+];
+
 export function orderPaymentPlanEditable(order) {
   if (order?.payment_plan?.editable === false) return false;
   if (order?.payment_plan?.editable === true) return true;

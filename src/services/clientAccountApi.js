@@ -3,17 +3,22 @@ import { authFetch } from "@/services/authApi";
 export const MY_CONTRACTS_PATH = "/api/me/contracts/";
 export const MY_FAVORITES_PATH = "/api/me/favorites/";
 
-/** @param {string} [phase] */
-export function contractsPath(phase = "all") {
-  if (!phase || phase === "all") return MY_CONTRACTS_PATH;
-  return `${MY_CONTRACTS_PATH}?phase=${encodeURIComponent(phase)}`;
+/** @param {string} [phase]
+ *  @param {string} [paymentPlanPending] — `pending` para planes con cuotas sin pagar.
+ */
+export function contractsPath(phase = "all", paymentPlanPending = "all") {
+  const p = new URLSearchParams();
+  if (phase && phase !== "all") p.set("phase", phase);
+  if (paymentPlanPending === "pending") p.set("payment_plan_pending", "pending");
+  const q = p.toString();
+  return q ? `${MY_CONTRACTS_PATH}?${q}` : MY_CONTRACTS_PATH;
 }
 
 /**
- * @param {{ phase?: string, token?: string | null }} opts
+ * @param {{ phase?: string, paymentPlanPending?: string, token?: string | null }} opts
  */
-export async function fetchMyContracts({ phase = "all", token } = {}) {
-  return authFetch(contractsPath(phase), { token });
+export async function fetchMyContracts({ phase = "all", paymentPlanPending = "all", token } = {}) {
+  return authFetch(contractsPath(phase, paymentPlanPending), { token });
 }
 
 /**

@@ -44,6 +44,7 @@ import {
   dashboardPedidosSearchHref,
 } from "@/lib/adminDashboardLinks";
 import { contractsListPath } from "@/lib/adminListQuery";
+import { PAYMENT_PLAN_FILTER_OPTIONS } from "@/lib/orderPaymentPlan";
 import { catalogRasterImgAttrs } from "@/lib/catalogImageProps";
 import { authJsonFetcher } from "@/lib/swr/fetchers";
 import { mediaUrlForUiWithWebp, primaryAdSpaceMediaRawFromOrderLike } from "@/lib/mediaUrls";
@@ -247,6 +248,7 @@ export function ContratosAdminSection() {
   const [filterPhase, setFilterPhase] = useState("all");
   const [filterEnding, setFilterEnding] = useState("all");
   const [filterOrdering, setFilterOrdering] = useState("-end_date");
+  const [filterPaymentPlan, setFilterPaymentPlan] = useState("all");
   const debouncedFilterQ = useDebouncedValue(filterQ, 400);
   const [galleryLightbox, setGalleryLightbox] = useState({
     open: false,
@@ -265,6 +267,7 @@ export function ContratosAdminSection() {
           filterEnding,
           filterOrdering,
           "",
+          filterPaymentPlan,
         )
       : null;
   const { data, error: swrError, isLoading } = useSWR(listKey, authJsonFetcher, {
@@ -284,7 +287,8 @@ export function ContratosAdminSection() {
     filterOrderStatus !== "all" ||
     filterPhase !== "all" ||
     filterEnding !== "all" ||
-    filterOrdering !== "-end_date";
+    filterOrdering !== "-end_date" ||
+    filterPaymentPlan !== "all";
 
   useEffect(() => {
     setPage(1);
@@ -294,6 +298,7 @@ export function ContratosAdminSection() {
     filterPhase,
     filterEnding,
     filterOrdering,
+    filterPaymentPlan,
   ]);
 
   useEffect(() => {
@@ -445,6 +450,13 @@ export function ContratosAdminSection() {
                 onChange={setFilterOrdering}
                 options={ORDERING_OPTIONS}
               />
+              <AdminFilterSelect
+                id="contratos-filter-payment-plan"
+                label="Pago por partes"
+                value={filterPaymentPlan}
+                onChange={setFilterPaymentPlan}
+                options={PAYMENT_PLAN_FILTER_OPTIONS}
+              />
               <AdminFilterClearButton
                 show={filtersActive}
                 onClick={() => {
@@ -453,6 +465,7 @@ export function ContratosAdminSection() {
                   setFilterPhase("all");
                   setFilterEnding("all");
                   setFilterOrdering("-end_date");
+                  setFilterPaymentPlan("all");
                   setPage(1);
                 }}
               />
@@ -473,6 +486,7 @@ export function ContratosAdminSection() {
                       setFilterPhase("all");
                       setFilterEnding("all");
                       setFilterOrdering("-end_date");
+                      setFilterPaymentPlan("all");
                       setPage(1);
                     }}
                   />

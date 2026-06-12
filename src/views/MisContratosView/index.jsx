@@ -31,6 +31,7 @@ import { catalogRasterImgAttrs } from "@/lib/catalogImageProps";
 import { mediaUrlForUiWithWebp, primaryAdSpaceMediaRawFromOrderLike } from "@/lib/mediaUrls";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { marketplacePrimaryBtn } from "@/lib/marketplaceActionButtons";
+import { PAYMENT_PLAN_FILTER_OPTIONS } from "@/lib/orderPaymentPlan";
 import { contractsPath } from "@/services/clientAccountApi";
 import {
   squareListImagePreviewButtonRingClass,
@@ -135,6 +136,7 @@ export default function MisContratosView() {
     PHASE_OPTIONS.some((o) => o.v === phaseFromUrl) ? phaseFromUrl : "all",
   );
   const [filterSearch, setFilterSearch] = useState(() => searchFromUrl);
+  const [filterPaymentPlan, setFilterPaymentPlan] = useState("all");
   const debouncedSearch = useDebouncedValue(filterSearch, 400);
 
   useEffect(() => {
@@ -164,7 +166,9 @@ export default function MisContratosView() {
 
   const phaseForApi = phaseFromUrl === "open" && phase !== "open" ? phase : phase;
   const canFetch = authReady && isClient && !!accessToken;
-  const swrKey = canFetch ? contractsPath(phaseForApi) : null;
+  const swrKey = canFetch
+    ? contractsPath(phaseForApi, filterPaymentPlan)
+    : null;
   const { data, error, isLoading } = useSWR(swrKey, authJsonFetcher);
 
   useEffect(() => {
@@ -197,10 +201,15 @@ export default function MisContratosView() {
   }, [items, debouncedSearch]);
 
   const filtersActive =
-    phase !== "all" || filterSearch.trim() !== "" || phaseFromUrl !== "" || searchFromUrl !== "";
+    phase !== "all" ||
+    filterPaymentPlan !== "all" ||
+    filterSearch.trim() !== "" ||
+    phaseFromUrl !== "" ||
+    searchFromUrl !== "";
 
   function clearFilters() {
     setPhase("all");
+    setFilterPaymentPlan("all");
     setFilterSearch("");
     const next = new URLSearchParams(searchParams.toString());
     next.delete("search");
@@ -293,6 +302,13 @@ export default function MisContratosView() {
                 value={phase}
                 onChange={setPhase}
                 options={PHASE_OPTIONS}
+              />
+              <AdminFilterSelect
+                id="mis-contratos-payment-plan"
+                label="Pago por partes"
+                value={filterPaymentPlan}
+                onChange={setFilterPaymentPlan}
+                options={PAYMENT_PLAN_FILTER_OPTIONS}
               />
               <AdminFilterClearButton onClick={clearFilters} show={filtersActive} />
             </AdminFiltersRow>

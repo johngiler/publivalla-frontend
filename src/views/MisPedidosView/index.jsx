@@ -63,6 +63,7 @@ import {
   squareMarketplaceLinePreviewImgClass,
 } from "@/lib/squareImagePreview";
 import { ordersListPath } from "@/lib/adminListQuery";
+import { PAYMENT_PLAN_FILTER_OPTIONS } from "@/lib/orderPaymentPlan";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 import { authJsonFetcher } from "@/lib/swr/fetchers";
 import {
@@ -558,6 +559,7 @@ export default function MisPedidosView() {
   const orderDetailTabIntentRef = useRef(/** @type {"detail" | null} */ (null));
   const [err, setErr] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterPaymentPlan, setFilterPaymentPlan] = useState("all");
   const [filterSearch, setFilterSearch] = useState("");
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(filterSearch, 400);
@@ -592,7 +594,13 @@ export default function MisPedidosView() {
   const excludeStatusForApi =
     filterStatus !== "all" ? "" : excludeStatusFromUrl.trim();
   const listKey = canFetchOrders
-    ? ordersListPath(page, debouncedSearch, filterStatus, excludeStatusForApi)
+    ? ordersListPath(
+        page,
+        debouncedSearch,
+        filterStatus,
+        excludeStatusForApi,
+        filterPaymentPlan,
+      )
     : null;
   const {
     data,
@@ -648,11 +656,13 @@ export default function MisPedidosView() {
 
   const filtersActive =
     filterStatus !== "all" ||
+    filterPaymentPlan !== "all" ||
     filterSearch.trim() !== "" ||
     excludeStatusFromUrl.trim() !== "";
 
   function clearFilters() {
     setFilterStatus("all");
+    setFilterPaymentPlan("all");
     setFilterSearch("");
     setPage(1);
     const next = new URLSearchParams(searchParams.toString());
@@ -664,7 +674,7 @@ export default function MisPedidosView() {
 
   useEffect(() => {
     setPage(1);
-  }, [filterStatus, debouncedSearch, excludeStatusFromUrl]);
+  }, [filterStatus, filterPaymentPlan, debouncedSearch, excludeStatusFromUrl]);
 
   useEffect(() => {
     setOpenId(null);
@@ -805,6 +815,13 @@ export default function MisPedidosView() {
             value={filterStatus}
             onChange={setFilterStatus}
             options={misPedidosStatusOptions}
+          />
+          <AdminFilterSelect
+            id="mis-pedidos-payment-plan"
+            label="Pago por partes"
+            value={filterPaymentPlan}
+            onChange={setFilterPaymentPlan}
+            options={PAYMENT_PLAN_FILTER_OPTIONS}
           />
           <AdminFilterClearButton onClick={clearFilters} show={filtersActive} />
         </AdminFiltersRow>

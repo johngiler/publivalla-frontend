@@ -75,6 +75,7 @@ import {
 } from "@/lib/adminDashboardLinks";
 import { formatUsdMoney } from "@/lib/marketplacePricing";
 import { ordersExportReportPath, ordersListPath } from "@/lib/adminListQuery";
+import { PAYMENT_PLAN_FILTER_OPTIONS } from "@/lib/orderPaymentPlan";
 import { authJsonFetcher } from "@/lib/swr/fetchers";
 import { adminOrderLineCoverLightboxItems } from "@/lib/imageLightboxItems";
 import {
@@ -359,13 +360,23 @@ export function PedidosAdminSection() {
   const [pendingStatusChange, setPendingStatusChange] = useState(null);
   const [filterQ, setFilterQ] = useState("");
   const [filterOrderStatus, setFilterOrderStatus] = useState("all");
+  const [filterPaymentPlan, setFilterPaymentPlan] = useState("all");
   const debouncedFilterQ = useDebouncedValue(filterQ, 400);
 
-  const filtersActive = filterQ.trim() !== "" || filterOrderStatus !== "all";
+  const filtersActive =
+    filterQ.trim() !== "" ||
+    filterOrderStatus !== "all" ||
+    filterPaymentPlan !== "all";
 
   const listKey =
     authReady && accessToken
-      ? ordersListPath(page, debouncedFilterQ, filterOrderStatus)
+      ? ordersListPath(
+          page,
+          debouncedFilterQ,
+          filterOrderStatus,
+          undefined,
+          filterPaymentPlan,
+        )
       : null;
   const {
     data,
@@ -438,7 +449,11 @@ export function PedidosAdminSection() {
     setMsg("");
     setReportLoading(true);
     try {
-      const path = ordersExportReportPath(debouncedFilterQ, filterOrderStatus);
+      const path = ordersExportReportPath(
+        debouncedFilterQ,
+        filterOrderStatus,
+        filterPaymentPlan,
+      );
       const blob = await authFetchBlob(path, { token: accessToken });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -455,7 +470,7 @@ export function PedidosAdminSection() {
     } finally {
       setReportLoading(false);
     }
-  }, [accessToken, debouncedFilterQ, filterOrderStatus]);
+  }, [accessToken, debouncedFilterQ, filterOrderStatus, filterPaymentPlan]);
 
   const ready =
     !(authReady && accessToken) ||
@@ -463,7 +478,7 @@ export function PedidosAdminSection() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedFilterQ, filterOrderStatus]);
+  }, [debouncedFilterQ, filterOrderStatus, filterPaymentPlan]);
 
   const patchOrderStatus = useCallback(
     async (orderId, status) => {
@@ -514,7 +529,7 @@ export function PedidosAdminSection() {
 
   useEffect(() => {
     setExpandedId(null);
-  }, [filterQ, filterOrderStatus, page]);
+  }, [filterQ, filterOrderStatus, filterPaymentPlan, page]);
 
   if (!ready) {
     return (
@@ -610,11 +625,19 @@ export function PedidosAdminSection() {
                 onChange={setFilterOrderStatus}
                 options={ORDER_STATUS_FILTER_OPTIONS}
               />
+              <AdminFilterSelect
+                id="pedidos-filter-payment-plan"
+                label="Pago por partes"
+                value={filterPaymentPlan}
+                onChange={setFilterPaymentPlan}
+                options={PAYMENT_PLAN_FILTER_OPTIONS}
+              />
               <AdminFilterClearButton
                 show={filtersActive}
                 onClick={() => {
                   setFilterQ("");
                   setFilterOrderStatus("all");
+                  setFilterPaymentPlan("all");
                   setPage(1);
                 }}
               />
@@ -628,6 +651,7 @@ export function PedidosAdminSection() {
                     onClick={() => {
                       setFilterQ("");
                       setFilterOrderStatus("all");
+                      setFilterPaymentPlan("all");
                       setPage(1);
                     }}
                   />

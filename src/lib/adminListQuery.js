@@ -2,22 +2,25 @@
 
 /**
  * @param {string} [excludeStatus] — p. ej. `active` (excluye ese estado del listado).
+ * @param {string} [paymentPlanPending] — `pending` para planes con cuotas sin pagar.
  */
-export function ordersListPath(page, search, status, excludeStatus) {
+export function ordersListPath(page, search, status, excludeStatus, paymentPlanPending) {
   const p = new URLSearchParams();
   p.set("page", String(page));
   if (search.trim()) p.set("search", search.trim());
   if (status && status !== "all") p.set("status", status);
   const ex = (excludeStatus ?? "").trim();
   if (ex) p.set("exclude_status", ex);
+  if (paymentPlanPending === "pending") p.set("payment_plan_pending", "pending");
   return `/api/orders/?${p.toString()}`;
 }
 
 /** Mismos filtros de búsqueda y estado que el listado; sin paginación (todos los resultados). */
-export function ordersExportReportPath(search, status) {
+export function ordersExportReportPath(search, status, paymentPlanPending) {
   const p = new URLSearchParams();
   if (search.trim()) p.set("search", search.trim());
   if (status && status !== "all") p.set("status", status);
+  if (paymentPlanPending === "pending") p.set("payment_plan_pending", "pending");
   const q = p.toString();
   return q ? `/api/orders/export-report/?${q}` : "/api/orders/export-report/";
 }
@@ -111,7 +114,16 @@ export function mountingProvidersListPath(page, search, shoppingCenterId, active
   return `/api/admin/mounting-providers/?${p.toString()}`;
 }
 
-export function contractsListPath(page, search, orderStatus, phase, endingWithin, ordering, adSpaceId) {
+export function contractsListPath(
+  page,
+  search,
+  orderStatus,
+  phase,
+  endingWithin,
+  ordering,
+  adSpaceId,
+  paymentPlanPending,
+) {
   const p = new URLSearchParams();
   p.set("page", String(page));
   if (search.trim()) p.set("search", search.trim());
@@ -121,5 +133,6 @@ export function contractsListPath(page, search, orderStatus, phase, endingWithin
   if (ordering && ordering !== "-end_date") p.set("ordering", ordering);
   const aid = adSpaceId != null ? String(adSpaceId).trim() : "";
   if (aid) p.set("ad_space_id", aid);
+  if (paymentPlanPending === "pending") p.set("payment_plan_pending", "pending");
   return `/api/admin/contracts/?${p.toString()}`;
 }
