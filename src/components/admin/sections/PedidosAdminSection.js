@@ -61,6 +61,7 @@ import { PedidoAdminLineRentalStart } from "@/components/admin/PedidoAdminLineRe
 import { PedidoAdminPaymentPlan } from "@/components/admin/PedidoAdminPaymentPlan";
 import { PedidoAdminOrderLinesList } from "@/components/admin/PedidoAdminOrderLinesList";
 import { PedidoDocumentosNegociacionAdmin } from "@/components/admin/PedidoDocumentosNegociacionAdmin";
+import { SplitPaymentPill } from "@/components/orders/SplitPaymentPill";
 import { PedidosSectionSkeleton } from "@/components/admin/skeletons/PedidosSectionSkeleton";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { useAuth } from "@/context/AuthContext";
@@ -119,13 +120,17 @@ function orderIsDeletable(o) {
 
 function PedidoEstadoActualCell({ order }) {
   const statusLabel = orderDisplayStatusLabel(order);
+  const splitPayment = order?.split_payment_enabled === true;
   return (
-    <span
-      className={`inline-flex max-w-[11rem] items-center rounded-full px-2.5 py-1 text-xs font-semibold leading-tight ${orderDisplayStatusPillClassName(order)}`}
-      title={statusLabel}
-    >
-      <span className="truncate">{statusLabel}</span>
-    </span>
+    <div className="inline-flex items-center gap-1.5">
+      <span
+        className={`inline-flex max-w-[11rem] items-center rounded-full px-2.5 py-1 text-xs font-semibold leading-tight ${orderDisplayStatusPillClassName(order)}`}
+        title={statusLabel}
+      >
+        <span className="truncate">{statusLabel}</span>
+      </span>
+      {splitPayment ? <SplitPaymentPill compact /> : null}
+    </div>
   );
 }
 

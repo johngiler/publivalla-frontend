@@ -32,6 +32,7 @@ import { AdminListQuerySync } from "@/components/admin/AdminListQuerySync";
 import { orderStatusPillClassName } from "@/components/admin/adminConstants";
 import { IconAdminContract } from "@/components/admin/adminIcons";
 import { ContratosSectionSkeleton } from "@/components/admin/skeletons/ContratosSectionSkeleton";
+import { SplitPaymentPill } from "@/components/orders/SplitPaymentPill";
 import { CatalogSpaceLink } from "@/components/catalog/CatalogSpaceLink";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { RasterFromApiUrl } from "@/components/media/RasterFromApiUrl";
@@ -597,11 +598,16 @@ export function ContratosAdminSection() {
                                 >
                                   {kindLabel(it.contract_row_kind)}
                                 </span>
-                                <span
-                                  className={`inline-flex max-w-full rounded-full border border-transparent px-2 py-0.5 text-[10px] font-semibold shadow-sm ${orderStatusPillClassName(it.order_status)}`}
-                                >
-                                  {it.order_status_label || it.order_status}
-                                </span>
+                                <div className="flex items-center justify-end gap-1">
+                                  <span
+                                    className={`inline-flex max-w-full rounded-full border border-transparent px-2 py-0.5 text-[10px] font-semibold shadow-sm ${orderStatusPillClassName(it.order_status)}`}
+                                  >
+                                    {it.order_status_label || it.order_status}
+                                  </span>
+                                  {it.split_payment_enabled ? (
+                                    <SplitPaymentPill compact />
+                                  ) : null}
+                                </div>
                               </div>
                             </td>
                           </tr>
@@ -677,11 +683,16 @@ export function ContratosAdminSection() {
                                       </div>
                                     </AdminDetailField>
                                     <AdminDetailField label="Estado del pedido">
-                                      <span
-                                        className={`inline-flex rounded-full border border-transparent px-2.5 py-0.5 text-xs font-semibold shadow-sm ${orderStatusPillClassName(it.order_status)}`}
-                                      >
-                                        {it.order_status_label || it.order_status}
-                                      </span>
+                                      <div className="flex flex-wrap items-center gap-1.5">
+                                        <span
+                                          className={`inline-flex rounded-full border border-transparent px-2.5 py-0.5 text-xs font-semibold shadow-sm ${orderStatusPillClassName(it.order_status)}`}
+                                        >
+                                          {it.order_status_label || it.order_status}
+                                        </span>
+                                        {it.split_payment_enabled ? (
+                                          <SplitPaymentPill compact />
+                                        ) : null}
+                                      </div>
                                     </AdminDetailField>
                                     <AdminDetailField label="Fase del periodo">
                                       <span
