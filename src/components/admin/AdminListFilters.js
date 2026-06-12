@@ -94,7 +94,7 @@ export function AdminFilterSearchInput({
  */
 export function AdminFilterSelect({ id, label, value, onChange, options }) {
   return (
-    <div className="w-full min-w-[min(100%,220px)] sm:w-auto sm:min-w-[220px] sm:max-w-[300px]">
+    <div className="w-full min-w-0 sm:w-auto sm:min-w-[11rem] sm:max-w-[17rem]">
       <label htmlFor={id} className={filterLabelClass}>
         {label}
       </label>
@@ -172,7 +172,7 @@ export function AdminFiltersRow({ children, className = "" }) {
     >
       <div className="mp-admin-filters-top-accent" aria-hidden />
       <div className="px-4 pb-4 sm:px-5 sm:pb-5">
-        <div className="flex min-w-0 flex-col gap-4 rounded-xl border border-zinc-200/60 bg-zinc-50/50 p-4 sm:flex-row sm:flex-nowrap sm:items-end sm:gap-x-4 sm:gap-y-4 sm:p-5">
+        <div className="flex min-w-0 flex-col gap-4 rounded-xl border border-zinc-200/60 bg-zinc-50/50 p-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-4 sm:gap-y-4 sm:p-5">
           {children}
         </div>
       </div>
