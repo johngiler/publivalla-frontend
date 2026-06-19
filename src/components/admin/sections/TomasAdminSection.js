@@ -57,8 +57,6 @@ import {
   squareAdminTablePortadaFrameClass,
   squareAdminTablePortadaImgClass,
   squareListImagePreviewButtonRingClass,
-  squareListImagePreviewFrameClass,
-  squareListImagePreviewImgClass,
 } from "@/lib/squareImagePreview";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 import { revalidateHomeCatalog } from "@/lib/swr/homeCatalogSwr";
@@ -103,41 +101,27 @@ function spaceMediaUrl(s, field, urlField) {
   return raw ? rawMediaUrlFromApiField(raw) : null;
 }
 
-function TomaDetailImage({ url, alt, onOpenLightbox }) {
-  if (!url) {
-    return (
-      <div className={squareListImagePreviewFrameClass} aria-label="Sin imagen">
-        <ThumbnailPlaceholder />
-      </div>
-    );
-  }
-  return (
-    <button
-      type="button"
-      className={`${squareListImagePreviewFrameClass} ${squareListImagePreviewButtonRingClass} p-0`}
-      aria-label={alt ? `Ver imagen: ${alt}` : "Ver imagen"}
-      onClick={() =>
-        onOpenLightbox([{ src: mediaUrlForUiWithWebp(url), alt: alt || "Imagen" }], 0)
-      }
-    >
-      <RasterFromApiUrl
-        url={url}
-        alt=""
-        width={100}
-        height={100}
-        className={squareListImagePreviewImgClass}
-        {...catalogRasterImgAttrs}
-      />
-    </button>
-  );
-}
-
 function tomaAccordionGalleryImages(s) {
   if (!s) return [];
   if (Array.isArray(s.gallery_images) && s.gallery_images.length > 0) {
     return s.gallery_images;
   }
   if (s.cover_image) return [{ id: -1, image: s.cover_image, sort_order: 0 }];
+  return [];
+}
+
+function tomaAccordionReferenceImages(s, field) {
+  if (!s) return [];
+  const rows = s[field];
+  if (Array.isArray(rows) && rows.length > 0) return rows;
+  const legacyUrl = spaceMediaUrl(
+    s,
+    field === "location_images" ? "location_image" : "production_image",
+    field === "location_images" ? "location_image_url" : "production_image_url",
+  );
+  if (legacyUrl) {
+    return [{ id: -1, image: legacyUrl, sort_order: 0 }];
+  }
   return [];
 }
 
@@ -632,10 +616,17 @@ export function TomasAdminSection() {
                                   Imagen de ubicación
                                 </p>
                                 <div className="mt-2">
-                                  <TomaDetailImage
-                                    url={spaceMediaUrl(s, "location_image", "location_image_url")}
-                                    alt="Ubicación"
-                                    onOpenLightbox={openImageLightbox}
+                                  <AdminAdSpaceGalleryField
+                                    readOnly
+                                    showSortHint={false}
+                                    label=""
+                                    description={null}
+                                    readOnlyEmptyText="Sin imágenes de ubicación."
+                                    ariaLabel="Imágenes de ubicación"
+                                    initialServerImages={tomaAccordionReferenceImages(
+                                      s,
+                                      "location_images",
+                                    )}
                                   />
                                 </div>
                               </div>
@@ -644,10 +635,17 @@ export function TomasAdminSection() {
                                   Imagen de arte y producción
                                 </p>
                                 <div className="mt-2">
-                                  <TomaDetailImage
-                                    url={spaceMediaUrl(s, "production_image", "production_image_url")}
-                                    alt="Arte y producción"
-                                    onOpenLightbox={openImageLightbox}
+                                  <AdminAdSpaceGalleryField
+                                    readOnly
+                                    showSortHint={false}
+                                    label=""
+                                    description={null}
+                                    readOnlyEmptyText="Sin imágenes de arte y producción."
+                                    ariaLabel="Imágenes de arte y producción"
+                                    initialServerImages={tomaAccordionReferenceImages(
+                                      s,
+                                      "production_images",
+                                    )}
                                   />
                                 </div>
                               </div>

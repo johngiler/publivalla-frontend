@@ -46,10 +46,23 @@ function validateImageFile(file) {
 
 /**
  * Galería de imágenes de toma (admin): varias imágenes, arrastrar para ordenar, drop y selección múltiple.
- * Expone `getPayload()` → `{ plan: string[][], newFiles: File[] }` para `gallery_plan` + `gallery_add`.
+ * Expone `getPayload()` → `{ plan: string[][], newFiles: File[] }` para `*_plan` + `*_add`.
  */
 export const AdminAdSpaceGalleryField = forwardRef(function AdminAdSpaceGalleryField(
-  { readOnly = false, initialServerImages = [] },
+  {
+    readOnly = false,
+    initialServerImages = [],
+    label = "Imágenes de portada",
+    description = (
+      <>
+        Una o varias imágenes. La primera es la portada principal en catálogo y pedidos. JPG, PNG, WebP o GIF ·
+        máx. 10 MB c/u · hasta {MAX_ITEMS} archivos. Recomendado cuadrado (p. ej. 1200×1200 px).
+      </>
+    ),
+    readOnlyEmptyText = "Sin imágenes de portada.",
+    ariaLabel = "Imágenes de portada, orden de izquierda a derecha",
+    showSortHint = true,
+  },
   ref,
 ) {
   const [items, setItems] = useState([]);
@@ -161,16 +174,13 @@ export const AdminAdSpaceGalleryField = forwardRef(function AdminAdSpaceGalleryF
     <div>
       {!readOnly ? (
         <>
-          <p className={adminLabel}>Imágenes de portada</p>
-          <p className="mt-1 text-xs text-zinc-500">
-            Una o varias imágenes. La primera es la portada principal en catálogo y pedidos. JPG, PNG, WebP o GIF ·
-            máx. 10 MB c/u · hasta {MAX_ITEMS} archivos. Recomendado cuadrado (p. ej. 1200×1200 px).
-          </p>
+          <p className={adminLabel}>{label}</p>
+          {description ? <p className="mt-1 text-xs text-zinc-500">{description}</p> : null}
         </>
       ) : null}
 
       {readOnly && items.length === 0 ? (
-        <p className="mt-3 text-sm text-zinc-400">Sin imágenes de portada.</p>
+        <p className="mt-3 text-sm text-zinc-400">{readOnlyEmptyText}</p>
       ) : null}
 
       {err ? (
@@ -185,7 +195,7 @@ export const AdminAdSpaceGalleryField = forwardRef(function AdminAdSpaceGalleryF
             <ul
               className="flex flex-wrap gap-3"
               role="list"
-              aria-label="Imágenes de portada, orden de izquierda a derecha"
+              aria-label={ariaLabel}
             >
               {items.map((it) => (
                 <li key={it.key} className="list-none">
@@ -253,7 +263,7 @@ export const AdminAdSpaceGalleryField = forwardRef(function AdminAdSpaceGalleryF
                 </li>
               ))}
             </ul>
-            {!readOnly && items.length > 1 ? (
+            {!readOnly && items.length > 1 && showSortHint ? (
               <p className="mt-2 text-[11px] leading-snug text-zinc-500">
                 La primera imagen es la portada en catálogo y pedidos. Arrastra una miniatura sobre otra para reordenar.
               </p>

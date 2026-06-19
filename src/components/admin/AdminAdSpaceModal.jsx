@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 
 import { AdminAdSpaceGalleryField } from "@/components/admin/AdminAdSpaceGalleryField";
@@ -13,7 +13,6 @@ import {
 import { AdminInlineAlert } from "@/components/admin/AdminInlineAlert";
 import { AdminModal } from "@/components/admin/AdminModal";
 import { AdminSelect } from "@/components/admin/AdminSelect";
-import { CoverImageField } from "@/components/admin/CoverImageField";
 import {
   adminField,
   adminLabel,
@@ -46,10 +45,10 @@ function buildSpaceFormData(values, extras) {
   fd.append("formats_json", JSON.stringify(extras.formats));
   fd.append("gallery_plan", JSON.stringify(extras.galleryPlan));
   extras.galleryFiles.forEach((f) => fd.append("gallery_add", f));
-  if (extras.locationFile) fd.append("location_image", extras.locationFile);
-  else if (extras.clearLocation) fd.append("location_image", "");
-  if (extras.productionFile) fd.append("production_image", extras.productionFile);
-  else if (extras.clearProduction) fd.append("production_image", "");
+  fd.append("location_plan", JSON.stringify(extras.locationPlan));
+  extras.locationFiles.forEach((f) => fd.append("location_add", f));
+  fd.append("production_plan", JSON.stringify(extras.productionPlan));
+  extras.productionFiles.forEach((f) => fd.append("production_add", f));
   return fd;
 }
 
@@ -69,10 +68,13 @@ function SectionTitle({ children }) {
  *   onSaved: () => void | Promise<void>;
  * }} props
  */
+const REFERENCE_IMAGE_HINT =
+  "Una o varias imágenes. JPG, PNG, WebP o GIF · máx. 10 MB c/u · hasta 20 archivos. Recomendado cuadrado (p. ej. 1200×1200 px).";
+
 export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved }) {
   const galleryRef = useRef(null);
-  const locationInputRef = useRef(null);
-  const productionInputRef = useRef(null);
+  const locationRef = useRef(null);
+  const productionRef = useRef(null);
 
   const [modalErr, setModalErr] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
@@ -85,10 +87,6 @@ export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved
   const [isActive, setIsActive] = useState(true);
   const [formatRows, setFormatRows] = useState([emptyFormatRow()]);
   const [productTypes, setProductTypes] = useState([]);
-  const [locationFile, setLocationFile] = useState(null);
-  const [productionFile, setProductionFile] = useState(null);
-  const [pendingClearLocation, setPendingClearLocation] = useState(false);
-  const [pendingClearProduction, setPendingClearProduction] = useState(false);
 
   const typesKey = open ? "/api/admin/ad-space-product-types/?page_size=200" : null;
   const { data: typesData } = useSWR(typesKey, authJsonFetcher);
@@ -110,10 +108,6 @@ export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved
     setAvailability("available");
     setIsActive(true);
     setFormatRows([emptyFormatRow()]);
-    setLocationFile(null);
-    setProductionFile(null);
-    setPendingClearLocation(false);
-    setPendingClearProduction(false);
     setModalErr("");
     setFieldErrors({});
   }, []);
@@ -129,10 +123,6 @@ export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved
       setAvailability(String(space.availability ?? "available"));
       setIsActive(space.is_active !== false);
       setFormatRows(formatsFromApi(space.formats));
-      setLocationFile(null);
-      setProductionFile(null);
-      setPendingClearLocation(false);
-      setPendingClearProduction(false);
     } else {
       resetForm();
     }
@@ -142,35 +132,6 @@ export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved
 
   const fieldClass = (key) =>
     `${adminField} ${fieldErrors?.[key] ? "mp-admin-field-error" : ""}`;
-
-  const existingLocationUrl =
-    space?.location_image_url || space?.location_image
-      ? String(space.location_image_url || space.location_image)
-      : null;
-  const existingProductionUrl =
-    space?.production_image_url || space?.production_image
-      ? String(space.production_image_url || space.production_image)
-      : null;
-
-  const locationPreview = useMemo(
-    () => (locationFile ? URL.createObjectURL(locationFile) : ""),
-    [locationFile],
-  );
-  const productionPreview = useMemo(
-    () => (productionFile ? URL.createObjectURL(productionFile) : ""),
-    [productionFile],
-  );
-
-  useEffect(() => {
-    return () => {
-      if (locationPreview) URL.revokeObjectURL(locationPreview);
-    };
-  }, [locationPreview]);
-  useEffect(() => {
-    return () => {
-      if (productionPreview) URL.revokeObjectURL(productionPreview);
-    };
-  }, [productionPreview]);
 
   async function suggestNextCode() {
     if (!shoppingCenter) return;
@@ -208,7 +169,12 @@ export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved
       return;
     }
     try {
-      const payload = galleryRef.current?.getPayload?.() ?? { plan: [], newFiles: [] };
+      const galleryPayload = galleryRef.current?.getPayload?.() ?? { plan: [], newFiles: [] };
+      const locationPayload = locationRef.current?.getPayload?.() ?? { plan: [], newFiles: [] };
+      const productionPayload = productionRef.current?.getPayload?.() ?? {
+        plan: [],
+        newFiles: [],
+      };
       const fd = buildSpaceFormData(
         {
           code: mode === "create" ? code.trim().toUpperCase() : code,
@@ -221,12 +187,12 @@ export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved
         },
         {
           formats: apiFormats,
-          galleryPlan: payload.plan,
-          galleryFiles: payload.newFiles,
-          locationFile,
-          productionFile,
-          clearLocation: pendingClearLocation,
-          clearProduction: pendingClearProduction,
+          galleryPlan: galleryPayload.plan,
+          galleryFiles: galleryPayload.newFiles,
+          locationPlan: locationPayload.plan,
+          locationFiles: locationPayload.newFiles,
+          productionPlan: productionPayload.plan,
+          productionFiles: productionPayload.newFiles,
         },
       );
       if (mode === "create") {
@@ -403,39 +369,39 @@ export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved
                   : []
               }
             />
-            <CoverImageField
+            <AdminAdSpaceGalleryField
+              ref={locationRef}
+              key={
+                mode === "edit" && space ? `edit-location-${space.id}` : "create-location"
+              }
+              readOnly={false}
               label="Imagen de ubicación"
-              existingUrl={
-                pendingClearLocation ? null : mode === "edit" ? existingLocationUrl : null
+              description={REFERENCE_IMAGE_HINT}
+              readOnlyEmptyText="Sin imágenes de ubicación."
+              ariaLabel="Imágenes de ubicación"
+              showSortHint={false}
+              initialServerImages={
+                mode === "edit" && space && Array.isArray(space.location_images)
+                  ? space.location_images
+                  : []
               }
-              filePreviewUrl={locationPreview}
-              onFileChange={(f) => {
-                setLocationFile(f);
-                setPendingClearLocation(false);
-              }}
-              onClearExisting={() => {
-                setLocationFile(null);
-                setPendingClearLocation(true);
-                if (locationInputRef.current) locationInputRef.current.value = "";
-              }}
-              fileInputRef={locationInputRef}
             />
-            <CoverImageField
-              label="Imagen de arte y producción"
-              existingUrl={
-                pendingClearProduction ? null : mode === "edit" ? existingProductionUrl : null
+            <AdminAdSpaceGalleryField
+              ref={productionRef}
+              key={
+                mode === "edit" && space ? `edit-production-${space.id}` : "create-production"
               }
-              filePreviewUrl={productionPreview}
-              onFileChange={(f) => {
-                setProductionFile(f);
-                setPendingClearProduction(false);
-              }}
-              onClearExisting={() => {
-                setProductionFile(null);
-                setPendingClearProduction(true);
-                if (productionInputRef.current) productionInputRef.current.value = "";
-              }}
-              fileInputRef={productionInputRef}
+              readOnly={false}
+              label="Imagen de arte y producción"
+              description={REFERENCE_IMAGE_HINT}
+              readOnlyEmptyText="Sin imágenes de arte y producción."
+              ariaLabel="Imágenes de arte y producción"
+              showSortHint={false}
+              initialServerImages={
+                mode === "edit" && space && Array.isArray(space.production_images)
+                  ? space.production_images
+                  : []
+              }
             />
           </div>
         </section>
