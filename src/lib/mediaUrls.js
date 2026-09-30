@@ -126,8 +126,8 @@ export function normalizeMediaUrlForUi(url) {
   if (!abs) return "";
   if (process.env.NODE_ENV === "development") {
     abs = abs.replace(
-      /^http:\/\/localhost(?::8000)?(?=\/|$)/i,
-      "http://127.0.0.1:8000",
+      /^http:\/\/localhost(?::\d+)?(?=\/|$)/i,
+      apiBase().replace(/\/$/, ""),
     );
   }
   return apiMediaUrlToRelativePortalPath(abs);
