@@ -312,7 +312,7 @@ export function Header() {
                   <span>Panel</span>
                 </Link>
               ) : null}
-              {isAdmin && isSmUp ? <AdminNotificationBell /> : null}
+              {mounted && isAdmin && isSmUp ? <AdminNotificationBell /> : null}
             </>
           ) : (
             <>
@@ -329,7 +329,7 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2 sm:hidden">
-          {authReady && me && isAdmin && !isSmUp ? <AdminNotificationBell /> : null}
+          {mounted && authReady && me && isAdmin && !isSmUp ? <AdminNotificationBell /> : null}
           <button
             type="button"
             className={`mp-ring-brand inline-flex min-h-11 min-w-11 items-center justify-center ${ROUNDED_CONTROL} text-zinc-800 transition-colors duration-200 ease-out hover:bg-zinc-100 active:scale-95 focus-visible:outline-none`}

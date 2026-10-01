@@ -40,7 +40,7 @@ export function AdminNotificationBell() {
   const unread = Number(data?.unread_count) || 0;
 
   useEffect(() => {
-    if (!listKey) return undefined;
+    if (!authReady || !isAdmin || !accessToken) return undefined;
     let socket;
     let stopped = false;
     let retryMs = 2000;
@@ -83,9 +83,16 @@ export function AdminNotificationBell() {
     return () => {
       stopped = true;
       window.clearTimeout(timer);
-      socket?.close();
+      if (!socket) return;
+      const current = socket;
+      current.onclose = null;
+      if (current.readyState === WebSocket.CONNECTING) {
+        current.onopen = () => current.close();
+      } else {
+        current.close();
+      }
     };
-  }, [listKey, mutate]);
+  }, [authReady, isAdmin, accessToken, mutate]);
 
   useEffect(() => {
     if (!open) return undefined;
