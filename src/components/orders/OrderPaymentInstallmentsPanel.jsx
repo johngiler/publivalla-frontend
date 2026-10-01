@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { AdminModal } from "@/components/admin/AdminModal";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 import { OrderAttachmentAdminPreview } from "@/components/admin/PedidoDocumentosNegociacionAdmin";
 import { adminPrimaryBtn, adminSecondaryBtn } from "@/components/admin/adminFormStyles";
 import {
@@ -11,6 +12,7 @@ import {
 } from "@/lib/marketplaceActionButtons";
 import { FileDropZoneField } from "@/components/ui/FileDropZoneField";
 import {
+  buildInstallmentAdminStatusOptions,
   formatPlanMonthLabel,
   installmentStatusPillClass,
   orderUsesSplitPayment,
@@ -117,6 +119,26 @@ export function OrderPaymentInstallmentsPanel({ order, mode, accessToken, onSave
     [accessToken, closeInvoiceModal, invoiceFile, onSaved, orderId],
   );
 
+  const changeStatus = useCallback(
+    async (inst, nextStatus) => {
+      if (!orderId || !inst?.id || !nextStatus || nextStatus === inst.status) return;
+      setErr("");
+      setBusyId(inst.id);
+      try {
+        await authFetch(
+          `/api/orders/${orderId}/payment-plan/installments/${inst.id}/status/`,
+          { method: "PATCH", body: { status: nextStatus }, token: accessToken },
+        );
+        await onSaved?.();
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : "No se pudo cambiar el estado de la cuota.");
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [accessToken, onSaved, orderId],
+  );
+
   const saveReceipt = useCallback(
     async (inst) => {
       if (!receiptFile || !orderId || !inst?.id) return;
@@ -182,7 +204,9 @@ export function OrderPaymentInstallmentsPanel({ order, mode, accessToken, onSave
                 isAdmin &&
                 (inst.can_generate_invoice === true ||
                   (!invoiceUrl && String(inst.status ?? "") === "pending"));
-              const canUploadReceipt = !isAdmin && canClientReceipt && !receiptUrl;
+              const canUploadReceipt =
+                isAdmin || (canClientReceipt && !receiptUrl);
+              const statusBusy = busyId === inst.id;
               return (
                 <tr key={inst.id} className="border-b border-zinc-100 align-middle">
                   <td className="px-3 py-3 tabular-nums">
@@ -201,11 +225,29 @@ export function OrderPaymentInstallmentsPanel({ order, mode, accessToken, onSave
                     {inst.amount != null ? `$${inst.amount}` : "—"}
                   </td>
                   <td className="px-3 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${installmentStatusPillClass(inst.status)}`}
-                    >
-                      {statusLbl}
-                    </span>
+                    {isAdmin ? (
+                      <div className="min-w-[9.5rem]" aria-busy={statusBusy}>
+                        <AdminSelect
+                          id={`cuota-status-${inst.id}`}
+                          inputId={`cuota-status-input-${inst.id}`}
+                          options={buildInstallmentAdminStatusOptions(inst)}
+                          value={String(inst.status ?? "pending")}
+                          compact
+                          isDisabled={statusBusy}
+                          aria-label={`Estado de la cuota ${inst.sequence}`}
+                          onChange={(v) => {
+                            if (statusBusy || v == null || v === "" || v === inst.status) return;
+                            void changeStatus(inst, String(v));
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${installmentStatusPillClass(inst.status)}`}
+                      >
+                        {statusLbl}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap">
                     <div className="flex flex-col items-start gap-1">
@@ -261,12 +303,13 @@ export function OrderPaymentInstallmentsPanel({ order, mode, accessToken, onSave
                         <button
                           type="button"
                           className={tableActionBtn}
+                          disabled={statusBusy}
                           onClick={() => {
                             setReceiptFile(null);
                             setReceiptModalInst(inst);
                           }}
                         >
-                          Subir comprobante
+                          {receiptUrl ? "Reemplazar comprobante" : "Subir comprobante"}
                         </button>
                       ) : null}
                     </div>
@@ -380,7 +423,27 @@ export function OrderPaymentInstallmentsPanel({ order, mode, accessToken, onSave
         maxWidthClass="max-w-xl"
         canClose={busyId !== receiptModalInst?.id}
         footer={
-          !isAdmin && receiptModalInst && !receiptModalUrl ? (
+          isAdmin && receiptModalInst ? (
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                className={adminSecondaryBtn}
+                disabled={busyId === receiptModalInst?.id}
+                onClick={closeReceiptModal}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={adminPrimaryBtn}
+                disabled={!receiptFile || busyId === receiptModalInst?.id}
+                aria-busy={busyId === receiptModalInst?.id}
+                onClick={() => saveReceipt(receiptModalInst)}
+              >
+                {busyId === receiptModalInst?.id ? "Guardando…" : "Guardar comprobante"}
+              </button>
+            </div>
+          ) : !isAdmin && receiptModalInst && !receiptModalUrl ? (
             <div className="flex flex-wrap justify-end gap-2">
               <button
                 type="button"
@@ -394,6 +457,7 @@ export function OrderPaymentInstallmentsPanel({ order, mode, accessToken, onSave
                 type="button"
                 className={marketplacePrimaryBtn}
                 disabled={!receiptFile || busyId === receiptModalInst?.id}
+                aria-busy={busyId === receiptModalInst?.id}
                 onClick={() => saveReceipt(receiptModalInst)}
               >
                 {busyId === receiptModalInst?.id ? "Enviando…" : "Enviar comprobante"}
@@ -418,7 +482,7 @@ export function OrderPaymentInstallmentsPanel({ order, mode, accessToken, onSave
                 Adjunta el comprobante de pago de esta cuota.
               </p>
             )}
-            {!isAdmin && canClientReceipt && !receiptModalUrl ? (
+            {(isAdmin || (canClientReceipt && !receiptModalUrl)) ? (
               <FileDropZoneField
                 id={`rec-cuota-modal-${receiptModalInst.id}`}
                 label="Adjuntar comprobante"

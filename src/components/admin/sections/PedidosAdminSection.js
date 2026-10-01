@@ -63,6 +63,8 @@ import { PedidoAdminOrderLinesList } from "@/components/admin/PedidoAdminOrderLi
 import { PedidoDocumentosNegociacionAdmin } from "@/components/admin/PedidoDocumentosNegociacionAdmin";
 import { SplitPaymentPill } from "@/components/orders/SplitPaymentPill";
 import { PedidosSectionSkeleton } from "@/components/admin/skeletons/PedidosSectionSkeleton";
+import { FinishContractDialog } from "@/components/admin/FinishContractDialog";
+import { EarlyEndBadge } from "@/components/orders/EarlyEndBadge";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -76,7 +78,11 @@ import {
 import { formatUsdMoney } from "@/lib/marketplacePricing";
 import { ordersExportReportPath, ordersListPath } from "@/lib/adminListQuery";
 import { PAYMENT_PLAN_FILTER_OPTIONS } from "@/lib/orderPaymentPlan";
-import { authJsonFetcher } from "@/lib/swr/fetchers";
+import {
+  ADMIN_CENTERS_ALL_SWR_KEY,
+  adminCentersAllPagesFetcher,
+  authJsonFetcher,
+} from "@/lib/swr/fetchers";
 import { adminOrderLineCoverLightboxItems } from "@/lib/imageLightboxItems";
 import {
   buildOrderAdminStatusSelectOptions,
@@ -123,7 +129,7 @@ function PedidoEstadoActualCell({ order }) {
   const statusLabel = orderDisplayStatusLabel(order);
   const splitPayment = order?.split_payment_enabled === true;
   return (
-    <div className="inline-flex items-center gap-1.5">
+    <div className="inline-flex flex-wrap items-center gap-1.5">
       <span
         className={`inline-flex max-w-[11rem] items-center rounded-full px-2.5 py-1 text-xs font-semibold leading-tight ${orderDisplayStatusPillClassName(order)}`}
         title={statusLabel}
@@ -131,6 +137,7 @@ function PedidoEstadoActualCell({ order }) {
         <span className="truncate">{statusLabel}</span>
       </span>
       {splitPayment ? <SplitPaymentPill compact /> : null}
+      {order?.ended_early ? <EarlyEndBadge /> : null}
     </div>
   );
 }
@@ -361,12 +368,30 @@ export function PedidosAdminSection() {
   const [filterQ, setFilterQ] = useState("");
   const [filterOrderStatus, setFilterOrderStatus] = useState("all");
   const [filterPaymentPlan, setFilterPaymentPlan] = useState("all");
+  const [filterCenter, setFilterCenter] = useState("all");
+  const [filterEndedEarly, setFilterEndedEarly] = useState("all");
+  const [finishTarget, setFinishTarget] = useState(null);
   const debouncedFilterQ = useDebouncedValue(filterQ, 400);
 
   const filtersActive =
     filterQ.trim() !== "" ||
     filterOrderStatus !== "all" ||
-    filterPaymentPlan !== "all";
+    filterPaymentPlan !== "all" ||
+    filterCenter !== "all" ||
+    filterEndedEarly !== "all";
+
+  const centersAllKey = authReady && accessToken ? ADMIN_CENTERS_ALL_SWR_KEY : null;
+  const { data: centersData } = useSWR(centersAllKey, adminCentersAllPagesFetcher);
+  const centerFilterOptions = useMemo(
+    () => [
+      { v: "all", l: "Todos los centros" },
+      ...(Array.isArray(centersData) ? centersData : []).map((c) => ({
+        v: String(c.id),
+        l: [c.name, c.city].filter(Boolean).join(" · ") || `Centro #${c.id}`,
+      })),
+    ],
+    [centersData],
+  );
 
   const listKey =
     authReady && accessToken
@@ -376,6 +401,8 @@ export function PedidosAdminSection() {
           filterOrderStatus,
           undefined,
           filterPaymentPlan,
+          filterCenter,
+          filterEndedEarly,
         )
       : null;
   const {
@@ -453,6 +480,8 @@ export function PedidosAdminSection() {
         debouncedFilterQ,
         filterOrderStatus,
         filterPaymentPlan,
+        filterCenter,
+        filterEndedEarly,
       );
       const blob = await authFetchBlob(path, { token: accessToken });
       const url = URL.createObjectURL(blob);
@@ -470,7 +499,7 @@ export function PedidosAdminSection() {
     } finally {
       setReportLoading(false);
     }
-  }, [accessToken, debouncedFilterQ, filterOrderStatus, filterPaymentPlan]);
+  }, [accessToken, debouncedFilterQ, filterOrderStatus, filterPaymentPlan, filterCenter, filterEndedEarly]);
 
   const ready =
     !(authReady && accessToken) ||
@@ -478,7 +507,7 @@ export function PedidosAdminSection() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedFilterQ, filterOrderStatus, filterPaymentPlan]);
+  }, [debouncedFilterQ, filterOrderStatus, filterPaymentPlan, filterCenter, filterEndedEarly]);
 
   const patchOrderStatus = useCallback(
     async (orderId, status) => {
@@ -529,7 +558,7 @@ export function PedidosAdminSection() {
 
   useEffect(() => {
     setExpandedId(null);
-  }, [filterQ, filterOrderStatus, filterPaymentPlan, page]);
+  }, [filterQ, filterOrderStatus, filterPaymentPlan, filterCenter, filterEndedEarly, page]);
 
   if (!ready) {
     return (
@@ -619,6 +648,13 @@ export function PedidosAdminSection() {
                 className="min-w-0 flex-[1.6]"
               />
               <AdminFilterSelect
+                id="pedidos-filter-center"
+                label="Centro comercial"
+                value={filterCenter}
+                onChange={setFilterCenter}
+                options={centerFilterOptions}
+              />
+              <AdminFilterSelect
                 id="pedidos-filter-status"
                 label="Estado del pedido"
                 value={filterOrderStatus}
@@ -632,12 +668,24 @@ export function PedidosAdminSection() {
                 onChange={setFilterPaymentPlan}
                 options={PAYMENT_PLAN_FILTER_OPTIONS}
               />
+              <AdminFilterSelect
+                id="pedidos-filter-ended-early"
+                label="Cierre"
+                value={filterEndedEarly}
+                onChange={setFilterEndedEarly}
+                options={[
+                  { v: "all", l: "Cualquier cierre" },
+                  { v: "early", l: "Finalización anticipada" },
+                ]}
+              />
               <AdminFilterClearButton
                 show={filtersActive}
                 onClick={() => {
                   setFilterQ("");
                   setFilterOrderStatus("all");
                   setFilterPaymentPlan("all");
+                  setFilterCenter("all");
+                  setFilterEndedEarly("all");
                   setPage(1);
                 }}
               />
@@ -652,6 +700,8 @@ export function PedidosAdminSection() {
                       setFilterQ("");
                       setFilterOrderStatus("all");
                       setFilterPaymentPlan("all");
+                      setFilterCenter("all");
+                      setFilterEndedEarly("all");
                       setPage(1);
                     }}
                   />
@@ -769,6 +819,17 @@ export function PedidosAdminSection() {
                                   )
                                 }
                                 onDelete={() => setDeleteTargetId(o.id)}
+                                trailing={
+                                  o.status === "active" ? (
+                                    <button
+                                      type="button"
+                                      className="ml-1 inline-flex shrink-0 items-center rounded-[10px] border border-zinc-200 bg-white px-2 py-1 text-[11px] font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50"
+                                      onClick={() => setFinishTarget(o)}
+                                    >
+                                      Finalizar
+                                    </button>
+                                  ) : null
+                                }
                               />
                             </td>
                           </tr>
@@ -780,6 +841,32 @@ export function PedidosAdminSection() {
                                   clientDisplayName(o) || "Sin empresa",
                                 )}
                               />
+
+                              {o.ended_early ? (
+                                <div className="mt-4">
+                                  <AdminDetailSection
+                                    panelId={panelId}
+                                    sectionId="cierre"
+                                    title="Finalización anticipada"
+                                  >
+                                    <AdminDetailInset>
+                                      <div className="grid gap-4 sm:grid-cols-2">
+                                        <AdminDetailField label="Observaciones">
+                                          {o.early_end_note?.trim() || "—"}
+                                        </AdminDetailField>
+                                        {o.split_payment_enabled ? null : (
+                                          <AdminDetailField label="Reembolso">
+                                            {o.early_end_refund_amount != null &&
+                                            o.early_end_refund_amount !== ""
+                                              ? `$${formatUsdAmount(o.early_end_refund_amount)}`
+                                              : "—"}
+                                          </AdminDetailField>
+                                        )}
+                                      </div>
+                                    </AdminDetailInset>
+                                  </AdminDetailSection>
+                                </div>
+                              ) : null}
 
                               <div className="mt-4 grid w-full min-w-0 grid-cols-1 gap-4 lg:mt-5 lg:grid-cols-2 lg:items-start lg:gap-6 xl:gap-7">
                                 <div className="min-w-0">
@@ -1147,6 +1234,19 @@ export function PedidosAdminSection() {
             </div>
           ) : null}
         </AdminConfirmDialog>
+
+        <FinishContractDialog
+          open={finishTarget != null}
+          order={finishTarget}
+          accessToken={accessToken}
+          onClose={() => setFinishTarget(null)}
+          onDone={async (updated) => {
+            if (updated && typeof updated === "object") {
+              mergeOrderInList(updated);
+            }
+            await reloadOrders(page);
+          }}
+        />
       </div>
     </>
   );

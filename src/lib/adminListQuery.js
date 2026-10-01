@@ -4,7 +4,15 @@
  * @param {string} [excludeStatus] — p. ej. `active` (excluye ese estado del listado).
  * @param {string} [paymentPlanPending] — `pending` para planes con cuotas sin pagar.
  */
-export function ordersListPath(page, search, status, excludeStatus, paymentPlanPending) {
+export function ordersListPath(
+  page,
+  search,
+  status,
+  excludeStatus,
+  paymentPlanPending,
+  shoppingCenterId,
+  endedEarly,
+) {
   const p = new URLSearchParams();
   p.set("page", String(page));
   if (search.trim()) p.set("search", search.trim());
@@ -12,15 +20,27 @@ export function ordersListPath(page, search, status, excludeStatus, paymentPlanP
   const ex = (excludeStatus ?? "").trim();
   if (ex) p.set("exclude_status", ex);
   if (paymentPlanPending === "pending") p.set("payment_plan_pending", "pending");
+  const cid = shoppingCenterId != null ? String(shoppingCenterId).trim() : "";
+  if (cid && cid !== "all") p.set("shopping_center", cid);
+  if (endedEarly === "early") p.set("ended_early", "1");
   return `/api/orders/?${p.toString()}`;
 }
 
 /** Mismos filtros de búsqueda y estado que el listado; sin paginación (todos los resultados). */
-export function ordersExportReportPath(search, status, paymentPlanPending) {
+export function ordersExportReportPath(
+  search,
+  status,
+  paymentPlanPending,
+  shoppingCenterId,
+  endedEarly,
+) {
   const p = new URLSearchParams();
   if (search.trim()) p.set("search", search.trim());
   if (status && status !== "all") p.set("status", status);
   if (paymentPlanPending === "pending") p.set("payment_plan_pending", "pending");
+  const cid = shoppingCenterId != null ? String(shoppingCenterId).trim() : "";
+  if (cid && cid !== "all") p.set("shopping_center", cid);
+  if (endedEarly === "early") p.set("ended_early", "1");
   const q = p.toString();
   return q ? `/api/orders/export-report/?${q}` : "/api/orders/export-report/";
 }
@@ -123,6 +143,8 @@ export function contractsListPath(
   ordering,
   adSpaceId,
   paymentPlanPending,
+  shoppingCenterId,
+  endedEarly,
 ) {
   const p = new URLSearchParams();
   p.set("page", String(page));
@@ -134,5 +156,8 @@ export function contractsListPath(
   const aid = adSpaceId != null ? String(adSpaceId).trim() : "";
   if (aid) p.set("ad_space_id", aid);
   if (paymentPlanPending === "pending") p.set("payment_plan_pending", "pending");
+  const cid = shoppingCenterId != null ? String(shoppingCenterId).trim() : "";
+  if (cid && cid !== "all") p.set("shopping_center", cid);
+  if (endedEarly === "early") p.set("ended_early", "1");
   return `/api/admin/contracts/?${p.toString()}`;
 }

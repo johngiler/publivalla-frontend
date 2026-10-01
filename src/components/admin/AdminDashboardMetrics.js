@@ -148,7 +148,7 @@ export function AdminDashboardMetrics({ metrics }) {
         <div className={G.amber}>
           <p className={TITLE}>Ingreso contratado acumulado</p>
           <p className={SUB}>
-            Suma de totales de pedido (activos o vencidos) según fecha de registro en el periodo: es monto
+            Suma de totales de pedido (activos o finalizados) según fecha de registro en el periodo: es monto
             contratado, no cobro en caja.
           </p>
           <ul className="mt-3 space-y-2 text-sm">
@@ -187,7 +187,7 @@ export function AdminDashboardMetrics({ metrics }) {
       <div className={G.chart}>
         <p className={TITLE}>Ingreso contratado y volumen de pedidos (12 meses)</p>
         <p className={SUB}>
-          <strong>Barras verdes (eje izquierdo, USD):</strong> total contratado en pedidos activos o vencidos por
+          <strong>Barras verdes (eje izquierdo, USD):</strong> total contratado en pedidos activos o finalizados por
           mes de registro. <strong>Barras violetas (eje derecho):</strong> cantidad de pedidos enviados (no
           borrador) por mes. No confundir con el gráfico de «Pedidos creados» de la sección inferior, que es
           día a día y por fecha de creación.
@@ -253,7 +253,7 @@ export function AdminDashboardMetrics({ metrics }) {
       <div className="grid gap-4 lg:grid-cols-2">
         <div className={G.emerald}>
           <p className={TITLE}>Espacio publicitario más rentable (histórico contratado)</p>
-          <p className={SUB}>Suma de subtotales de líneas en pedidos activos o vencidos.</p>
+          <p className={SUB}>Suma de subtotales de líneas en pedidos activos o finalizados.</p>
           {top ? (
             <div className="mt-3">
               <p className="font-semibold text-zinc-900">{top.name || top.title || top.code}</p>

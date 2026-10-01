@@ -97,6 +97,62 @@ export function firstInstallmentHasInvoice(order) {
   return Boolean(first?.invoice_file_url);
 }
 
+const INSTALLMENT_STATUS_PATH = ["pending", "invoiced", "paid"];
+
+const INSTALLMENT_STATUS_OPTIONS = [
+  { v: "pending", l: "Pendiente" },
+  { v: "invoiced", l: "Facturada" },
+  { v: "paid", l: "Pagada" },
+];
+
+function localIsoDate() {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+/** Select de estado de cuota: solo hacia adelante, y Pagada con factura, comprobante y vencimiento. */
+export function buildInstallmentAdminStatusOptions(inst) {
+  const current = String(inst?.status ?? "pending");
+  const curIdx = INSTALLMENT_STATUS_PATH.indexOf(current);
+  const hasInvoice = Boolean(inst?.invoice_file_url);
+  const hasReceipt = Boolean(inst?.payment_receipt_url);
+  const due = String(inst?.due_date ?? "").slice(0, 10);
+  const dueOk = Boolean(due) && due <= localIsoDate();
+
+  return INSTALLMENT_STATUS_OPTIONS.map((opt) => {
+    if (opt.v === current) return { ...opt, disabled: false, disabledReason: "" };
+    const idx = INSTALLMENT_STATUS_PATH.indexOf(opt.v);
+    if (curIdx >= 0 && idx >= 0 && idx < curIdx) {
+      return {
+        ...opt,
+        disabled: true,
+        disabledReason: "No puedes regresar el estado de la cuota.",
+      };
+    }
+    if (opt.v === "invoiced" && !hasInvoice) {
+      return { ...opt, disabled: true, disabledReason: "Falta la factura de la cuota." };
+    }
+    if (opt.v === "paid") {
+      if (!dueOk) {
+        return {
+          ...opt,
+          disabled: true,
+          disabledReason: "Solo puedes marcarla pagada si vence hoy o ya venció.",
+        };
+      }
+      if (!hasInvoice) {
+        return { ...opt, disabled: true, disabledReason: "Falta la factura de la cuota." };
+      }
+      if (!hasReceipt) {
+        return { ...opt, disabled: true, disabledReason: "Falta el comprobante de la cuota." };
+      }
+    }
+    return { ...opt, disabled: false, disabledReason: "" };
+  });
+}
+
 export function installmentStatusPillClass(status) {
   const s = String(status ?? "");
   if (s === "paid") return "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/80";

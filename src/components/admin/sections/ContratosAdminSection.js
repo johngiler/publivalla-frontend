@@ -32,6 +32,8 @@ import { AdminListQuerySync } from "@/components/admin/AdminListQuerySync";
 import { orderStatusPillClassName } from "@/components/admin/adminConstants";
 import { IconAdminContract } from "@/components/admin/adminIcons";
 import { ContratosSectionSkeleton } from "@/components/admin/skeletons/ContratosSectionSkeleton";
+import { FinishContractDialog } from "@/components/admin/FinishContractDialog";
+import { EarlyEndBadge } from "@/components/orders/EarlyEndBadge";
 import { SplitPaymentPill } from "@/components/orders/SplitPaymentPill";
 import { CatalogSpaceLink } from "@/components/catalog/CatalogSpaceLink";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
@@ -46,7 +48,11 @@ import {
 import { contractsListPath } from "@/lib/adminListQuery";
 import { PAYMENT_PLAN_FILTER_OPTIONS } from "@/lib/orderPaymentPlan";
 import { catalogRasterImgAttrs } from "@/lib/catalogImageProps";
-import { authJsonFetcher } from "@/lib/swr/fetchers";
+import {
+  ADMIN_CENTERS_ALL_SWR_KEY,
+  adminCentersAllPagesFetcher,
+  authJsonFetcher,
+} from "@/lib/swr/fetchers";
 import { mediaUrlForUiWithWebp, primaryAdSpaceMediaRawFromOrderLike } from "@/lib/mediaUrls";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import {
@@ -57,33 +63,37 @@ import {
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
 import { parsePaginatedResponse } from "@/services/api";
 
-const ORDER_STATUS_OPTIONS = [
-  { v: "all", l: "Todos" },
-  { v: "active", l: "Pedido activo" },
-  { v: "expired", l: "Pedido vencido" },
-];
-
-const PHASE_OPTIONS = [
-  { v: "all", l: "Todas las fases" },
-  { v: "running", l: "En curso (periodo actual)" },
-  { v: "upcoming", l: "Próximas (aún no inicia)" },
+const PERIOD_OPTIONS = [
+  { v: "all", l: "Todas" },
+  { v: "running", l: "En curso" },
+  { v: "upcoming", l: "Aún no inicia" },
   { v: "ended", l: "Finalizadas" },
-];
-
-const ENDING_WITHIN_OPTIONS = [
-  { v: "all", l: "Cualquier fin" },
-  { v: "7", l: "Fin en ≤ 7 días" },
-  { v: "30", l: "Fin en ≤ 30 días" },
-  { v: "90", l: "Fin en ≤ 90 días" },
+  { v: "7", l: "Fin en 7 días" },
+  { v: "30", l: "Fin en 30 días" },
+  { v: "90", l: "Fin en 90 días" },
+  { v: "early", l: "Finalización anticipada" },
 ];
 
 const ORDERING_OPTIONS = [
   { v: "-end_date", l: "Fin: más lejano primero" },
-  { v: "end_date", l: "Fin: más próximo (por vencer)" },
+  { v: "end_date", l: "Fin: el más cercano primero" },
   { v: "-start_date", l: "Inicio: más reciente" },
   { v: "start_date", l: "Inicio: más antiguo" },
   { v: "client", l: "Empresa (A→Z)" },
 ];
+
+function periodListParams(period) {
+  if (period === "running" || period === "upcoming" || period === "ended") {
+    return { phase: period, endingWithin: "all", endedEarly: "all" };
+  }
+  if (period === "7" || period === "30" || period === "90") {
+    return { phase: "all", endingWithin: period, endedEarly: "all" };
+  }
+  if (period === "early") {
+    return { phase: "all", endingWithin: "all", endedEarly: "early" };
+  }
+  return { phase: "all", endingWithin: "all", endedEarly: "all" };
+}
 
 function formatContractDay(value) {
   if (value == null || value === "") return "—";
@@ -161,22 +171,22 @@ function contractLineImageCount(it) {
   return contractLineLightboxItems(it).length;
 }
 
-function ContratosUrlPhaseSyncInner({ onPhase }) {
+function ContratosUrlPhaseSyncInner({ onPeriod }) {
   const searchParams = useSearchParams();
   useEffect(() => {
     const ph = (searchParams.get("phase") || "").trim().toLowerCase();
     if (ph === "running" || ph === "upcoming" || ph === "ended" || ph === "all") {
-      onPhase(ph);
+      onPeriod(ph);
     }
-  }, [searchParams, onPhase]);
+  }, [searchParams, onPeriod]);
   return null;
 }
 
 /** Aplica `?phase=` de la URL (p. ej. enlace desde la tarjeta KPI del resumen). */
-function ContratosUrlPhaseSync({ onPhase }) {
+function ContratosUrlPhaseSync({ onPeriod }) {
   return (
     <Suspense fallback={null}>
-      <ContratosUrlPhaseSyncInner onPhase={onPhase} />
+      <ContratosUrlPhaseSyncInner onPeriod={onPeriod} />
     </Suspense>
   );
 }
@@ -244,11 +254,11 @@ export function ContratosAdminSection() {
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState(null);
   const [filterQ, setFilterQ] = useState("");
-  const [filterOrderStatus, setFilterOrderStatus] = useState("all");
-  const [filterPhase, setFilterPhase] = useState("all");
-  const [filterEnding, setFilterEnding] = useState("all");
+  const [filterPeriod, setFilterPeriod] = useState("all");
   const [filterOrdering, setFilterOrdering] = useState("-end_date");
   const [filterPaymentPlan, setFilterPaymentPlan] = useState("all");
+  const [filterCenter, setFilterCenter] = useState("all");
+  const [finishTarget, setFinishTarget] = useState(null);
   const debouncedFilterQ = useDebouncedValue(filterQ, 400);
   const [galleryLightbox, setGalleryLightbox] = useState({
     open: false,
@@ -257,20 +267,35 @@ export function ContratosAdminSection() {
   });
   const [err, setErr] = useState("");
 
+  const periodParams = periodListParams(filterPeriod);
   const listKey =
     authReady && accessToken
       ? contractsListPath(
           page,
           debouncedFilterQ,
-          filterOrderStatus,
-          filterPhase,
-          filterEnding,
+          "all",
+          periodParams.phase,
+          periodParams.endingWithin,
           filterOrdering,
           "",
           filterPaymentPlan,
+          filterCenter,
+          periodParams.endedEarly,
         )
       : null;
-  const { data, error: swrError, isLoading } = useSWR(listKey, authJsonFetcher, {
+  const centersAllKey = authReady && accessToken ? ADMIN_CENTERS_ALL_SWR_KEY : null;
+  const { data: centersData } = useSWR(centersAllKey, adminCentersAllPagesFetcher);
+  const centerFilterOptions = useMemo(
+    () => [
+      { v: "all", l: "Todos los centros" },
+      ...(Array.isArray(centersData) ? centersData : []).map((c) => ({
+        v: String(c.id),
+        l: [c.name, c.city].filter(Boolean).join(" · ") || `Centro #${c.id}`,
+      })),
+    ],
+    [centersData],
+  );
+  const { data, error: swrError, isLoading, mutate } = useSWR(listKey, authJsonFetcher, {
     keepPreviousData: true,
   });
 
@@ -284,21 +309,19 @@ export function ContratosAdminSection() {
 
   const filtersActive =
     debouncedFilterQ.trim() !== "" ||
-    filterOrderStatus !== "all" ||
-    filterPhase !== "all" ||
-    filterEnding !== "all" ||
+    filterPeriod !== "all" ||
     filterOrdering !== "-end_date" ||
-    filterPaymentPlan !== "all";
+    filterPaymentPlan !== "all" ||
+    filterCenter !== "all";
 
   useEffect(() => {
     setPage(1);
   }, [
     debouncedFilterQ,
-    filterOrderStatus,
-    filterPhase,
-    filterEnding,
+    filterPeriod,
     filterOrdering,
     filterPaymentPlan,
+    filterCenter,
   ]);
 
   useEffect(() => {
@@ -348,7 +371,7 @@ export function ContratosAdminSection() {
 
   return (
     <>
-      <ContratosUrlPhaseSync onPhase={setFilterPhase} />
+      <ContratosUrlPhaseSync onPeriod={setFilterPeriod} />
       <AdminListQuerySync onQuery={setFilterQ} />
       <div className={adminPanelCard}>
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -359,7 +382,7 @@ export function ContratosAdminSection() {
             <div>
               <h2 className="text-xl font-bold text-slate-900">Contratos</h2>
               <p className="mt-0.5 text-sm text-zinc-500">
-                {totalCount} línea{totalCount === 1 ? "" : "s"} · pedidos activos o vencidos
+                {totalCount} línea{totalCount === 1 ? "" : "s"} · pedidos activos o finalizados
               </p>
             </div>
           </div>
@@ -395,7 +418,7 @@ export function ContratosAdminSection() {
             >
               <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-600">Finalizadas</p>
               <p className="mt-1 text-2xl font-bold tabular-nums text-zinc-800">{summary.ended ?? "—"}</p>
-              <p className="mt-1 text-xs text-zinc-500">Cerradas o pedido vencido</p>
+              <p className="mt-1 text-xs text-zinc-500">Cerradas o pedido finalizado</p>
             </div>
           </div>
         ) : null}
@@ -410,7 +433,7 @@ export function ContratosAdminSection() {
           <EmptyState
             icon={<EmptyStateIconClipboard />}
             title="No hay contratos"
-            description="Cuando existan pedidos activos o vencidos con líneas reservadas, aparecerán aquí con una vista de periodo y ocupación."
+            description="Cuando existan pedidos activos o finalizados con líneas reservadas, aparecerán aquí con una vista de periodo y ocupación."
           />
         ) : (
           <>
@@ -423,25 +446,18 @@ export function ContratosAdminSection() {
                 className="min-w-0 flex-[1.6]"
               />
               <AdminFilterSelect
-                id="contratos-filter-order-status"
-                label="Pedido"
-                value={filterOrderStatus}
-                onChange={setFilterOrderStatus}
-                options={ORDER_STATUS_OPTIONS}
+                id="contratos-filter-center"
+                label="Centro comercial"
+                value={filterCenter}
+                onChange={setFilterCenter}
+                options={centerFilterOptions}
               />
               <AdminFilterSelect
-                id="contratos-filter-phase"
-                label="Fase del periodo"
-                value={filterPhase}
-                onChange={setFilterPhase}
-                options={PHASE_OPTIONS}
-              />
-              <AdminFilterSelect
-                id="contratos-filter-ending"
-                label="Fin próximo"
-                value={filterEnding}
-                onChange={setFilterEnding}
-                options={ENDING_WITHIN_OPTIONS}
+                id="contratos-filter-period"
+                label="Periodo"
+                value={filterPeriod}
+                onChange={setFilterPeriod}
+                options={PERIOD_OPTIONS}
               />
               <AdminFilterSelect
                 id="contratos-filter-ordering"
@@ -461,11 +477,10 @@ export function ContratosAdminSection() {
                 show={filtersActive}
                 onClick={() => {
                   setFilterQ("");
-                  setFilterOrderStatus("all");
-                  setFilterPhase("all");
-                  setFilterEnding("all");
+                  setFilterPeriod("all");
                   setFilterOrdering("-end_date");
                   setFilterPaymentPlan("all");
+                  setFilterCenter("all");
                   setPage(1);
                 }}
               />
@@ -482,11 +497,10 @@ export function ContratosAdminSection() {
                   <FilterClearAction
                     onClick={() => {
                       setFilterQ("");
-                      setFilterOrderStatus("all");
-                      setFilterPhase("all");
-                      setFilterEnding("all");
+                      setFilterPeriod("all");
                       setFilterOrdering("-end_date");
                       setFilterPaymentPlan("all");
+                      setFilterCenter("all");
                       setPage(1);
                     }}
                   />
@@ -505,7 +519,7 @@ export function ContratosAdminSection() {
                       <th className="min-w-[9rem] max-w-[16rem] px-3 py-2">Empresa</th>
                       <th className="min-w-[14rem] px-3 py-2">Línea de tiempo / ocupación</th>
                       <th className="min-w-[8rem] px-3 py-2">Pedido</th>
-                      <th className="min-w-[7rem] px-3 py-2 text-end">Estados</th>
+                      <th className="min-w-[7rem] px-3 py-2 text-end">Estado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -606,22 +620,19 @@ export function ContratosAdminSection() {
                               </div>
                             </td>
                             <td className="px-3 py-2 align-middle text-end">
-                              <div className="flex flex-col items-end gap-1.5">
-                                <span
-                                  className={`inline-flex max-w-full rounded-full border px-2 py-0.5 text-[10px] font-semibold ${kindPillClass(it.contract_row_kind)}`}
-                                >
-                                  {kindLabel(it.contract_row_kind)}
-                                </span>
-                                <div className="flex items-center justify-end gap-1">
+                              <div className="flex flex-wrap items-center justify-end gap-1.5">
+                                {it.ended_early ? (
+                                  <EarlyEndBadge />
+                                ) : (
                                   <span
-                                    className={`inline-flex max-w-full rounded-full border border-transparent px-2 py-0.5 text-[10px] font-semibold shadow-sm ${orderStatusPillClassName(it.order_status)}`}
+                                    className={`inline-flex max-w-full rounded-full border px-2 py-0.5 text-[10px] font-semibold ${kindPillClass(it.contract_row_kind)}`}
                                   >
-                                    {it.order_status_label || it.order_status}
+                                    {kindLabel(it.contract_row_kind)}
                                   </span>
-                                  {it.split_payment_enabled ? (
-                                    <SplitPaymentPill compact />
-                                  ) : null}
-                                </div>
+                                )}
+                                {it.split_payment_enabled ? (
+                                  <SplitPaymentPill compact />
+                                ) : null}
                               </div>
                             </td>
                           </tr>
@@ -715,6 +726,17 @@ export function ContratosAdminSection() {
                                         {kindLabel(it.contract_row_kind)}
                                       </span>
                                     </AdminDetailField>
+                                    {it.order_status === "active" ? (
+                                      <div className="sm:col-span-2">
+                                        <button
+                                          type="button"
+                                          className="inline-flex items-center rounded-[10px] border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50"
+                                          onClick={() => setFinishTarget(it)}
+                                        >
+                                          Finalizar
+                                        </button>
+                                      </div>
+                                    ) : null}
                                   </AdminDetailInset>
                                 </AdminDetailSection>
 
@@ -760,6 +782,21 @@ export function ContratosAdminSection() {
                                     <AdminDetailField label="Precio mensual (USD)">
                                       {formatUsdMoney(Number(it.monthly_price))}
                                     </AdminDetailField>
+                                    {it.ended_early ? (
+                                      <>
+                                        <AdminDetailField label="Observaciones">
+                                          {it.early_end_note?.trim() || "—"}
+                                        </AdminDetailField>
+                                        {it.split_payment_enabled ? null : (
+                                          <AdminDetailField label="Reembolso">
+                                            {it.early_end_refund_amount != null &&
+                                            it.early_end_refund_amount !== ""
+                                              ? formatUsdMoney(Number(it.early_end_refund_amount))
+                                              : "—"}
+                                          </AdminDetailField>
+                                        )}
+                                      </>
+                                    ) : null}
                                   </AdminDetailInset>
                                 </AdminDetailSection>
                               </div>
@@ -779,6 +816,23 @@ export function ContratosAdminSection() {
           </>
         )}
       </div>
+
+      <FinishContractDialog
+        open={finishTarget != null}
+        order={
+          finishTarget
+            ? {
+                id: finishTarget.order_id,
+                split_payment_enabled: finishTarget.split_payment_enabled,
+              }
+            : null
+        }
+        accessToken={accessToken}
+        onClose={() => setFinishTarget(null)}
+        onDone={async () => {
+          await mutate();
+        }}
+      />
 
       <ImageLightbox
         open={galleryLightbox.open}

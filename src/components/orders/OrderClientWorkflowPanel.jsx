@@ -373,11 +373,19 @@ function getClientOrderGuidanceNotice(ctx) {
     };
   }
   if (s === "expired") {
+    if (ctx.endedEarly) {
+      return {
+        kind: "outcome",
+        nextStep: "Finalización anticipada",
+        detail:
+          "Este contrato se cerró antes de la fecha de fin. Puedes iniciar una nueva solicitud desde el catálogo si aún te interesa el espacio.",
+      };
+    }
     return {
       kind: "outcome",
-      nextStep: "Pedido vencido",
+      nextStep: "Pedido finalizado",
       detail:
-        "El plazo o la reserva asociada a este pedido venció. Puedes iniciar una nueva solicitud desde el catálogo si aún te interesa el espacio.",
+        "El periodo de este pedido ya terminó. Puedes iniciar una nueva solicitud desde el catálogo si aún te interesa el espacio.",
     };
   }
   if (s === "active") {
@@ -847,6 +855,7 @@ export function OrderClientWorkflowPanel({
         hasArtAttachments,
         hasPermitRecorded: Boolean(permit),
         hasMunicipalDocsComplete,
+        endedEarly: Boolean(order?.ended_early),
         usesSplitPayment,
       }),
     [
@@ -860,6 +869,7 @@ export function OrderClientWorkflowPanel({
       permit,
       hasMunicipalDocsComplete,
       usesSplitPayment,
+      order?.ended_early,
     ],
   );
 

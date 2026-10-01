@@ -132,7 +132,7 @@ export const ORDER_STATUS = [
   { v: "permit_pending", l: "Permiso alcaldía" },
   { v: "installation", l: "Instalación" },
   { v: "active", l: "Activa" },
-  { v: "expired", l: "Vencida" },
+  { v: "expired", l: "Finalizada" },
   { v: "cancelled", l: "Rechazada" },
 ];
 

@@ -26,6 +26,7 @@ import {
   marketplaceOrderRefLinkClass,
 } from "@/lib/marketplaceLineTypography";
 import { formatUsdMoney } from "@/lib/marketplacePricing";
+import { EarlyEndBadge } from "@/components/orders/EarlyEndBadge";
 import { SplitPaymentPill } from "@/components/orders/SplitPaymentPill";
 import { catalogRasterImgAttrs } from "@/lib/catalogImageProps";
 import { mediaUrlForUiWithWebp, primaryAdSpaceMediaRawFromOrderLike } from "@/lib/mediaUrls";
@@ -237,7 +238,7 @@ export default function MisContratosView() {
         Mis contratos
       </h1>
       <p className="mt-2 max-w-xl text-sm text-zinc-600">
-        Tomas en operación ligadas a pedidos activos o vencidos.
+        Tomas en operación ligadas a pedidos activos o finalizados.
       </p>
 
       {loading ? (
@@ -318,7 +319,7 @@ export default function MisContratosView() {
             <p className="mt-8 rounded-xl border border-dashed border-zinc-200 bg-zinc-50/50 px-4 py-8 text-center text-sm text-zinc-600">
               No hay contratos en esta vista. Cuando un pedido pase a{" "}
               <span className="font-medium text-zinc-800">activo</span> o quede{" "}
-              <span className="font-medium text-zinc-800">vencido</span>, las tomas aparecerán aquí.
+              <span className="font-medium text-zinc-800">finalizado</span>, las tomas aparecerán aquí.
             </p>
           ) : filteredItems.length === 0 ? (
             <div
@@ -400,6 +401,7 @@ export default function MisContratosView() {
                               {it.order_status_label || it.order_status}
                             </span>
                             {it.split_payment_enabled ? <SplitPaymentPill /> : null}
+                            {it.ended_early ? <EarlyEndBadge /> : null}
                           </div>
                         </div>
                         {periodMonths.length > 0 ? (

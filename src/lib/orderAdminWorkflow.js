@@ -6,7 +6,7 @@ import {
 } from "@/lib/orderPaymentPlan";
 
 /**
- * Flujo que el admin avanza paso a paso. «Vencida» no entra aquí: la pone el sistema
+ * Flujo que el admin avanza paso a paso. «Finalizada» no entra aquí: la pone el sistema
  * cuando vence la vigencia (`expire_active_orders` / `expire_active_orders_after_contract_end`).
  */
 export const ORDER_HAPPY_PATH_ADMIN = [
@@ -143,7 +143,7 @@ export function buildOrderAdminStatusSelectOptions(order) {
         ...opt,
         disabled: true,
         disabledReason:
-          "La vencida la asigna el sistema cuando la última línea supera su fecha de fin (tarea programada).",
+          "El estado Finalizada lo asigna el sistema cuando la última línea supera su fecha de fin.",
       };
     }
 

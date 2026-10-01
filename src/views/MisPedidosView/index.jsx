@@ -19,6 +19,7 @@ import {
   orderDisplayStatusLabel,
   orderDisplayStatusPillClassName,
 } from "@/lib/orderHoldDisplay";
+import { EarlyEndBadge } from "@/components/orders/EarlyEndBadge";
 import { CatalogSpaceLink } from "@/components/catalog/CatalogSpaceLink";
 import {
   MarketplaceLineSpaceHeading,
@@ -144,10 +145,13 @@ function OrderStatusBadge({ order }) {
   const label = orderDisplayStatusLabel(order);
   const pill = orderDisplayStatusPillClassName(order);
   return (
-    <span
-      className={`inline-flex max-w-full items-center rounded-full border border-transparent px-2.5 py-0.5 text-xs font-semibold shadow-sm ${pill}`}
-    >
-      {label}
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <span
+        className={`inline-flex max-w-full items-center rounded-full border border-transparent px-2.5 py-0.5 text-xs font-semibold shadow-sm ${pill}`}
+      >
+        {label}
+      </span>
+      {order?.ended_early ? <EarlyEndBadge /> : null}
     </span>
   );
 }
@@ -778,7 +782,7 @@ export default function MisPedidosView() {
               {orderCounts?.total ?? "—"}
             </p>
             <p className="mt-1 text-xs text-zinc-500">
-              Activos: {orderCounts?.active ?? 0} · Vencidos:{" "}
+              Activos: {orderCounts?.active ?? 0} · Finalizados:{" "}
               {orderCounts?.expired ?? 0} · En trámite:{" "}
               {orderCounts?.pipeline ?? 0}
             </p>
