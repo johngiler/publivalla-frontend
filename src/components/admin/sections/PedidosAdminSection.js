@@ -234,15 +234,15 @@ function PedidoSiguienteEstadoCell({
   }
 
   return (
-    <div ref={wrapRef} className="relative min-w-0 max-w-full overflow-visible">
-      <div className="inline-flex max-w-full min-w-0 flex-nowrap items-center justify-start gap-1.5">
+    <div ref={wrapRef} className="relative min-w-0 max-w-[15rem]">
+      <div className="flex min-w-0 items-start justify-start gap-1.5">
         {showBlocked ? (
-          <div className="flex min-w-[16rem] max-w-[22rem] shrink-0 items-start gap-1.5">
+          <div className="flex min-w-0 max-w-[12rem] flex-1 items-start gap-1.5">
             <IconAdminAlertSoft
               className="mt-0.5 shrink-0 !h-4 !w-4 text-amber-600"
               aria-hidden
             />
-            <p className="min-w-0 text-left text-xs font-medium leading-snug text-amber-950">
+            <p className="min-w-0 break-words text-left text-xs font-medium leading-snug text-amber-950">
               {quick.blockedReason}
             </p>
           </div>
@@ -674,7 +674,7 @@ export function PedidosAdminSection() {
                       <th className="max-sm:whitespace-nowrap px-3 py-2">Alta</th>
                       <th className="px-3 py-2">Empresa</th>
                       <th className="px-3 py-2">Estado actual</th>
-                      <th className="min-w-[16rem] max-sm:whitespace-nowrap px-3 py-2">
+                      <th className="w-[15rem] max-sm:whitespace-nowrap px-3 py-2">
                         Siguiente estado
                       </th>
                       <th className="max-sm:whitespace-nowrap px-3 py-2">Total USD</th>
@@ -746,7 +746,7 @@ export function PedidosAdminSection() {
                             <td className="px-3 py-2 align-middle">
                               <PedidoEstadoActualCell order={o} />
                             </td>
-                            <td className="min-w-[16rem] px-3 py-2 align-middle">
+                            <td className="w-[15rem] max-w-[15rem] px-3 py-2 align-middle">
                               <PedidoSiguienteEstadoCell
                                 order={o}
                                 orderRef={orderRef}
