@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import useSWR, { mutate as globalMutate } from "swr";
 
 import { AdminAccordionDetailHeader, adminAdSpaceAccordionHeader } from "@/components/admin/AdminAccordionDetail";
@@ -217,6 +218,15 @@ function CompetingBidGroupBlock({ group, onAward }) {
   );
 }
 
+function PujasSpaceQuerySync({ onSpace }) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const space = (searchParams.get("space") || "").trim();
+    if (space) onSpace(space);
+  }, [searchParams, onSpace]);
+  return null;
+}
+
 export function PujasAdminSection() {
   const { authReady, accessToken } = useAuth();
   const [message, setMessage] = useState("");
@@ -265,11 +275,11 @@ export function PujasAdminSection() {
   }, [groups, filterCenter]);
 
   useEffect(() => {
-    if (filterSpace === "all") return;
+    if (filterSpace === "all" || isLoading) return;
     if (!spaceFilterOptions.some((o) => o.v === filterSpace)) {
       setFilterSpace("all");
     }
-  }, [filterSpace, spaceFilterOptions]);
+  }, [filterSpace, spaceFilterOptions, isLoading]);
 
   const filtersActive =
     debouncedSearch.trim() !== "" || filterCenter !== "all" || filterSpace !== "all";
@@ -317,14 +327,26 @@ export function PujasAdminSection() {
     setAwardTarget(null);
   }, [awardTarget, mutate]);
 
+  const spaceSync = (
+    <Suspense fallback={null}>
+      <PujasSpaceQuerySync onSpace={setFilterSpace} />
+    </Suspense>
+  );
+
   if (!authReady || isLoading) {
-    return <PujasSectionSkeleton />;
+    return (
+      <>
+        {spaceSync}
+        <PujasSectionSkeleton />
+      </>
+    );
   }
 
   const hasDisputes = groups.length > 0;
 
   return (
     <>
+      {spaceSync}
       <div className={adminPanelCard}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-3">

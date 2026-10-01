@@ -63,7 +63,6 @@ import { PedidoAdminOrderLinesList } from "@/components/admin/PedidoAdminOrderLi
 import { PedidoDocumentosNegociacionAdmin } from "@/components/admin/PedidoDocumentosNegociacionAdmin";
 import { SplitPaymentPill } from "@/components/orders/SplitPaymentPill";
 import { PedidosSectionSkeleton } from "@/components/admin/skeletons/PedidosSectionSkeleton";
-import { FinishContractDialog } from "@/components/admin/FinishContractDialog";
 import { EarlyEndBadge } from "@/components/orders/EarlyEndBadge";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { useAuth } from "@/context/AuthContext";
@@ -88,7 +87,6 @@ import {
   buildOrderAdminStatusSelectOptions,
   formatOrderAdminTransitionButtonLabel,
   getOrderAdminQuickNext,
-  orderAdminShowRejectPedidoActivoButton,
 } from "@/lib/orderAdminWorkflow";
 import {
   orderCatalogSubtotal,
@@ -181,7 +179,6 @@ function PedidoSiguienteEstadoCell({
   );
   const showNextBtn = Boolean(quick && !quick.blockedReason);
   const showBlocked = Boolean(quick?.blockedReason);
-  const showRejectActivo = orderAdminShowRejectPedidoActivoButton(order);
   const isOrderBusy = pendingStatusChange?.orderId === order.id;
   const pendingStatus = isOrderBusy ? pendingStatusChange.status : null;
 
@@ -226,11 +223,7 @@ function PedidoSiguienteEstadoCell({
     return () => document.removeEventListener("mousedown", onDocDown);
   }, [opcionesOpen]);
 
-  const emptyEstado =
-    !showNextBtn &&
-    !showRejectActivo &&
-    !hasSelectableAlternative &&
-    !showBlocked;
+  const emptyEstado = !showNextBtn && !hasSelectableAlternative && !showBlocked;
 
   if (emptyEstado) {
     return (
@@ -244,15 +237,12 @@ function PedidoSiguienteEstadoCell({
     <div ref={wrapRef} className="relative min-w-0 max-w-full overflow-visible">
       <div className="inline-flex max-w-full min-w-0 flex-nowrap items-center justify-start gap-1.5">
         {showBlocked ? (
-          <div
-            className="flex max-w-[6.75rem] shrink-0 items-start gap-1 sm:max-w-[7.25rem]"
-            title={quick.blockedReason}
-          >
+          <div className="flex min-w-[16rem] max-w-[22rem] shrink-0 items-start gap-1.5">
             <IconAdminAlertSoft
               className="mt-0.5 shrink-0 !h-4 !w-4 text-amber-600"
               aria-hidden
             />
-            <p className="line-clamp-2 max-w-[5.25rem] min-w-0 break-words text-left text-[10px] font-medium leading-snug text-amber-950/90 sm:max-w-[5.75rem]">
+            <p className="min-w-0 text-left text-xs font-medium leading-snug text-amber-950">
               {quick.blockedReason}
             </p>
           </div>
@@ -274,26 +264,6 @@ function PedidoSiguienteEstadoCell({
               </>
             ) : (
               formatOrderAdminTransitionButtonLabel(quick.status)
-            )}
-          </button>
-        ) : null}
-        {showRejectActivo ? (
-          <button
-            type="button"
-            className={`${pedidoEstadoCompactBtnText} max-w-[8rem] shrink-0 line-clamp-2 sm:max-w-[9rem]`}
-            title={`${formatOrderAdminTransitionButtonLabel("cancelled")} Se pedirá confirmación.`}
-            aria-label={`${formatOrderAdminTransitionButtonLabel("cancelled")} Se pedirá confirmación.`}
-            disabled={isOrderBusy}
-            aria-busy={pendingStatus === "cancelled"}
-            onClick={() => onStatusChangeRequest(order, "cancelled")}
-          >
-            {pendingStatus === "cancelled" ? (
-              <>
-                <PedidoEstadoActionSpinner />
-                Procesando…
-              </>
-            ) : (
-              formatOrderAdminTransitionButtonLabel("cancelled")
             )}
           </button>
         ) : null}
@@ -369,16 +339,13 @@ export function PedidosAdminSection() {
   const [filterOrderStatus, setFilterOrderStatus] = useState("all");
   const [filterPaymentPlan, setFilterPaymentPlan] = useState("all");
   const [filterCenter, setFilterCenter] = useState("all");
-  const [filterEndedEarly, setFilterEndedEarly] = useState("all");
-  const [finishTarget, setFinishTarget] = useState(null);
   const debouncedFilterQ = useDebouncedValue(filterQ, 400);
 
   const filtersActive =
     filterQ.trim() !== "" ||
     filterOrderStatus !== "all" ||
     filterPaymentPlan !== "all" ||
-    filterCenter !== "all" ||
-    filterEndedEarly !== "all";
+    filterCenter !== "all";
 
   const centersAllKey = authReady && accessToken ? ADMIN_CENTERS_ALL_SWR_KEY : null;
   const { data: centersData } = useSWR(centersAllKey, adminCentersAllPagesFetcher);
@@ -402,7 +369,6 @@ export function PedidosAdminSection() {
           undefined,
           filterPaymentPlan,
           filterCenter,
-          filterEndedEarly,
         )
       : null;
   const {
@@ -481,7 +447,6 @@ export function PedidosAdminSection() {
         filterOrderStatus,
         filterPaymentPlan,
         filterCenter,
-        filterEndedEarly,
       );
       const blob = await authFetchBlob(path, { token: accessToken });
       const url = URL.createObjectURL(blob);
@@ -499,7 +464,7 @@ export function PedidosAdminSection() {
     } finally {
       setReportLoading(false);
     }
-  }, [accessToken, debouncedFilterQ, filterOrderStatus, filterPaymentPlan, filterCenter, filterEndedEarly]);
+  }, [accessToken, debouncedFilterQ, filterOrderStatus, filterPaymentPlan, filterCenter]);
 
   const ready =
     !(authReady && accessToken) ||
@@ -507,7 +472,7 @@ export function PedidosAdminSection() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedFilterQ, filterOrderStatus, filterPaymentPlan, filterCenter, filterEndedEarly]);
+  }, [debouncedFilterQ, filterOrderStatus, filterPaymentPlan, filterCenter]);
 
   const patchOrderStatus = useCallback(
     async (orderId, status) => {
@@ -558,7 +523,7 @@ export function PedidosAdminSection() {
 
   useEffect(() => {
     setExpandedId(null);
-  }, [filterQ, filterOrderStatus, filterPaymentPlan, filterCenter, filterEndedEarly, page]);
+  }, [filterQ, filterOrderStatus, filterPaymentPlan, filterCenter, page]);
 
   if (!ready) {
     return (
@@ -668,16 +633,6 @@ export function PedidosAdminSection() {
                 onChange={setFilterPaymentPlan}
                 options={PAYMENT_PLAN_FILTER_OPTIONS}
               />
-              <AdminFilterSelect
-                id="pedidos-filter-ended-early"
-                label="Cierre"
-                value={filterEndedEarly}
-                onChange={setFilterEndedEarly}
-                options={[
-                  { v: "all", l: "Cualquier cierre" },
-                  { v: "early", l: "Finalización anticipada" },
-                ]}
-              />
               <AdminFilterClearButton
                 show={filtersActive}
                 onClick={() => {
@@ -685,7 +640,6 @@ export function PedidosAdminSection() {
                   setFilterOrderStatus("all");
                   setFilterPaymentPlan("all");
                   setFilterCenter("all");
-                  setFilterEndedEarly("all");
                   setPage(1);
                 }}
               />
@@ -701,7 +655,6 @@ export function PedidosAdminSection() {
                       setFilterOrderStatus("all");
                       setFilterPaymentPlan("all");
                       setFilterCenter("all");
-                      setFilterEndedEarly("all");
                       setPage(1);
                     }}
                   />
@@ -721,7 +674,7 @@ export function PedidosAdminSection() {
                       <th className="max-sm:whitespace-nowrap px-3 py-2">Alta</th>
                       <th className="px-3 py-2">Empresa</th>
                       <th className="px-3 py-2">Estado actual</th>
-                      <th className="min-w-[12rem] max-sm:whitespace-nowrap px-3 py-2">
+                      <th className="min-w-[16rem] max-sm:whitespace-nowrap px-3 py-2">
                         Siguiente estado
                       </th>
                       <th className="max-sm:whitespace-nowrap px-3 py-2">Total USD</th>
@@ -793,7 +746,7 @@ export function PedidosAdminSection() {
                             <td className="px-3 py-2 align-middle">
                               <PedidoEstadoActualCell order={o} />
                             </td>
-                            <td className="max-w-[18rem] min-w-0 px-3 py-2 align-middle">
+                            <td className="min-w-[16rem] px-3 py-2 align-middle">
                               <PedidoSiguienteEstadoCell
                                 order={o}
                                 orderRef={orderRef}
@@ -819,17 +772,6 @@ export function PedidosAdminSection() {
                                   )
                                 }
                                 onDelete={() => setDeleteTargetId(o.id)}
-                                trailing={
-                                  o.status === "active" ? (
-                                    <button
-                                      type="button"
-                                      className="ml-1 inline-flex shrink-0 items-center rounded-[10px] border border-zinc-200 bg-white px-2 py-1 text-[11px] font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50"
-                                      onClick={() => setFinishTarget(o)}
-                                    >
-                                      Finalizar
-                                    </button>
-                                  ) : null
-                                }
                               />
                             </td>
                           </tr>
@@ -1234,19 +1176,6 @@ export function PedidosAdminSection() {
             </div>
           ) : null}
         </AdminConfirmDialog>
-
-        <FinishContractDialog
-          open={finishTarget != null}
-          order={finishTarget}
-          accessToken={accessToken}
-          onClose={() => setFinishTarget(null)}
-          onDone={async (updated) => {
-            if (updated && typeof updated === "object") {
-              mergeOrderInList(updated);
-            }
-            await reloadOrders(page);
-          }}
-        />
       </div>
     </>
   );

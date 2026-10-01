@@ -19,6 +19,7 @@ import {
   IconPay,
   IconUser,
 } from "@/components/layout/navIcons";
+import { AdminNotificationBell } from "@/components/admin/AdminNotificationBell";
 import { MarketplaceBrand } from "@/components/layout/MarketplaceBrand";
 import { UserAccountMenu } from "@/components/layout/UserAccountMenu";
 import { ROUNDED_CONTROL } from "@/lib/uiRounding";
@@ -59,12 +60,18 @@ export function Header() {
   const showMarketplaceCart = !me || isClient;
   const [menuOpen, setMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isSmUp, setIsSmUp] = useState(false);
   const [drawerMounted, setDrawerMounted] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const closeTimerRef = useRef(null);
 
   useEffect(() => {
     setMounted(true);
+    const mq = window.matchMedia("(min-width: 640px)");
+    const apply = () => setIsSmUp(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
   }, []);
 
   useEffect(() => {
@@ -305,6 +312,7 @@ export function Header() {
                   <span>Panel</span>
                 </Link>
               ) : null}
+              {isAdmin && isSmUp ? <AdminNotificationBell /> : null}
             </>
           ) : (
             <>
@@ -320,16 +328,19 @@ export function Header() {
           )}
         </nav>
 
-        <button
-          type="button"
-          className={`mp-ring-brand inline-flex min-h-11 min-w-11 items-center justify-center ${ROUNDED_CONTROL} text-zinc-800 transition-colors duration-200 ease-out hover:bg-zinc-100 active:scale-95 focus-visible:outline-none sm:hidden`}
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-expanded={menuOpen}
-          aria-controls="mobile-nav-drawer"
-          aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
-        >
-          {menuOpen ? <IconClose /> : <IconMenu />}
-        </button>
+        <div className="flex items-center gap-2 sm:hidden">
+          {authReady && me && isAdmin && !isSmUp ? <AdminNotificationBell /> : null}
+          <button
+            type="button"
+            className={`mp-ring-brand inline-flex min-h-11 min-w-11 items-center justify-center ${ROUNDED_CONTROL} text-zinc-800 transition-colors duration-200 ease-out hover:bg-zinc-100 active:scale-95 focus-visible:outline-none`}
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-nav-drawer"
+            aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
+          >
+            {menuOpen ? <IconClose /> : <IconMenu />}
+          </button>
+        </div>
         </div>
       </div>
       <div className="mp-isotype-gradient-line h-1 w-full shrink-0" aria-hidden />

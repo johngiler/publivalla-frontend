@@ -11,7 +11,6 @@ export function ordersListPath(
   excludeStatus,
   paymentPlanPending,
   shoppingCenterId,
-  endedEarly,
 ) {
   const p = new URLSearchParams();
   p.set("page", String(page));
@@ -22,7 +21,6 @@ export function ordersListPath(
   if (paymentPlanPending === "pending") p.set("payment_plan_pending", "pending");
   const cid = shoppingCenterId != null ? String(shoppingCenterId).trim() : "";
   if (cid && cid !== "all") p.set("shopping_center", cid);
-  if (endedEarly === "early") p.set("ended_early", "1");
   return `/api/orders/?${p.toString()}`;
 }
 
@@ -32,7 +30,6 @@ export function ordersExportReportPath(
   status,
   paymentPlanPending,
   shoppingCenterId,
-  endedEarly,
 ) {
   const p = new URLSearchParams();
   if (search.trim()) p.set("search", search.trim());
@@ -40,7 +37,6 @@ export function ordersExportReportPath(
   if (paymentPlanPending === "pending") p.set("payment_plan_pending", "pending");
   const cid = shoppingCenterId != null ? String(shoppingCenterId).trim() : "";
   if (cid && cid !== "all") p.set("shopping_center", cid);
-  if (endedEarly === "early") p.set("ended_early", "1");
   const q = p.toString();
   return q ? `/api/orders/export-report/?${q}` : "/api/orders/export-report/";
 }

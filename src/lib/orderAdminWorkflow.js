@@ -1,4 +1,5 @@
 import { ORDER_STATUS } from "@/components/admin/adminConstants";
+import { orderHoldIsActive } from "@/lib/orderHoldDisplay";
 import { hasMunicipalInstallationDocuments } from "@/lib/orderInstallationMunicipalDocs";
 import {
   firstInstallmentHasReceipt,
@@ -123,6 +124,13 @@ export function buildOrderAdminStatusSelectOptions(order) {
     }
 
     if (v === "draft") {
+      if (current === "expired") {
+        return {
+          ...opt,
+          disabled: true,
+          disabledReason: "Un pedido finalizado no vuelve a borrador.",
+        };
+      }
       return { ...opt, disabled: false, disabledReason: "" };
     }
 
@@ -135,7 +143,14 @@ export function buildOrderAdminStatusSelectOptions(order) {
     }
 
     if (v === "cancelled") {
-      return { ...opt, disabled: false, disabledReason: "" };
+      if (orderHoldIsActive(order)) {
+        return { ...opt, disabled: false, disabledReason: "" };
+      }
+      return {
+        ...opt,
+        disabled: true,
+        disabledReason: "Rechazar solo está disponible mientras el pedido está reservado.",
+      };
     }
 
     if (v === "expired" && current !== "expired") {
@@ -281,11 +296,6 @@ export function buildOrderAdminStatusSelectOptions(order) {
  * Siguiente paso del flujo principal, si aplica, y bloqueo por requisitos (p. ej. firma).
  * @returns {{ status: string, label: string, blockedReason: string } | null}
  */
-/** Botón explícito de rechazo en listado admin (pedido ya en contrato activo). */
-export function orderAdminShowRejectPedidoActivoButton(order) {
-  return String(order?.status ?? "") === "active";
-}
-
 export function getOrderAdminQuickNext(order) {
   const current = String(order?.status ?? "");
 
