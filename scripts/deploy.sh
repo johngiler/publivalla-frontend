@@ -10,7 +10,7 @@ STAGE_DIR="$FRONTEND_DIR/.next/publivalla-deploy-bundle"
 
 cd "$FRONTEND_DIR"
 
-# Next carga .env.local también en `next build`; suele apuntar a 127.0.0.1:8000 y tapa .env.production.
+# Next carga .env.local también en `next build`; suele apuntar a 127.0.0.1:8002 y tapa .env.production.
 # Las variables ya definidas en el shell tienen prioridad: forzamos el API público antes del build.
 PROD_ENV="$FRONTEND_DIR/.env.production"
 if [[ -f "$PROD_ENV" ]]; then

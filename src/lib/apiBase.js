@@ -9,7 +9,7 @@ export function apiBase() {
   const env = (process.env.NEXT_PUBLIC_API_URL || "").trim().replace(/\/$/, "");
   if (env) return env;
   if (process.env.NODE_ENV === "development") {
-    return "http://127.0.0.1:8001";
+    return "http://127.0.0.1:8002";
   }
   const tenant = (process.env.NEXT_PUBLIC_TENANT_BASE_DOMAIN || "")
     .trim()
