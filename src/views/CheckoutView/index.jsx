@@ -19,10 +19,10 @@ import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartProvider";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import {
+  cartIvaFromItems,
   formatUsdInteger,
   formatUsdMoney,
-  ivaFromSubtotal,
-  totalWithIva,
+  roundMoney,
 } from "@/lib/marketplacePricing";
 import { companyRepresentativeComplete } from "@/lib/clientCompanyFields";
 import {
@@ -215,8 +215,9 @@ export default function CheckoutView() {
 
   const meetsMin = cartAllItemsMeetCheckoutRules(items);
   const subtotal = meetsMin ? cartTotalUsd(items) : 0;
-  const iva = ivaFromSubtotal(subtotal);
-  const grandTotal = totalWithIva(subtotal);
+  const tax = cartIvaFromItems(items);
+  const iva = meetsMin ? tax.iva : 0;
+  const grandTotal = meetsMin ? roundMoney(subtotal + iva) : 0;
 
   useEffect(() => {
     if (effectiveCompany && typeof effectiveCompany === "object") {
@@ -1188,7 +1189,7 @@ export default function CheckoutView() {
                     </span>
                   </div>
                   <p className="mt-2 text-xs text-zinc-500">
-                    Subtotal {formatUsdMoney(subtotal)} + IVA (16 %){" "}
+                    Subtotal {formatUsdMoney(subtotal)} + {tax.label}{" "}
                     {formatUsdMoney(iva)}
                   </p>
                 </div>

@@ -138,6 +138,7 @@ export function CentrosAdminSection() {
   const [country, setCountry] = useState("Venezuela");
   const [description, setDescription] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [chargesIva, setChargesIva] = useState(true);
   const [municipalAuthorityLine, setMunicipalAuthorityLine] = useState("");
   const [authorizationLetterCity, setAuthorizationLetterCity] = useState("Caracas");
   const [coverFile, setCoverFile] = useState(null);
@@ -212,6 +213,7 @@ export function CentrosAdminSection() {
     setCountry("Venezuela");
     setDescription("");
     setIsActive(true);
+    setChargesIva(true);
     setMunicipalAuthorityLine("");
     setAuthorizationLetterCity("Caracas");
     setCoverFile(null);
@@ -233,6 +235,7 @@ export function CentrosAdminSection() {
     setCountry(c.country?.trim() || "Venezuela");
     setDescription(c.description || "");
     setIsActive(c.is_active !== false);
+    setChargesIva(c.charges_iva !== false);
     setMunicipalAuthorityLine(c.municipal_authority_line?.trim() || "");
     setAuthorizationLetterCity(
       c.authorization_letter_city?.trim() || "Caracas",
@@ -323,6 +326,7 @@ export function CentrosAdminSection() {
     }
     const extra = {
       is_active: isActive,
+      charges_iva: chargesIva,
       municipal_authority_line: municipalAuthorityLine.trim(),
       authorization_letter_city:
         authorizationLetterCity.trim() || "Caracas",
@@ -338,6 +342,7 @@ export function CentrosAdminSection() {
           fd.append("country", country.trim());
           fd.append("description", description.trim());
           fd.append("is_active", isActive ? "true" : "false");
+          fd.append("charges_iva", chargesIva ? "true" : "false");
           fd.append("municipal_authority_line", municipalAuthorityLine.trim());
           fd.append(
             "authorization_letter_city",
@@ -373,6 +378,7 @@ export function CentrosAdminSection() {
           fd.append("country", country.trim());
           fd.append("description", description.trim());
           fd.append("is_active", isActive ? "true" : "false");
+          fd.append("charges_iva", chargesIva ? "true" : "false");
           fd.append("municipal_authority_line", municipalAuthorityLine.trim());
           fd.append(
             "authorization_letter_city",
@@ -976,6 +982,15 @@ export function CentrosAdminSection() {
                     onChange={(e) => setIsActive(e.target.checked)}
                   />
                   Centro activo?
+                </label>
+                <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-zinc-800">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-zinc-300"
+                    checked={chargesIva}
+                    onChange={(e) => setChargesIva(e.target.checked)}
+                  />
+                  Cobra IVA
                 </label>
               </div>
               <div className="border-t border-zinc-100 pt-4">

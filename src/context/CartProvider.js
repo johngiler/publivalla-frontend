@@ -219,6 +219,7 @@ export function CartProvider({ children }) {
             code: space.code,
             title: space.title,
             monthly_price_usd: String(space.monthly_price_usd),
+            charges_iva: space.charges_iva !== false,
             ...(Array.isArray(space.high_season_months)
               ? { high_season_months: space.high_season_months }
               : {}),

@@ -40,7 +40,7 @@ import { marketplacePrimaryBtn } from "@/lib/marketplaceActionButtons";
 import {
   formatUsdInteger,
   formatUsdMoney,
-  IVA_RATE,
+  ivaLabel,
   totalWithIva,
 } from "@/lib/marketplacePricing";
 import { orderListReference } from "@/lib/orderDisplay";
@@ -100,8 +100,6 @@ function formatContractRange(start, end) {
   if (a === "—" && b === "—") return "—";
   return `${a} → ${b}`;
 }
-
-const IVA_PERCENT_LABEL = `${Math.round(IVA_RATE * 100)} %`;
 
 /** Acento visual según el estado destino del evento */
 function timelineTone(toStatus) {
@@ -883,7 +881,14 @@ export default function MisPedidosView() {
               const lineDisplay = Number.isFinite(lineSub)
                 ? lineSub
                 : Number(o.total_amount);
-              const totalIva = totalWithIva(Number(o.total_amount));
+              const totalIva =
+                o.total_with_iva != null
+                  ? Number(o.total_with_iva)
+                  : totalWithIva(Number(o.total_amount));
+              const ivaHeading =
+                o.iva_percent === undefined
+                  ? "Total con IVA (16 %)"
+                  : `Total con ${ivaLabel(o.iva_percent)}`;
               const multi = items.length > 1;
               const orderRef =
                 typeof o.code === "string" && o.code.trim() !== ""
@@ -1050,7 +1055,7 @@ export default function MisPedidosView() {
                           </div>
                           <div className="text-right">
                             <p className={marketplaceLineFieldLabelClass}>
-                              Total con IVA ({IVA_PERCENT_LABEL})
+                              {ivaHeading}
                             </p>
                             <span className={marketplaceLinePriceClass}>
                               {formatUsdMoney(totalIva)}

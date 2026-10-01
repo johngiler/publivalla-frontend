@@ -19,10 +19,10 @@ import {
   marketplaceLinePriceClass,
 } from "@/lib/marketplaceLineTypography";
 import {
+  cartIvaFromItems,
   formatUsdInteger,
   formatUsdMoney,
-  ivaFromSubtotal,
-  totalWithIva,
+  roundMoney,
 } from "@/lib/marketplacePricing";
 import { formatDailyRangeLabel, isDailyBilling } from "@/lib/rentalBilling";
 import { cartLineMonthsByYear } from "@/lib/rentalMonthPills";
@@ -85,8 +85,9 @@ export default function CartView() {
 
   const meetsMin = cartAllItemsMeetCheckoutRules(items);
   const subtotal = meetsMin ? cartTotalUsd(items) : 0;
-  const iva = ivaFromSubtotal(subtotal);
-  const grandTotal = totalWithIva(subtotal);
+  const tax = cartIvaFromItems(items);
+  const iva = meetsMin ? tax.iva : 0;
+  const grandTotal = meetsMin ? roundMoney(subtotal + iva) : 0;
 
   if (authReady && me && isAdmin) {
     return (
@@ -302,7 +303,7 @@ export default function CartView() {
               </span>
             </div>
             <div className="flex justify-between text-zinc-600">
-              <span>IVA (16 %)</span>
+              <span>{tax.label}</span>
               <span className={`font-semibold tabular-nums ${meetsMin ? accent : "text-zinc-400"}`}>
                 {meetsMin ? formatUsdMoney(iva) : "—"}
               </span>
