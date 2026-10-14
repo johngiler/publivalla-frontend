@@ -8,7 +8,44 @@ function keys() {
   return {
     access: `mp_access_${s}`,
     refresh: `mp_refresh_${s}`,
+    me: `mp_me_${s}`,
   };
+}
+
+/** Perfil reciente para pintar el header al recargar sin esperar a `/me`. */
+export function getCachedMe() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(keys().me);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function setCachedMe(me) {
+  if (typeof window === "undefined") return;
+  try {
+    if (me && typeof me === "object") {
+      sessionStorage.setItem(keys().me, JSON.stringify(me));
+    } else {
+      sessionStorage.removeItem(keys().me);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearCachedMe() {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(keys().me);
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Migra tokens antiguos (una sola vez por carga). */
@@ -46,4 +83,5 @@ export function clearTokens() {
   const k = keys();
   localStorage.removeItem(k.access);
   localStorage.removeItem(k.refresh);
+  clearCachedMe();
 }

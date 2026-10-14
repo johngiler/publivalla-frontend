@@ -7,6 +7,7 @@ import {
   PublivallaFallbackBadge,
   PublivallaFallbackChrome,
 } from "@/components/layout/PublivallaFallbackChrome";
+import { SessionBootOverlay } from "@/components/layout/SessionBootOverlay";
 import { WorkspaceUnknownFallback } from "@/components/layout/WorkspaceUnknownFallback";
 import { useWorkspace } from "@/context/WorkspaceContext";
 
@@ -44,6 +45,7 @@ export function MarketplaceShell({ children }) {
 
   return (
     <>
+      <SessionBootOverlay />
       <Header />
       <main className="min-w-0 w-full flex-1">{children}</main>
       <Footer />

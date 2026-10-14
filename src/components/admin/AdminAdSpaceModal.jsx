@@ -41,6 +41,10 @@ function buildSpaceFormData(values, extras) {
   fd.append("description", values.description.trim());
   fd.append("monthly_price_usd", String(values.monthly_price_usd).trim());
   fd.append("availability", values.availability);
+  fd.append(
+    "blocked_note",
+    values.availability === "blocked" ? String(values.blocked_note || "").trim() : "",
+  );
   fd.append("is_active", values.is_active ? "true" : "false");
   fd.append("formats_json", JSON.stringify(extras.formats));
   fd.append("gallery_plan", JSON.stringify(extras.galleryPlan));
@@ -84,6 +88,7 @@ export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved
   const [description, setDescription] = useState("");
   const [monthlyPrice, setMonthlyPrice] = useState("");
   const [availability, setAvailability] = useState("available");
+  const [blockedNote, setBlockedNote] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [formatRows, setFormatRows] = useState([emptyFormatRow()]);
   const [productTypes, setProductTypes] = useState([]);
@@ -106,6 +111,7 @@ export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved
     setDescription("");
     setMonthlyPrice("");
     setAvailability("available");
+    setBlockedNote("");
     setIsActive(true);
     setFormatRows([emptyFormatRow()]);
     setModalErr("");
@@ -121,6 +127,7 @@ export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved
       setDescription(String(space.description ?? ""));
       setMonthlyPrice(String(space.monthly_price_usd ?? ""));
       setAvailability(String(space.availability ?? "available"));
+      setBlockedNote(String(space.blocked_note ?? ""));
       setIsActive(space.is_active !== false);
       setFormatRows(formatsFromApi(space.formats));
     } else {
@@ -183,6 +190,7 @@ export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved
           description,
           monthly_price_usd: monthlyPrice,
           availability,
+          blocked_note: blockedNote,
           is_active: isActive,
         },
         {
@@ -315,6 +323,24 @@ export function AdminAdSpaceModal({ open, mode, space, centers, onClose, onSaved
                 aria-label="Disponibilidad"
               />
             </div>
+            {availability === "blocked" ? (
+              <div className="sm:col-span-2">
+                <label className={adminLabel} htmlFor="ep-blocked-note">
+                  Nota del bloqueo (opcional)
+                </label>
+                <textarea
+                  id="ep-blocked-note"
+                  className={fieldClass("blocked_note")}
+                  rows={3}
+                  value={blockedNote}
+                  onChange={(e) => setBlockedNote(e.target.value)}
+                  maxLength={500}
+                />
+                {fieldErrors?.blocked_note ? (
+                  <p className="mt-1 text-xs text-rose-700">{fieldErrors.blocked_note}</p>
+                ) : null}
+              </div>
+            ) : null}
             <div className="flex items-end pb-1 sm:col-span-2">
               <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-zinc-800">
                 <input

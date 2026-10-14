@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useAuth } from "@/context/AuthContext";
@@ -65,7 +65,7 @@ export function Header() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const closeTimerRef = useRef(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setMounted(true);
     const mq = window.matchMedia("(min-width: 640px)");
     const apply = () => setIsSmUp(mq.matches);
@@ -177,7 +177,7 @@ export function Header() {
                     ) : null}
                   </span>
                 </Link>
-                {authReady && me && isClient ? (
+                {me && isClient ? (
                   <>
                     <Link href="/cuenta/pedidos" className={mobileRow} onClick={closeMenu}>
                       <IconPay className="text-zinc-500" />
@@ -189,7 +189,7 @@ export function Header() {
                     </Link>
                   </>
                 ) : null}
-                {authReady && me ? (
+                {me ? (
                   <>
                     <div className="px-4 pt-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">
                       Cuenta
@@ -228,7 +228,7 @@ export function Header() {
                       Salir
                     </button>
                   </>
-                ) : (
+                ) : authReady ? (
                   <>
                     <Link
                       href={`/login?next=${encodeURIComponent(pathname || "/")}`}
@@ -239,7 +239,7 @@ export function Header() {
                       Iniciar sesión
                     </Link>
                   </>
-                )}
+                ) : null}
               </nav>
             </div>
           </div>,
@@ -267,7 +267,7 @@ export function Header() {
             <IconCentros />
             <span className="whitespace-nowrap">Catálogo</span>
           </Link>
-          {authReady && me && isClient ? (
+          {me && isClient ? (
             <>
               <Link href="/cuenta/pedidos" className={navItem(ordersActive)} aria-label="Mis pedidos">
                 <IconPay />
@@ -298,7 +298,7 @@ export function Header() {
               ) : null}
             </Link>
           ) : null}
-          {authReady && me ? (
+          {me ? (
             <>
               <UserAccountMenu
                 me={me}
@@ -314,7 +314,7 @@ export function Header() {
               ) : null}
               {mounted && isAdmin && isSmUp ? <AdminNotificationBell /> : null}
             </>
-          ) : (
+          ) : authReady ? (
             <>
               <Link
                 href={`/login?next=${encodeURIComponent(pathname || "/")}`}
@@ -325,11 +325,11 @@ export function Header() {
                 <span className="whitespace-nowrap">Entrar</span>
               </Link>
             </>
-          )}
+          ) : null}
         </nav>
 
         <div className="flex items-center gap-2 sm:hidden">
-          {mounted && authReady && me && isAdmin && !isSmUp ? <AdminNotificationBell /> : null}
+          {mounted && me && isAdmin && !isSmUp ? <AdminNotificationBell /> : null}
           <button
             type="button"
             className={`mp-ring-brand inline-flex min-h-11 min-w-11 items-center justify-center ${ROUNDED_CONTROL} text-zinc-800 transition-colors duration-200 ease-out hover:bg-zinc-100 active:scale-95 focus-visible:outline-none`}

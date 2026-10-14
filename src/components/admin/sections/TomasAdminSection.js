@@ -573,6 +573,16 @@ export function TomasAdminSection() {
                                   {spaceAvailabilityLabel(s.availability, s.availability_label)}
                                 </span>
                               </AdminDetailField>
+                              {s.availability === "blocked" ? (
+                                <div className="sm:col-span-2">
+                                  <AdminDetailField label="Nota del bloqueo">
+                                    <AdminDetailProse
+                                      text={s.blocked_note}
+                                      emptyHint="Sin nota."
+                                    />
+                                  </AdminDetailField>
+                                </div>
+                              ) : null}
                               <AdminDetailField label="Estado">
                                 <span
                                   className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${recordActivePillClassName(s.is_active)}`}
