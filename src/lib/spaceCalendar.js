@@ -504,6 +504,45 @@ export function buildDisabledMonthsByYear(byYear, years, ref = new Date()) {
 }
 
 /**
+ * Para renovación: solo el tramo contiguo libre desde `minMonth` (mes siguiente al fin del contrato).
+ * Meses anteriores y los que quedan tras el primer ocupado quedan no seleccionables.
+ * @param {Record<number, boolean[]>} disabledByYear
+ * @param {number[]} years
+ * @param {{ year: number, month: number }} minMonth
+ */
+export function constrainDisabledToContiguousFrom(disabledByYear, years, minMonth) {
+  const minY = Number(minMonth?.year);
+  const minM = Number(minMonth?.month);
+  if (!Number.isFinite(minY) || !Number.isFinite(minM) || minM < 1 || minM > 12) {
+    return disabledByYear;
+  }
+  const minIdx = monthLinearIndex(minY, minM);
+  /** @type {Record<number, boolean[]>} */
+  const out = {};
+  for (const y of years) {
+    out[y] = [...(disabledByYear[y] ?? Array(12).fill(true))];
+  }
+  const maxYear = years.length ? Math.max(...years) : minY;
+  const maxIdx = monthLinearIndex(maxYear, 12);
+  let stretchEnd = minIdx - 1;
+  for (let cursor = minIdx; cursor <= maxIdx; cursor += 1) {
+    const { year, month } = monthFromLinearIndex(cursor);
+    if (!years.includes(year)) continue;
+    if (out[year]?.[month - 1]) break;
+    stretchEnd = cursor;
+  }
+  for (const y of years) {
+    for (let m = 1; m <= 12; m += 1) {
+      const idx = monthLinearIndex(y, m);
+      if (idx < minIdx || idx > stretchEnd) {
+        out[y][m - 1] = true;
+      }
+    }
+  }
+  return out;
+}
+
+/**
  * @param {number[]} years
  * @param {Record<number, boolean[]>} byYear
  * @param {Date} [ref]

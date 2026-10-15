@@ -10,8 +10,10 @@ import {
   anySelectableMonthInCalendar,
   buildDisabledMonthsByYear,
   catalogAvailabilityYears,
+  constrainDisabledToContiguousFrom,
   formatSelectedMonthsLabel,
   linearIndicesFromPick,
+  monthFromLinearIndex,
   monthLinearIndex,
   disabledMonthsForBlockPicker,
   resolveMonthsOccupiedByYear,
@@ -35,13 +37,19 @@ const AVAILABLE = `${CATALOG_MONTH_AVAILABLE_RING} ${CATALOG_MONTH_AVAILABLE_BG}
 const MONTH_CELL_LAYOUT = "flex items-center justify-center text-center";
 
 /**
- * Selector de meses sueltos (sin secuencia obligatoria); emite tramos contiguos al guardar.
+ * Selector de meses (mismo diseño que bloqueos de disponibilidad).
+ * Por defecto: meses sueltos. Con `contiguousFromMin` + `minSelectableMonth`: tramo
+ * contiguo desde ese mes (p. ej. renovación de contrato).
  * @param {{
- *   adSpaceId: string,
+ *   adSpaceId: string | number,
  *   pickSync?: { rental_segments?: Array<{ start_date?: string, end_date?: string }>, start_date?: string, end_date?: string } | null,
  *   editingPick?: { start_date?: string, end_date?: string } | null,
  *   onSelectionChange?: (payload: ReturnType<typeof selectionFromLinearIndices>) => void,
  *   readOnly?: boolean,
+ *   title?: string,
+ *   idleHint?: string | null,
+ *   minSelectableMonth?: { year: number, month: number } | null,
+ *   contiguousFromMin?: boolean,
  * }} props
  */
 export function AdminAvailabilityBlockMonthPicker({
@@ -50,6 +58,10 @@ export function AdminAvailabilityBlockMonthPicker({
   editingPick = null,
   onSelectionChange,
   readOnly = false,
+  title = "Meses a bloquear",
+  idleHint = "Haz clic en cada mes que quieras bloquear; no tienen que ser consecutivos.",
+  minSelectableMonth = null,
+  contiguousFromMin = false,
 }) {
   const refDate = useMemo(() => new Date(), []);
   const pickKey = useMemo(() => {
@@ -58,7 +70,7 @@ export function AdminAvailabilityBlockMonthPicker({
   }, [pickSync]);
 
   const { data: space, error, isLoading } = useSWR(
-    adSpaceId ? ["admin-block-picker-space", adSpaceId] : null,
+    adSpaceId ? ["admin-block-picker-space", String(adSpaceId)] : null,
     () => getSpace(adSpaceId),
     { revalidateOnFocus: false },
   );
@@ -73,12 +85,28 @@ export function AdminAvailabilityBlockMonthPicker({
   );
   const disabledByYear = useMemo(() => {
     const base = buildDisabledMonthsByYear(byYear, years, refDate);
-    return disabledMonthsForBlockPicker(base, years, editingPick);
-  }, [byYear, years, refDate, editingPick]);
-  const anySelectable = useMemo(
-    () => (years.length ? anySelectableMonthInCalendar(years, byYear, refDate) : false),
-    [years, byYear, refDate],
-  );
+    const withEdit = disabledMonthsForBlockPicker(base, years, editingPick);
+    if (contiguousFromMin && minSelectableMonth) {
+      return constrainDisabledToContiguousFrom(withEdit, years, minSelectableMonth);
+    }
+    return withEdit;
+  }, [byYear, years, refDate, editingPick, contiguousFromMin, minSelectableMonth]);
+  const anySelectable = useMemo(() => {
+    if (contiguousFromMin && minSelectableMonth) {
+      const y = minSelectableMonth.year;
+      const m = minSelectableMonth.month;
+      if (!years.includes(y)) return false;
+      return !disabledByYear[y]?.[m - 1];
+    }
+    return years.length ? anySelectableMonthInCalendar(years, byYear, refDate) : false;
+  }, [
+    years,
+    byYear,
+    refDate,
+    contiguousFromMin,
+    minSelectableMonth,
+    disabledByYear,
+  ]);
 
   const [selected, setSelected] = useState(() => new Set());
   const onSelectionChangeRef = useRef(onSelectionChange);
@@ -104,20 +132,36 @@ export function AdminAvailabilityBlockMonthPicker({
     });
   }, [pickKey, adSpaceId]);
 
+  const minIdx = useMemo(() => {
+    if (!contiguousFromMin || !minSelectableMonth) return null;
+    return monthLinearIndex(minSelectableMonth.year, minSelectableMonth.month);
+  }, [contiguousFromMin, minSelectableMonth]);
+
   const onMonthClick = useCallback(
     (year, month) => {
       if (readOnly) return;
       if (disabledByYear[year]?.[month - 1]) return;
       const idx = monthLinearIndex(year, month);
       setSelected((prev) => {
-        const next = new Set(prev);
-        if (next.has(idx)) next.delete(idx);
-        else next.add(idx);
+        let next;
+        if (minIdx != null) {
+          const prevArr = [...prev].sort((a, b) => a - b);
+          if (prevArr.length && prevArr[0] === minIdx && prevArr[prevArr.length - 1] === idx) {
+            next = new Set();
+          } else {
+            next = new Set();
+            for (let i = minIdx; i <= idx; i += 1) next.add(i);
+          }
+        } else {
+          next = new Set(prev);
+          if (next.has(idx)) next.delete(idx);
+          else next.add(idx);
+        }
         queueMicrotask(() => emitSelection(next));
         return next;
       });
     },
-    [disabledByYear, emitSelection, readOnly],
+    [disabledByYear, emitSelection, readOnly, minIdx],
   );
 
   const reset = useCallback(() => {
@@ -163,12 +207,12 @@ export function AdminAvailabilityBlockMonthPicker({
     return AVAILABLE;
   };
 
+  const heading = readOnly ? "Calendario del espacio publicitario" : title;
+
   return (
     <div className="space-y-4" aria-readonly={readOnly || undefined}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-semibold text-zinc-900">
-          {readOnly ? "Calendario del espacio publicitario" : "Meses a bloquear"}
-        </p>
+        <p className="text-sm font-semibold text-zinc-900">{heading}</p>
         <CatalogMonthLegend />
       </div>
 
@@ -233,7 +277,7 @@ export function AdminAvailabilityBlockMonthPicker({
         <p className="text-sm text-zinc-700">
           {readOnly ? "Periodo bloqueado: " : "Selección: "}
           <strong className="font-medium text-zinc-900">{rangeLabel}</strong>
-          {!readOnly && segmentCount > 1 ? (
+          {!readOnly && !contiguousFromMin && segmentCount > 1 ? (
             <span className="text-zinc-500">
               {" "}
               ({segmentCount} tramos al guardar)
@@ -242,11 +286,9 @@ export function AdminAvailabilityBlockMonthPicker({
         </p>
       ) : readOnly ? (
         <p className="text-sm text-zinc-500">Sin meses definidos en este bloqueo.</p>
-      ) : (
-        <p className="text-sm text-zinc-500">
-          Haz clic en cada mes que quieras bloquear; no tienen que ser consecutivos.
-        </p>
-      )}
+      ) : idleHint ? (
+        <p className="text-sm text-zinc-500">{idleHint}</p>
+      ) : null}
 
       {!readOnly && selectionValid && touchesBlocked ? (
         <p className="text-sm font-medium text-red-600" role="alert">
@@ -255,4 +297,10 @@ export function AdminAvailabilityBlockMonthPicker({
       ) : null}
     </div>
   );
+}
+
+/** @param {ReturnType<typeof selectionFromLinearIndices>} pick */
+export function monthsFromSelectionPick(pick) {
+  const idxs = linearIndicesFromPick(pick);
+  return idxs.map((idx) => monthFromLinearIndex(idx));
 }

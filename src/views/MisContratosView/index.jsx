@@ -26,8 +26,10 @@ import {
   marketplaceOrderRefLinkClass,
 } from "@/lib/marketplaceLineTypography";
 import { formatUsdMoney } from "@/lib/marketplacePricing";
+import { ContractRenewalRequestModal } from "@/components/orders/ContractRenewalRequestModal";
 import { EarlyEndBadge } from "@/components/orders/EarlyEndBadge";
 import { SplitPaymentPill } from "@/components/orders/SplitPaymentPill";
+import { authFetchForm } from "@/services/authApi";
 import { catalogRasterImgAttrs } from "@/lib/catalogImageProps";
 import { mediaUrlForUiWithWebp, primaryAdSpaceMediaRawFromOrderLike } from "@/lib/mediaUrls";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
@@ -138,6 +140,8 @@ export default function MisContratosView() {
   );
   const [filterSearch, setFilterSearch] = useState(() => searchFromUrl);
   const [filterPaymentPlan, setFilterPaymentPlan] = useState("all");
+  const [renewalTarget, setRenewalTarget] = useState(null);
+  const [renewalDocPending, setRenewalDocPending] = useState(null);
   const debouncedSearch = useDebouncedValue(filterSearch, 400);
 
   useEffect(() => {
@@ -170,7 +174,23 @@ export default function MisContratosView() {
   const swrKey = canFetch
     ? contractsPath(phaseForApi, filterPaymentPlan)
     : null;
-  const { data, error, isLoading } = useSWR(swrKey, authJsonFetcher);
+  const { data, error, isLoading, mutate } = useSWR(swrKey, authJsonFetcher);
+
+  async function uploadRenewalDoc(renewalId, field, file) {
+    if (!file || renewalId == null) return;
+    setRenewalDocPending(`${renewalId}:${field}`);
+    try {
+      const fd = new FormData();
+      fd.append(field, file);
+      await authFetchForm(`/api/me/contract-renewals/${renewalId}/documents/`, {
+        method: "POST",
+        formData: fd,
+      });
+      await mutate();
+    } finally {
+      setRenewalDocPending(null);
+    }
+  }
 
   useEffect(() => {
     if (!authReady) return;
@@ -424,6 +444,89 @@ export default function MisContratosView() {
                             {it.order_code || `#${it.order_id}`}
                           </Link>
                         </div>
+                        {it.open_renewal ? (
+                          <div className="mt-3 rounded-[12px] border border-amber-200/90 bg-amber-50/80 px-3 py-2.5">
+                            <p className="text-xs font-semibold text-amber-950">
+                              Renovación pendiente · {it.open_renewal.months_label}
+                            </p>
+                            <p className="mt-0.5 text-xs text-amber-900/90">
+                              {formatUsdMoney(Number(it.open_renewal.amount))} sin IVA
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <label
+                                className={`inline-flex cursor-pointer items-center rounded-[10px] border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-800 ${
+                                  renewalDocPending === `${it.open_renewal.id}:payment_receipt`
+                                    ? "opacity-60"
+                                    : ""
+                                }`}
+                              >
+                                <input
+                                  type="file"
+                                  className="sr-only"
+                                  accept="image/*,.pdf,application/pdf"
+                                  disabled={Boolean(renewalDocPending)}
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    e.target.value = "";
+                                    if (f) {
+                                      void uploadRenewalDoc(
+                                        it.open_renewal.id,
+                                        "payment_receipt",
+                                        f,
+                                      );
+                                    }
+                                  }}
+                                />
+                                {renewalDocPending === `${it.open_renewal.id}:payment_receipt`
+                                  ? "Subiendo…"
+                                  : it.open_renewal.payment_receipt_url
+                                    ? "Cambiar comprobante"
+                                    : "Subir comprobante"}
+                              </label>
+                              <label
+                                className={`inline-flex cursor-pointer items-center rounded-[10px] border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-800 ${
+                                  renewalDocPending === `${it.open_renewal.id}:permit_file`
+                                    ? "opacity-60"
+                                    : ""
+                                }`}
+                              >
+                                <input
+                                  type="file"
+                                  className="sr-only"
+                                  accept="image/*,.pdf,application/pdf"
+                                  disabled={Boolean(renewalDocPending)}
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    e.target.value = "";
+                                    if (f) {
+                                      void uploadRenewalDoc(
+                                        it.open_renewal.id,
+                                        "permit_file",
+                                        f,
+                                      );
+                                    }
+                                  }}
+                                />
+                                {renewalDocPending === `${it.open_renewal.id}:permit_file`
+                                  ? "Subiendo…"
+                                  : it.open_renewal.permit_file_url
+                                    ? "Cambiar permiso"
+                                    : "Subir permiso"}
+                              </label>
+                            </div>
+                          </div>
+                        ) : null}
+                        {it.can_request_renewal ? (
+                          <div className="mt-3">
+                            <button
+                              type="button"
+                              className={marketplacePrimaryBtn}
+                              onClick={() => setRenewalTarget(it)}
+                            >
+                              Solicitar renovación
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
                       </div>
                       <div className="shrink-0 text-right sm:pt-0.5">
@@ -449,6 +552,13 @@ export default function MisContratosView() {
         showDownload={false}
         showThumbnails={contractGallery.items.length > 1}
         ariaLabel="Imágenes de la toma en contrato"
+      />
+
+      <ContractRenewalRequestModal
+        open={Boolean(renewalTarget)}
+        contract={renewalTarget}
+        onClose={() => setRenewalTarget(null)}
+        onSubmitted={() => mutate()}
       />
     </div>
   );

@@ -32,9 +32,11 @@ import { AdminListQuerySync } from "@/components/admin/AdminListQuerySync";
 import { orderStatusPillClassName } from "@/components/admin/adminConstants";
 import { IconAdminContract } from "@/components/admin/adminIcons";
 import { ContratosSectionSkeleton } from "@/components/admin/skeletons/ContratosSectionSkeleton";
+import { AdminConfirmDialog } from "@/components/admin/AdminConfirmDialog";
 import { FinishContractDialog } from "@/components/admin/FinishContractDialog";
 import { EarlyEndBadge } from "@/components/orders/EarlyEndBadge";
 import { SplitPaymentPill } from "@/components/orders/SplitPaymentPill";
+import { authFetch } from "@/services/authApi";
 import { CatalogSpaceLink } from "@/components/catalog/CatalogSpaceLink";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { RasterFromApiUrl } from "@/components/media/RasterFromApiUrl";
@@ -259,6 +261,8 @@ export function ContratosAdminSection() {
   const [filterPaymentPlan, setFilterPaymentPlan] = useState("all");
   const [filterCenter, setFilterCenter] = useState("all");
   const [finishTarget, setFinishTarget] = useState(null);
+  const [renewalAction, setRenewalAction] = useState(null);
+  const [renewalBusy, setRenewalBusy] = useState(null);
   const debouncedFilterQ = useDebouncedValue(filterQ, 400);
   const [galleryLightbox, setGalleryLightbox] = useState({
     open: false,
@@ -727,7 +731,7 @@ export function ContratosAdminSection() {
                                       </span>
                                     </AdminDetailField>
                                     {it.order_status === "active" ? (
-                                      <div className="sm:col-span-2">
+                                      <div className="sm:col-span-2 flex flex-wrap gap-2">
                                         <button
                                           type="button"
                                           className="inline-flex items-center rounded-[10px] border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50"
@@ -735,6 +739,54 @@ export function ContratosAdminSection() {
                                         >
                                           Finalizar
                                         </button>
+                                      </div>
+                                    ) : null}
+                                    {it.open_renewal ? (
+                                      <div className="sm:col-span-2 rounded-[12px] border border-amber-200/90 bg-amber-50/70 px-3 py-2.5">
+                                        <p className="text-xs font-semibold text-amber-950">
+                                          Renovación pendiente · {it.open_renewal.months_label}
+                                        </p>
+                                        <p className="mt-0.5 text-xs text-amber-900/90">
+                                          {formatUsdMoney(Number(it.open_renewal.amount))} sin IVA
+                                        </p>
+                                        {it.open_renewal.client_note ? (
+                                          <p className="mt-1 text-xs text-zinc-700">
+                                            {it.open_renewal.client_note}
+                                          </p>
+                                        ) : null}
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                          <button
+                                            type="button"
+                                            className="inline-flex items-center rounded-[10px] border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 disabled:opacity-60"
+                                            disabled={Boolean(renewalBusy)}
+                                            aria-busy={
+                                              renewalBusy === `${it.open_renewal.id}:approve`
+                                            }
+                                            onClick={() =>
+                                              setRenewalAction({
+                                                renewal: it.open_renewal,
+                                                action: "approve",
+                                                spaceCode: it.ad_space_code,
+                                              })
+                                            }
+                                          >
+                                            Aprobar renovación
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="inline-flex items-center rounded-[10px] border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 disabled:opacity-60"
+                                            disabled={Boolean(renewalBusy)}
+                                            onClick={() =>
+                                              setRenewalAction({
+                                                renewal: it.open_renewal,
+                                                action: "reject",
+                                                spaceCode: it.ad_space_code,
+                                              })
+                                            }
+                                          >
+                                            Rechazar
+                                          </button>
+                                        </div>
                                       </div>
                                     ) : null}
                                   </AdminDetailInset>
@@ -833,6 +885,53 @@ export function ContratosAdminSection() {
           await mutate();
         }}
       />
+
+      <AdminConfirmDialog
+        open={renewalAction != null}
+        title={
+          renewalAction?.action === "approve"
+            ? "Aprobar renovación"
+            : "Rechazar renovación"
+        }
+        confirmLabel={
+          renewalAction?.action === "approve" ? "Aprobar y extender" : "Rechazar"
+        }
+        cancelLabel="Cancelar"
+        onClose={() => setRenewalAction(null)}
+        onConfirm={async () => {
+          if (!renewalAction?.renewal?.id) return;
+          const key = `${renewalAction.renewal.id}:${renewalAction.action}`;
+          setRenewalBusy(key);
+          setErr("");
+          try {
+            await authFetch(`/api/admin/contract-renewals/${renewalAction.renewal.id}/`, {
+              method: "POST",
+              body: { action: renewalAction.action },
+            });
+            await mutate();
+          } catch (e) {
+            setErr(e instanceof Error ? e.message : "No se pudo completar la acción.");
+            throw e;
+          } finally {
+            setRenewalBusy(null);
+          }
+        }}
+      >
+        {renewalAction?.action === "approve" ? (
+          <p>
+            Se extenderá el periodo de{" "}
+            <span className="font-semibold">{renewalAction.spaceCode || "la toma"}</span>{" "}
+            con {renewalAction.renewal?.months_label} (
+            {formatUsdMoney(Number(renewalAction.renewal?.amount))} sin IVA), si hay
+            disponibilidad.
+          </p>
+        ) : (
+          <p>
+            Se rechazará la solicitud de renovación de{" "}
+            <span className="font-semibold">{renewalAction?.spaceCode || "la toma"}</span>.
+          </p>
+        )}
+      </AdminConfirmDialog>
 
       <ImageLightbox
         open={galleryLightbox.open}
