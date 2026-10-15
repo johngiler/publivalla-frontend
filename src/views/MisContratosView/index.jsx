@@ -22,12 +22,14 @@ import { MisContratosSkeleton } from "@/components/orders/MisContratosSkeleton";
 import { useAuth } from "@/context/AuthContext";
 import {
   marketplaceLineFieldLabelClass,
-  marketplaceLinePriceClass,
   marketplaceOrderRefLinkClass,
 } from "@/lib/marketplaceLineTypography";
 import { formatUsdMoney } from "@/lib/marketplacePricing";
+import { ContractAmountBreakdown } from "@/components/orders/ContractAmountBreakdown";
 import { ContractRenewalRequestModal } from "@/components/orders/ContractRenewalRequestModal";
+import { ContractRenewalsHistory } from "@/components/orders/ContractRenewalsHistory";
 import { EarlyEndBadge } from "@/components/orders/EarlyEndBadge";
+import { RenewalStatusPill } from "@/components/orders/RenewalStatusPill";
 import { SplitPaymentPill } from "@/components/orders/SplitPaymentPill";
 import { authFetchForm } from "@/services/authApi";
 import { catalogRasterImgAttrs } from "@/lib/catalogImageProps";
@@ -422,6 +424,10 @@ export default function MisContratosView() {
                             </span>
                             {it.split_payment_enabled ? <SplitPaymentPill /> : null}
                             {it.ended_early ? <EarlyEndBadge /> : null}
+                            <RenewalStatusPill
+                              renewal={it.latest_renewal}
+                              count={Array.isArray(it.renewals) ? it.renewals.length : null}
+                            />
                           </div>
                         </div>
                         {periodMonths.length > 0 ? (
@@ -444,6 +450,9 @@ export default function MisContratosView() {
                             {it.order_code || `#${it.order_id}`}
                           </Link>
                         </div>
+                        {Array.isArray(it.renewals) && it.renewals.length > 0 ? (
+                          <ContractRenewalsHistory renewals={it.renewals} className="mt-3" />
+                        ) : null}
                         {it.open_renewal ? (
                           <div className="mt-3 rounded-[12px] border border-amber-200/90 bg-amber-50/80 px-3 py-2.5">
                             <p className="text-xs font-semibold text-amber-950">
@@ -529,11 +538,13 @@ export default function MisContratosView() {
                         ) : null}
                       </div>
                       </div>
-                      <div className="shrink-0 text-right sm:pt-0.5">
-                      <p className={marketplaceLineFieldLabelClass}>Subtotal (sin IVA)</p>
-                      <p className={marketplaceLinePriceClass}>
-                        {formatUsdMoney(Number(it.subtotal))}
-                      </p>
+                      <div className="w-full shrink-0 sm:max-w-[14rem] sm:pt-0.5">
+                        <ContractAmountBreakdown
+                          breakdown={it.amount_breakdown}
+                          subtotal={it.subtotal}
+                          renewals={it.renewals}
+                          align="right"
+                        />
                       </div>
                     </div>
                   </li>

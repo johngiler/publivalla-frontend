@@ -34,7 +34,10 @@ import { IconAdminContract } from "@/components/admin/adminIcons";
 import { ContratosSectionSkeleton } from "@/components/admin/skeletons/ContratosSectionSkeleton";
 import { AdminConfirmDialog } from "@/components/admin/AdminConfirmDialog";
 import { FinishContractDialog } from "@/components/admin/FinishContractDialog";
+import { ContractAmountBreakdown } from "@/components/orders/ContractAmountBreakdown";
+import { ContractRenewalsHistory } from "@/components/orders/ContractRenewalsHistory";
 import { EarlyEndBadge } from "@/components/orders/EarlyEndBadge";
+import { RenewalStatusPill } from "@/components/orders/RenewalStatusPill";
 import { SplitPaymentPill } from "@/components/orders/SplitPaymentPill";
 import { authFetch } from "@/services/authApi";
 import { CatalogSpaceLink } from "@/components/catalog/CatalogSpaceLink";
@@ -637,6 +640,11 @@ export function ContratosAdminSection() {
                                 {it.split_payment_enabled ? (
                                   <SplitPaymentPill compact />
                                 ) : null}
+                                <RenewalStatusPill
+                                  renewal={it.latest_renewal}
+                                  count={Array.isArray(it.renewals) ? it.renewals.length : null}
+                                  compact
+                                />
                               </div>
                             </td>
                           </tr>
@@ -721,6 +729,12 @@ export function ContratosAdminSection() {
                                         {it.split_payment_enabled ? (
                                           <SplitPaymentPill compact />
                                         ) : null}
+                                        <RenewalStatusPill
+                                          renewal={it.latest_renewal}
+                                          count={
+                                            Array.isArray(it.renewals) ? it.renewals.length : null
+                                          }
+                                        />
                                       </div>
                                     </AdminDetailField>
                                     <AdminDetailField label="Fase del periodo">
@@ -739,6 +753,11 @@ export function ContratosAdminSection() {
                                         >
                                           Finalizar
                                         </button>
+                                      </div>
+                                    ) : null}
+                                    {Array.isArray(it.renewals) && it.renewals.length > 0 ? (
+                                      <div className="sm:col-span-2">
+                                        <ContractRenewalsHistory renewals={it.renewals} />
                                       </div>
                                     ) : null}
                                     {it.open_renewal ? (
@@ -828,9 +847,13 @@ export function ContratosAdminSection() {
                                   title="Importes"
                                 >
                                   <AdminDetailInset className="grid gap-4 sm:grid-cols-2">
-                                    <AdminDetailField label="Subtotal línea (sin IVA)">
-                                      {formatUsdMoney(Number(it.subtotal))}
-                                    </AdminDetailField>
+                                    <div className="sm:col-span-2">
+                                      <ContractAmountBreakdown
+                                        breakdown={it.amount_breakdown}
+                                        subtotal={it.subtotal}
+                                        renewals={it.renewals}
+                                      />
+                                    </div>
                                     <AdminDetailField label="Precio mensual (USD)">
                                       {formatUsdMoney(Number(it.monthly_price))}
                                     </AdminDetailField>
