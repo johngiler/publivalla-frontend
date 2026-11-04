@@ -19,9 +19,11 @@ function formatWhen(iso) {
 }
 
 function wsUrl(token) {
-  const base = apiBase();
-  if (!base || !token) return "";
-  const wsBase = base.replace(/^http/i, "ws");
+  if (!token) return "";
+  const fromEnv = (process.env.NEXT_PUBLIC_WS_URL || "").trim().replace(/\/$/, "");
+  const httpBase = fromEnv || apiBase();
+  if (!httpBase) return "";
+  const wsBase = httpBase.replace(/^http/i, "ws");
   return `${wsBase}/ws/admin-notifications/?token=${encodeURIComponent(token)}`;
 }
 
